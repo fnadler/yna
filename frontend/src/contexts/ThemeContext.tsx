@@ -7,15 +7,16 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
+const THEME_KEY = 'yna-theme-v2'
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [dark, setDark] = useState(() => {
-    const stored = localStorage.getItem('yna-theme')
-    return stored === 'dark'
+    return localStorage.getItem(THEME_KEY) === 'dark'
   })
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
-    localStorage.setItem('yna-theme', dark ? 'dark' : 'light')
+    localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light')
   }, [dark])
 
   return (
