@@ -1,0 +1,182 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --yna-primary-50: #ede8f7;
+  --yna-primary-100: #dcd4f0;
+
+  --success-bg: #e3f4ed;
+  --success-ink: #2E7D63;
+  --warning-bg: #fcefd6;
+  --warning-ink: #8a5c14;
+  --danger-bg: #fae0e5;
+  --danger-ink: #ab3a4e;
+  --info-bg: #ede8f7;
+
+  --page-bg: #f8f6fb;
+  --surface: #ffffff;
+  --surface-2: #f4f1f8;
+  --surface-hover: #ede8f7;
+  --surface-sunken: #f0edf5;
+  --border: #e5dff0;
+  --border-strong: #c8c0dc;
+
+  --text-primary: #1f1b2d;
+  --text-secondary: #514b6b;
+  --text-muted: #7e789a;
+
+  --shadow-xs: 0 1px 2px rgba(71, 73, 168, 0.04);
+  --shadow-sm: 0 2px 6px rgba(71, 73, 168, 0.06), 0 1px 2px rgba(71, 73, 168, 0.04);
+  --shadow: 0 4px 16px rgba(71, 73, 168, 0.08), 0 2px 4px rgba(71, 73, 168, 0.04);
+  --shadow-lg: 0 12px 36px rgba(71, 73, 168, 0.12), 0 4px 12px rgba(71, 73, 168, 0.06);
+  --shadow-xl: 0 24px 64px rgba(71, 73, 168, 0.16);
+}
+
+.dark {
+  --yna-primary-50: rgba(108, 111, 194, 0.12);
+  --yna-primary-100: rgba(108, 111, 194, 0.2);
+
+  --success-bg: rgba(78, 168, 139, 0.15);
+  --success-ink: #6FC4A8;
+  --warning-bg: rgba(232, 166, 64, 0.15);
+  --warning-ink: #e8a640;
+  --danger-bg: rgba(215, 90, 110, 0.15);
+  --danger-ink: #ef93a3;
+  --info-bg: rgba(108, 111, 194, 0.15);
+
+  --yna-gradient-dark: linear-gradient(135deg, #0F0E1B 0%, #151225 50%, #090812 100%);
+  --page-bg: #0E0D18;
+  --surface: #1a1828;
+  --surface-2: #221f33;
+  --surface-hover: #2a2740;
+  --surface-sunken: #15131f;
+  --border: #2c2942;
+  --border-strong: #423f5c;
+
+  --text-primary: #f2eff8;
+  --text-secondary: #b4aec9;
+  --text-muted: #807a99;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.32), 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.36), 0 2px 4px rgba(0, 0, 0, 0.24);
+  --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.44), 0 4px 12px rgba(0, 0, 0, 0.28);
+  --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.56);
+}
+
+@layer base {
+  body {
+    @apply bg-page font-sans text-ink antialiased;
+  }
+
+  /* Bricolage Grotesque para todos os títulos semânticos */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Bricolage Grotesque Variable", "Bricolage Grotesque", sans-serif;
+    font-optical-sizing: auto;
+  }
+
+  :focus-visible {
+    outline: 3px solid rgba(71, 73, 168, 0.55);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  .dark :focus-visible {
+    outline-color: rgba(147, 149, 214, 0.75);
+  }
+}
+
+/* ============================================================
+   YNA PREMIUM TRANSITION ANIMATIONS
+   ============================================================ */
+@keyframes ynaScaleReveal {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ynaFadeSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ynaFadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ynaFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* CSS classes for mount animations */
+.animate-yna-image {
+  opacity: 0;
+  animation: ynaScaleReveal 1400ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.animate-yna-logo {
+  opacity: 0;
+  animation: ynaFadeSlideDown 1000ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.animate-yna-fade-in {
+  opacity: 0;
+  animation: ynaFadeIn 800ms ease-out forwards;
+}
+
+.animate-yna-slide-up {
+  opacity: 0;
+  animation: ynaFadeSlideUp 1000ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.animate-yna-delay-100 {
+  animation-delay: 150ms;
+}
+
+.animate-yna-delay-250 {
+  animation-delay: 280ms;
+}
+
+.animate-yna-delay-400 {
+  animation-delay: 410ms;
+}
+
+.animate-yna-delay-550 {
+  animation-delay: 540ms;
+}
+
+.bg-yna-soft-gradient {
+  background: linear-gradient(135deg, #EDE8F7 0%, #F4ECF2 50%, #FDEEC8 100%);
+}
+
+@layer utilities {
+  .bg-page {
+    background: var(--page-bg) !important;
+  }
+
+}
+

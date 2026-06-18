@@ -1,0 +1,16 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "conceito-visual",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "/Users/fabianonadler/Documents/Claude/Projects/YNA - MVP da plataforma YNA Care Hub/conceito-visual"
+      ],
+      "port": 5173
+    }
+  ]
+}
