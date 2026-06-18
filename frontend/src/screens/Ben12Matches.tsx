@@ -22,7 +22,7 @@ export function Ben12Matches() {
   const [sheet, setSheet] = useState<SheetState>(null)
   const navigate = useNavigate()
 
-  const selectedPro = sheet ? professionals.find((p) => p.id === sheet.proId) : null
+  const selectedPro = sheet && 'proId' in sheet ? professionals.find((p) => p.id === sheet.proId) : null
 
   return (
     <>

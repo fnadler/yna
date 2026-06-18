@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { Avatar } from '../components/Avatar'
-import { Button } from '../components/Button'
 import { Modal } from '../components/Modal'
 import { Sheet } from '../components/Sheet'
-import { YnaIcon } from '../components/YnaIcons'
 import { Ben14Agendamento } from './Ben14Agendamento'
 import { Ben15Confirmacao } from './Ben15Confirmacao'
 import { Ben18Feedback } from './Ben18Feedback'
@@ -23,7 +21,7 @@ type PostSheet =
   | null
 
 export function Ben17VideoRoom() {
-  const { id } = useParams<{ id: string }>()
+  useParams<{ id: string }>()
   const navigate = useNavigate()
   const [muted, setMuted] = useState(false)
   const [cameraOff, setCameraOff] = useState(false)
