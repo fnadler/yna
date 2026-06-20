@@ -29,35 +29,59 @@ export function Ben00BemVindo() {
           <div className="relative w-[52vh] max-w-[88%] aspect-square mt-8">
             {/* Pebble: forma-4 (gradient) — canto superior direito */}
             <div
-              className="absolute top-[6%] right-[-10%] w-[22%] h-[24%] z-20 bg-yna-gradient"
-              style={{ maskImage: 'url(/images/forma-4.svg)', WebkitMaskImage: 'url(/images/forma-4.svg)', maskSize: 'contain', WebkitMaskSize: 'contain', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat', filter: 'drop-shadow(0 8px 24px rgba(71,73,168,0.25))' }}
-            />
+              className="absolute top-[6%] right-[-10%] w-[22%] h-[24%] z-20"
+              style={{ filter: 'drop-shadow(0 8px 24px rgba(71,73,168,0.25))' }}
+            >
+              <div
+                className="w-full h-full bg-yna-gradient"
+                style={{ maskImage: 'url(/images/forma-4.svg)', WebkitMaskImage: 'url(/images/forma-4.svg)', maskSize: 'contain', WebkitMaskSize: 'contain', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat' }}
+              />
+            </div>
             {/* Pebble: forma-2 (white) — direita, abaixo do gradient */}
             <div
-              className="absolute top-[30%] right-[-12%] w-[30%] h-[9%] z-20 bg-white"
-              style={{ maskImage: 'url(/images/forma-2.svg)', WebkitMaskImage: 'url(/images/forma-2.svg)', maskSize: 'contain', WebkitMaskSize: 'contain', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.06))' }}
-            />
+              className="absolute top-[30%] right-[-12%] w-[30%] h-[9%] z-20"
+              style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.06))' }}
+            >
+              <div
+                className="w-full h-full bg-white"
+                style={{ maskImage: 'url(/images/forma-2.svg)', WebkitMaskImage: 'url(/images/forma-2.svg)', maskSize: 'contain', WebkitMaskSize: 'contain', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat' }}
+              />
+            </div>
             {/* Pebble: forma-3 (white) — base da pilha, inferior esquerdo */}
             <div
-              className="absolute bottom-[4%] left-[-4%] w-[38%] h-[18%] z-20 bg-white"
-              style={{ maskImage: 'url(/images/forma-3.svg)', WebkitMaskImage: 'url(/images/forma-3.svg)', maskSize: 'contain', WebkitMaskSize: 'contain', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.05))' }}
-            />
+              className="absolute bottom-[4%] left-[-4%] w-[38%] h-[18%] z-20"
+              style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.05))' }}
+            >
+              <div
+                className="w-full h-full bg-white"
+                style={{ maskImage: 'url(/images/forma-3.svg)', WebkitMaskImage: 'url(/images/forma-3.svg)', maskSize: 'contain', WebkitMaskSize: 'contain', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat' }}
+              />
+            </div>
             {/* Pebble: forma-1 (gradient) — empilhada acima da forma-3 */}
             <div
-              className="absolute bottom-[22%] left-[-10%] w-[32%] h-[30%] z-20 bg-yna-gradient"
-              style={{ maskImage: 'url(/images/forma-1.svg)', WebkitMaskImage: 'url(/images/forma-1.svg)', maskSize: 'contain', WebkitMaskSize: 'contain', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat', filter: 'drop-shadow(0 8px 24px rgba(71,73,168,0.22))' }}
-            />
-
-            {/* Imagem principal mascarada com forma-1 */}
-            <div
-              className="w-full h-full overflow-hidden filter drop-shadow-[0_16px_48px_rgba(0,0,0,0.10)] z-10 relative"
-              style={{ maskImage: 'url(/images/forma-1.svg)', WebkitMaskImage: 'url(/images/forma-1.svg)', maskSize: 'contain', WebkitMaskSize: 'contain', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat' }}
+              className="absolute bottom-[22%] left-[-10%] w-[32%] h-[30%] z-20"
+              style={{ filter: 'drop-shadow(0 8px 24px rgba(71,73,168,0.22))' }}
             >
-              <img
-                src="/images/welcome.png"
-                className="w-full h-full object-cover object-center animate-yna-image"
-                alt="Pessoa sorrindo em momento de calma e reconexão na natureza"
+              <div
+                className="w-full h-full bg-yna-gradient"
+                style={{ maskImage: 'url(/images/forma-1.svg)', WebkitMaskImage: 'url(/images/forma-1.svg)', maskSize: 'contain', WebkitMaskSize: 'contain', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat' }}
               />
+            </div>
+
+            {/* Imagem principal mascarada com forma-1 — drop-shadow no wrapper
+                externo para a sombra seguir a forma mascarada (mask + drop-shadow
+                no mesmo elemento gera sombra retangular no iOS Safari). */}
+            <div className="w-full h-full filter drop-shadow-[0_16px_48px_rgba(0,0,0,0.10)] z-10 relative">
+              <div
+                className="w-full h-full overflow-hidden"
+                style={{ maskImage: 'url(/images/forma-1.svg)', WebkitMaskImage: 'url(/images/forma-1.svg)', maskSize: 'contain', WebkitMaskSize: 'contain', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat' }}
+              >
+                <img
+                  src="/images/welcome.png"
+                  className="w-full h-full object-cover object-center animate-yna-image"
+                  alt="Pessoa sorrindo em momento de calma e reconexão na natureza"
+                />
+              </div>
             </div>
           </div>
         </div>

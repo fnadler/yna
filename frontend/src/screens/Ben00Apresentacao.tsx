@@ -167,37 +167,47 @@ export function Ben00Apresentacao() {
           return (
             <div
               key={idx}
-              className={`${peb.className} ${bgClass} hover:scale-105 hover:-translate-y-1 transition-all duration-700 ease-organic cursor-pointer pointer-events-auto filter`}
+              className={`${peb.className} hover:scale-105 hover:-translate-y-1 transition-all duration-700 ease-organic cursor-pointer pointer-events-auto filter`}
               style={{
-                maskImage: `url(${peb.shape})`,
-                WebkitMaskImage: `url(${peb.shape})`,
-                maskSize: 'contain',
-                WebkitMaskSize: 'contain',
-                maskRepeat: 'no-repeat',
-                WebkitMaskRepeat: 'no-repeat',
                 filter: peb.bg === 'gradient' ? 'drop-shadow(0 8px 24px rgba(71,73,168,0.18))' : 'drop-shadow(0 4px 12px rgba(0,0,0,0.04))'
               }}
-            />
+            >
+              <div
+                className={`w-full h-full ${bgClass}`}
+                style={{
+                  maskImage: `url(${peb.shape})`,
+                  WebkitMaskImage: `url(${peb.shape})`,
+                  maskSize: 'contain',
+                  WebkitMaskSize: 'contain',
+                  maskRepeat: 'no-repeat',
+                  WebkitMaskRepeat: 'no-repeat',
+                }}
+              />
+            </div>
           )
         })}
 
-        {/* Main Masked Image */}
-        <div
-          className="w-full h-full overflow-hidden filter drop-shadow-[0_12px_36px_rgba(0,0,0,0.06)] hover:scale-[1.02] transition-transform duration-700 ease-organic z-10 relative"
-          style={{
-            maskImage: `url(${visual.mainMask})`,
-            WebkitMaskImage: `url(${visual.mainMask})`,
-            maskSize: 'contain',
-            WebkitMaskSize: 'contain',
-            maskRepeat: 'no-repeat',
-            WebkitMaskRepeat: 'no-repeat',
-          }}
-        >
-          <img
-            src={slide.image}
-            className="w-full h-full object-cover object-center animate-yna-image"
-            alt={slide.title}
-          />
+        {/* Main Masked Image — drop-shadow lives on the outer wrapper so the
+            shadow follows the masked blob shape. Applying mask + drop-shadow on
+            the same element makes iOS Safari render a rectangular shadow. */}
+        <div className="w-full h-full filter drop-shadow-[0_12px_36px_rgba(0,0,0,0.06)] hover:scale-[1.02] transition-transform duration-700 ease-organic z-10 relative">
+          <div
+            className="w-full h-full overflow-hidden"
+            style={{
+              maskImage: `url(${visual.mainMask})`,
+              WebkitMaskImage: `url(${visual.mainMask})`,
+              maskSize: 'contain',
+              WebkitMaskSize: 'contain',
+              maskRepeat: 'no-repeat',
+              WebkitMaskRepeat: 'no-repeat',
+            }}
+          >
+            <img
+              src={slide.image}
+              className="w-full h-full object-cover object-center animate-yna-image"
+              alt={slide.title}
+            />
+          </div>
         </div>
       </div>
     </div>
