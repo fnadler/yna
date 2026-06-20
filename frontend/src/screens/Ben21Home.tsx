@@ -108,7 +108,7 @@ const INITIAL_NOTIFS: Notif[] = [
     icon: 'ph:sparkle-bold',
     iconBg: 'bg-lavender/30',
     iconColor: 'text-primary dark:text-primary-300',
-    title: 'Uma reflexão da Nina',
+    title: 'Uma reflexão da Nyna',
     body: 'Ela preparou algo para você sobre a semana.',
     time: 'ontem',
     read: true,
@@ -483,7 +483,7 @@ export function Ben21Home() {
                     </span>
                     <div>
                       <h3 className="font-heading text-xl md:text-2xl font-bold tracking-tight text-ink-gradient dark:text-ink">
-                        Nina
+                        Nyna
                       </h3>
                       <p className="text-xs font-semibold text-ink-gradient-secondary dark:text-ink-secondary">
                         Com você, 24 horas por dia
@@ -503,7 +503,7 @@ export function Ben21Home() {
                     className="!bg-primary text-white shadow-md hover:!bg-primary-600 hover:-translate-y-px active:translate-y-0 w-full md:w-auto px-6 mt-1"
                     onClick={() => navigate('/nina')}
                   >
-                    Conversar com a Nina
+                    Conversar com a Nyna
                   </Button>
                 </div>
 
@@ -516,7 +516,7 @@ export function Ben21Home() {
                   <div className="absolute inset-0 overflow-hidden border border-white/40 dark:border-white/10 shadow-lg rounded-[50%_50%_40%_60%_/_40%_60%_40%_60%] hover:scale-[1.03] transition-transform duration-500 ease-organic">
                     <img
                       src="/images/nina.png"
-                      alt="Nina"
+                      alt="Nyna"
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -527,7 +527,7 @@ export function Ben21Home() {
                   <div className="w-12 h-12 overflow-hidden border border-white/40 dark:border-white/10 shadow-sm rounded-[50%_50%_40%_60%_/_40%_60%_40%_60%]">
                     <img
                       src="/images/nina.png"
-                      alt="Nina"
+                      alt="Nyna"
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -578,7 +578,7 @@ export function Ben21Home() {
           : sheet?.type === 'cancellation-confirmation' ? 'Sessão cancelada'
           : sheet?.type === 'confirmation' ? 'Sessão agendada'
           : sheet?.type === 'checkin-config' ? 'Check-in de bem-estar'
-          : sheet?.type === 'checkin-nina' ? 'Check-in com a Nina'
+          : sheet?.type === 'checkin-nina' ? 'Check-in com a Nyna'
           : sheet?.type === 'checkin-form' ? 'Check-in rápido'
           : sheet?.type === 'checkin-success' ? 'Check-in registrado'
           : sheet?.type === 'rematch' ? 'Outro profissional'

@@ -93,7 +93,7 @@ export function Ben25CheckInConfig({ onStart, onClose }: Ben25Props = {}) {
               }`}
             >
               <Icon icon="ph:sparkle-bold" width={24} className={mode === 'nina' ? 'text-primary dark:text-primary-300' : 'text-ink-muted'} aria-hidden />
-              <span className="text-sm font-semibold text-ink">Com a Nina</span>
+              <span className="text-sm font-semibold text-ink">Com a Nyna</span>
               <span className="text-xs text-ink-muted text-center">Conversa guiada</span>
             </button>
             <button

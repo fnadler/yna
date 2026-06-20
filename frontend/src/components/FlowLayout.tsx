@@ -1,4 +1,4 @@
-import { Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { Sidebar } from './Sidebar'
 import type { NavItem } from './BottomNav'
@@ -6,13 +6,14 @@ import type { NavItem } from './BottomNav'
 const navItems: NavItem[] = [
   { icon: 'ph:house-bold', label: 'Início', to: '/home' },
   { icon: 'ph:calendar-bold', label: 'Agenda', to: '/agenda' },
+  { icon: 'ph:sparkle-bold', ynaIcon: 'chat' as const, label: 'Nyna', to: '/nina', variant: 'highlight' },
   { icon: 'ph:first-aid-bold', label: 'Emergência', to: '/emergencia', variant: 'emergency' },
-  { icon: 'ph:sparkle-bold', ynaIcon: 'chat' as const, label: 'Nina', to: '/nina' },
   { icon: 'ph:user-circle-bold', ynaIcon: 'profile' as const, label: 'Perfil', to: '/meus-dados' },
 ]
 
 export function FlowLayout() {
   const navigate = useNavigate()
+  const location = useLocation()
 
   return (
     <div className="flex h-dvh overflow-hidden bg-page lg:flex-row">
@@ -32,7 +33,9 @@ export function FlowLayout() {
         </div>
 
         <main className="flex-1 overflow-y-auto">
-          <Outlet />
+          <div key={location.pathname} className="min-h-full animate-yna-enter">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

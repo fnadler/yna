@@ -199,7 +199,7 @@ function EmergencyRoom() {
               <YnaIcon name="flower" size={16} className="text-primary-300" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">Nina</p>
+              <p className="text-sm font-semibold text-white">Nyna</p>
               <p className="text-xs text-lavender/50">Suporte enquanto você espera</p>
             </div>
           </div>

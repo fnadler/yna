@@ -11,6 +11,8 @@ interface Ben14Props {
   onConfirm?: () => void
   onBack?: () => void
   onRematch?: () => void
+  /** Quando false, oferece apenas sessão única (ex.: triagem → matches, antes da área logada) */
+  allowRecurring?: boolean
 }
 
 type BookingMode = 'single' | 'recurring'
@@ -65,7 +67,7 @@ function nextOccurrence(weekday: string): string {
   return next.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
-export function Ben14Agendamento({ proId, onConfirm, onBack, onRematch }: Ben14Props = {}) {
+export function Ben14Agendamento({ proId, onConfirm, onBack, onRematch, allowRecurring = true }: Ben14Props = {}) {
   const { id: paramId } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const pro = professionals.find((p) => p.id === (proId ?? paramId)) ?? professionals[0]!
@@ -158,6 +160,7 @@ export function Ben14Agendamento({ proId, onConfirm, onBack, onRematch }: Ben14P
         </div>
 
         {/* Mode toggle */}
+        {allowRecurring && (
         <div className="mb-5 flex gap-1 rounded-lg bg-surface-2 p-1">
           {(['single', 'recurring'] as const).map((m) => (
             <button
@@ -176,6 +179,7 @@ export function Ben14Agendamento({ proId, onConfirm, onBack, onRematch }: Ben14P
             </button>
           ))}
         </div>
+        )}
 
         {/* ── Single mode ── */}
         {mode === 'single' && (

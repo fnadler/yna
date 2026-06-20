@@ -215,7 +215,7 @@ export function Ben00Apresentacao() {
         </div>
 
         <div className="md:my-auto">
-          <p className="text-xs md:text-sm font-semibold tracking-wider text-primary dark:text-primary-300 uppercase animate-yna-slide-up animate-yna-delay-100">
+          <p className="text-sm font-medium text-primary dark:text-primary-300 animate-yna-slide-up animate-yna-delay-100">
             {slide.eyebrow}
           </p>
           <h1 className="mt-2 text-[32px] md:text-[42px] font-heading font-light leading-[1.08] tracking-[-0.03em] text-ink animate-yna-slide-up animate-yna-delay-250">

@@ -159,7 +159,7 @@ export function Ben26CheckInNina({ onDone }: Ben26Props = {}) {
           <YnaIcon name="flower" size={20} className="text-primary" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-ink">Check-in com a Nina</p>
+          <p className="text-sm font-semibold text-ink">Check-in com a Nyna</p>
           <p className="text-xs text-ink-muted">
             {done ? 'Concluído' : `Pergunta ${step + 1} de ${FLOW.length}`}
           </p>

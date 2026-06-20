@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
 import { Modal } from '../components/Modal'
+import { YnaIcon } from '../components/YnaIcons'
 import { ninaMessages, ninaResponses } from '../data/mock'
 import type { NinaMessage } from '../types'
 
@@ -73,15 +74,15 @@ export function Ben22Nina() {
         Mobile: fixed overlay cobrindo o bottom nav (z-40 < Modal z-50)
         Desktop: posicionado normalmente dentro do AppLayout
       */}
-      <div className="fixed inset-0 z-40 flex flex-col bg-page lg:relative lg:inset-auto lg:z-auto lg:h-full">
+      <div className="fixed inset-0 z-40 flex flex-col bg-page lg:relative lg:inset-auto lg:z-auto lg:h-dvh">
 
         {/* Header */}
         <header className="flex shrink-0 items-center gap-3 border-b border-border bg-surface px-5 py-4 pt-12 lg:pt-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-pill bg-yna-gradient-soft">
-            <Icon icon="ph:sparkle-bold" width={20} className="text-primary" aria-hidden />
+            <YnaIcon name="chat" size={20} className="text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-ink">Nina</p>
+            <p className="text-sm font-semibold text-ink">Nyna</p>
             <p className="text-xs text-ink-secondary">Assistente de bem-estar · disponível 24h</p>
           </div>
 
@@ -101,7 +102,7 @@ export function Ben22Nina() {
         <div className="shrink-0 bg-surface-2 px-4 py-2">
           <p className="text-xs leading-snug text-ink-secondary">
             <Icon icon="ph:info-bold" width={12} className="mr-1 inline" aria-hidden />
-            Nina é uma assistente de apoio. Não substitui consulta com profissional de saúde mental. Em crise, acione o suporte de emergência.
+            Nyna é uma assistente de apoio. Não substitui consulta com profissional de saúde mental. Em crise, acione o suporte de emergência.
           </p>
         </div>
 
@@ -142,7 +143,7 @@ export function Ben22Nina() {
             {typing && (
               <div className="flex justify-start">
                 <div className="rounded-lg border border-border bg-surface px-4 py-3">
-                  <div className="flex gap-1.5" aria-label="Nina está digitando">
+                  <div className="flex gap-1.5" aria-label="Nyna está digitando">
                     {[0, 1, 2].map((i) => (
                       <span
                         key={i}
@@ -170,7 +171,7 @@ export function Ben22Nina() {
                   void send()
                 }
               }}
-              placeholder="Escreva para a Nina…"
+              placeholder="Escreva para a Nyna…"
               rows={1}
               className="flex-1 resize-none rounded-pill border-[1.5px] border-border bg-surface-2 px-4 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-secondary hover:border-border-strong focus:border-primary"
             />

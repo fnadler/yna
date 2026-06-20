@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { useTheme } from '../contexts/ThemeContext'
 import { PAGE_MAX_W } from '../lib/layout'
 import { MobileTopBar } from '../components/MobileTopBar'
 import { Card } from '../components/Card'
+import { Modal } from '../components/Modal'
 import { Avatar } from '../components/Avatar'
 import { Badge } from '../components/Badge'
 import { PageHeader } from '../components/PageHeader'
@@ -16,8 +17,36 @@ export function Ben31MeusDados() {
   const { user } = useApp()
   const navigate = useNavigate()
   const { dark, toggle: toggleTheme } = useTheme()
-  const [requested, setRequested] = useState(false)
   const [ticketOpen, setTicketOpen] = useState(false)
+  const [contactOpen, setContactOpen] = useState(false)
+
+  // Auto-dismiss the floating success toast
+  useEffect(() => {
+    if (!ticketOpen) return
+    const t = setTimeout(() => setTicketOpen(false), 5000)
+    return () => clearTimeout(t)
+  }, [ticketOpen])
+
+  const contactOptions = [
+    {
+      icon: 'ph:whatsapp-logo-bold',
+      label: 'WhatsApp',
+      value: '(11) 99999-0000',
+      href: 'https://wa.me/5511999990000',
+    },
+    {
+      icon: 'ph:envelope-bold',
+      label: 'E-mail',
+      value: 'contato@yna.com.br',
+      href: 'mailto:contato@yna.com.br',
+    },
+    {
+      icon: 'ph:phone-bold',
+      label: 'Telefone',
+      value: '(11) 4000-1000',
+      href: 'tel:+551140001000',
+    },
+  ]
 
   const sections = [
     {
@@ -32,16 +61,8 @@ export function Ben31MeusDados() {
     },
   ]
 
-  const rights: { icon: string; title: string; desc: string; onClick: () => void; done?: boolean }[] = [
-    {
-      icon: 'ph:file-arrow-down-bold',
-      title: 'Solicitar prontuário',
-      desc: requested
-        ? 'Solicitação aberta. Você receberá por e-mail'
-        : 'Receba seu histórico completo em até 15 dias úteis',
-      onClick: () => setRequested(true),
-      done: requested,
-    },
+  const rights: { icon: string; title: string; desc: string; onClick: () => void }[] = [
+    { icon: 'ph:chat-circle-dots-bold', title: 'Fale Conosco', desc: 'WhatsApp, e-mail ou telefone', onClick: () => setContactOpen(true) },
     { icon: 'ph:eye-bold', title: 'Acessar meus dados', desc: 'Ver tudo que a YNA tem sobre você', onClick: () => setTicketOpen(true) },
     { icon: 'ph:pencil-bold', title: 'Corrigir dados incorretos', desc: 'Solicitar atualização de informações', onClick: () => setTicketOpen(true) },
     { icon: 'ph:trash-bold', title: 'Excluir minha conta', desc: 'Apagar todos os dados permanentemente', onClick: () => setTicketOpen(true) },
@@ -53,7 +74,7 @@ export function Ben31MeusDados() {
     <div className={`mx-auto ${PAGE_MAX_W} px-5 lg:px-8 pt-0 lg:pt-9 pb-8`}>
       <MobileTopBar />
       <PageHeader
-        title="Meus dados"
+        title="Meu Perfil"
         subtitle="Você tem controle total. Veja o que temos e peça o que precisar, sem burocracia."
         className="mt-2 lg:mt-0"
         action={
@@ -116,41 +137,24 @@ export function Ben31MeusDados() {
               {rights.map((right) => (
                 <button
                   key={right.title}
-                  onClick={right.done ? undefined : right.onClick}
-                  disabled={right.done}
-                  className={`flex items-center gap-3 rounded-lg border px-4 py-4 font-heading text-left transition-colors ${
-                    right.done
-                      ? 'cursor-default border-success/20 bg-success-bg'
-                      : 'border-border bg-surface hover:bg-surface-hover'
-                  }`}
+                  onClick={right.onClick}
+                  className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-4 font-heading text-left transition-colors hover:bg-surface-hover"
                 >
                   <Icon
-                    icon={right.done ? 'ph:check-circle-bold' : right.icon}
+                    icon={right.icon}
                     width={18}
-                    className={right.done ? 'shrink-0 text-success' : 'shrink-0 text-primary dark:text-primary-300'}
+                    className="shrink-0 text-primary dark:text-primary-300"
                     aria-hidden
                   />
                   <div className="flex-1">
-                    <p className={`text-sm font-semibold ${right.done ? 'text-success' : 'text-ink'}`}>
-                      {right.title}
-                    </p>
+                    <p className="text-sm font-semibold text-ink">{right.title}</p>
                     <p className="text-xs text-ink-secondary">{right.desc}</p>
                   </div>
-                  {!right.done && (
-                    <Icon icon="ph:caret-right-bold" width={14} className="shrink-0 text-ink-secondary" aria-hidden />
-                  )}
+                  <Icon icon="ph:caret-right-bold" width={14} className="shrink-0 text-ink-secondary" aria-hidden />
                 </button>
               ))}
             </div>
           </Card>
-
-          {ticketOpen && (
-            <div className="mt-3 rounded-lg border border-success bg-success-bg px-4 py-3">
-              <p className="text-sm font-medium text-ink">
-                Ticket aberto. Nossa equipe de privacidade entrará em contato em até 72h.
-              </p>
-            </div>
-          )}
         </div>
       </div>
 
@@ -165,6 +169,52 @@ export function Ben31MeusDados() {
         </button>
       </div>
     </div>
+
+    {/* Floating success toast — visible regardless of scroll/resolution */}
+    {ticketOpen && (
+      <div className="pointer-events-none fixed inset-x-0 bottom-24 z-50 flex justify-center px-4 lg:bottom-8">
+        <div
+          role="status"
+          className="pointer-events-auto flex max-w-md items-start gap-3 rounded-lg border border-success bg-success-bg px-4 py-3 shadow-lg animate-yna-slide-up"
+        >
+          <Icon icon="ph:check-circle-bold" width={20} className="mt-0.5 shrink-0 text-success" aria-hidden />
+          <p className="flex-1 text-sm font-medium text-ink">
+            Ticket aberto. Nossa equipe de privacidade entrará em contato em até 72h.
+          </p>
+          <button
+            onClick={() => setTicketOpen(false)}
+            aria-label="Fechar"
+            className="-mr-1 shrink-0 text-ink-secondary transition-colors hover:text-ink"
+          >
+            <Icon icon="ph:x-bold" width={16} aria-hidden />
+          </button>
+        </div>
+      </div>
+    )}
+
+    {/* Fale Conosco — contact options */}
+    <Modal open={contactOpen} title="Fale Conosco" onClose={() => setContactOpen(false)}>
+      <div className="flex flex-col gap-2">
+        {contactOptions.map((opt) => (
+          <a
+            key={opt.label}
+            href={opt.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-4 transition-colors hover:bg-surface-hover"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary dark:text-primary-300">
+              <Icon icon={opt.icon} width={20} aria-hidden />
+            </span>
+            <div className="flex-1">
+              <p className="font-heading text-sm font-semibold text-ink">{opt.label}</p>
+              <p className="text-xs text-ink-secondary">{opt.value}</p>
+            </div>
+            <Icon icon="ph:caret-right-bold" width={14} className="shrink-0 text-ink-secondary" aria-hidden />
+          </a>
+        ))}
+      </div>
+    </Modal>
     </div>
   )
 }

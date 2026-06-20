@@ -9,7 +9,7 @@ export interface NavItem {
   label: string
   to: string
   badge?: number
-  variant?: 'emergency'
+  variant?: 'emergency' | 'highlight'
 }
 
 export function BottomNav({ items }: { items: NavItem[] }) {
@@ -19,18 +19,45 @@ export function BottomNav({ items }: { items: NavItem[] }) {
       className="relative flex shrink-0 items-end justify-around overflow-visible border-t border-border bg-surface px-1 pb-4 pt-1 lg:hidden"
     >
       {items.map((item) => {
+        if (item.variant === 'highlight') {
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              aria-label={item.label}
+              className="mb-1 flex flex-col items-center gap-1.5 px-2 text-ink-secondary hover:text-ink"
+            >
+              <div className="-mt-8 flex h-14 w-14 items-center justify-center rounded-full border-[3px] border-surface bg-primary text-white shadow-lg shadow-primary/25 transition-transform active:scale-95">
+                {item.ynaIcon
+                  ? <YnaIcon name={item.ynaIcon} size={28} />
+                  : <Icon icon={item.icon} width={26} aria-hidden />
+                }
+              </div>
+              <span className="font-heading text-[10.5px] font-semibold">{item.label}</span>
+            </NavLink>
+          )
+        }
+
         if (item.variant === 'emergency') {
           return (
             <NavLink
               key={item.to}
               to={item.to}
               aria-label="Emergência: preciso de ajuda agora"
-              className="mb-1 flex flex-col items-center gap-1.5 px-2"
+              className={({ isActive }) =>
+                `relative flex min-h-[52px] min-w-[60px] flex-col items-center justify-center gap-0.5 rounded-sm px-2 text-danger transition-colors ${
+                  isActive ? 'text-danger' : 'hover:text-danger'
+                }`
+              }
             >
-              <div className="-mt-8 flex h-14 w-14 items-center justify-center rounded-full border-[3px] border-surface bg-danger shadow-lg shadow-danger/25 transition-transform active:scale-95">
-                <Icon icon="ph:first-aid-bold" width={26} className="text-white" aria-hidden />
-              </div>
-              <span className="font-heading text-[10.5px] font-semibold text-danger">Emergência</span>
+              {({ isActive }) => (
+                <>
+                  <Icon icon="ph:first-aid-bold" width={22} aria-hidden />
+                  <span className={`font-heading text-[10.5px] ${isActive ? 'font-semibold' : 'font-medium'}`}>
+                    {item.label}
+                  </span>
+                </>
+              )}
             </NavLink>
           )
         }

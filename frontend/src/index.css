@@ -153,6 +153,13 @@
   animation: ynaFadeSlideUp 1000ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
+/* Logged-in area route-enter: same slide-up feel as onboarding, but without
+   `forwards` so the transform reverts to `none` after the entrance — leaving no
+   persistent containing block that would break `position: fixed` children. */
+.animate-yna-enter {
+  animation: ynaFadeSlideUp 600ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
 .animate-yna-delay-100 {
   animation-delay: 150ms;
 }

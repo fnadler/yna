@@ -114,6 +114,7 @@ export function Ben12Matches() {
         {sheet?.type === 'schedule' && (
           <Ben14Agendamento
             proId={sheet.proId}
+            allowRecurring={false}
             onConfirm={() => setSheet({ type: 'confirmation' })}
           />
         )}
