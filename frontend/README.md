@@ -1,6 +1,9 @@
-# YNA Care Hub · Frontend v0.1 — Fluxo do Beneficiário
+# YNA Care Hub · Frontend — Fluxos do Beneficiário e do Profissional
 
-Aplicação navegável da jornada completa do beneficiário, do convite à fidelização.
+Aplicação navegável de **dois fluxos independentes** que compartilham o mesmo design system:
+- **Beneficiário** — do convite à fidelização (raiz `/`).
+- **Profissional (psicólogo)** — do convite à operação e crescimento (namespace `/pro`).
+
 Stack oficial do MVP: **React + TypeScript + Vite + Tailwind CSS + React Router DOM**.
 
 ## Como rodar
@@ -49,8 +52,9 @@ A rota padrão `/` redireciona para `/convite/demo` e inicia a jornada completa.
 
 | Contexto | Responsabilidade |
 |---|---|
-| `ThemeContext` | Tema light/dark. Lê `prefers-color-scheme` na 1ª visita, persiste em `localStorage`. |
-| `AppContext` | Sessão do usuário: consentimento LGPD, perfil completo, triagem, matches. |
+| `ThemeContext` | Tema light/dark **compartilhado** pelos dois fluxos. Persiste em `localStorage`. |
+| `AppContext` | Sessão do **beneficiário**: consentimento LGPD, perfil, triagem, matches. |
+| `ProContext` | Sessão do **profissional**: perfil clínico + indicador "Perfil pronto para match" (derivado, fonte única de verdade). Isolado do `AppContext`. |
 
 Sem Redux, Zustand, TanStack Query ou qualquer lib de estado além das nativas do React.
 
@@ -114,6 +118,66 @@ Entrega `{ status, data?, message?, reload }` para qualquer chamada assíncrona.
 
 ---
 
+## Fluxo do Profissional (psicólogo) — namespace `/pro`
+
+Jornada separada (convite e autenticação próprios; nenhum link cruza com o beneficiário), mas reusando o design system. Estado em `ProContext`; serviços em `src/services/pro.ts`; mocks em `src/data/proMock.ts`; telas em `src/screens/pro/`.
+
+| Rota | Tela | Ref. RF |
+|---|---|---|
+| `/pro/convite/:token` | PRO-01 Convite | RF-PR-01.1 |
+| `/pro/convite/invalido` | PRO-02 Link inválido | RF-PR-01.1 |
+| `/pro/boas-vindas` | PRO-03 Boas-vindas Domus | RF-PR-01.2 |
+| `/pro/cadastro/:passo` | PRO-04 Cadastro (wizard 5 etapas) | RF-PR-02.1 |
+| `/pro/financeiro/setup` | PRO-05 Setup financeiro | RF-PR-03.1/03.2 |
+| `/pro/integracao` | PRO-06 Trilha de integração | RF-PR-04.1/04.3 |
+| `/pro/status` | PRO-07 Status do cadastro | RF-PR-02.5 |
+| `/pro/ativado` | PRO-08 Perfil ativo (fast-track) | RF-PR-06 |
+| `/pro/home` | PRO-12 ★ Dashboard | RF-PR-06.1 |
+| `/pro/agenda` | PRO-13 Agenda (próximas/realizadas) | RF-PR-06.1 |
+| `/pro/beneficiario/:id` | PRO-14 Detalhe do beneficiário | RF-PR-06.2 |
+| `/pro/perfil` | PRO-09 Perfil clínico (+ "Perfil pronto para match") | RF-PR-05.1 |
+| `/pro/sessao/:id` | PRO-15 ★ Sala de sessão (SessionRoom compartilhado) | RF-PR-06.4 |
+| `/pro/plantao` | PRO-17 Disponibilidade de plantão | RF-PR-09.1 |
+| `/pro/plantao/emergencia/:id` | PRO-18 Acionamento + sala de emergência | RF-PR-09.3 |
+| `/pro/supervisao` | PRO-20 Supervisão Domus | RF-PR-10.x |
+| `/pro/universidade` | PRO-21 Universidade — trilhas | RF-PR-13.1/13.2 |
+| `/pro/universidade/lives` | PRO-22 Lives Domus | RF-PR-13.4 |
+| `/pro/qualidade` | PRO-23 Painel de qualidade (sem ranking/comentários) | RF-PR-14.1 |
+| `/pro/financeiro` | PRO-24 Gestão financeira/antecipação | RF-PR-11.x |
+| `/pro/ausencias` | PRO-19 Férias e ausências | RF-PR-08.x |
+| `/pro/conta` | PRO-25 Conta (dados, PJ, tema, sair) | — |
+| `/pro/notificacoes` | PRO-26 Notificações (inclui troca de profissional) | RF-PR-12.4 |
+
+★ = telas de maior peso visual.
+
+**Telas de detalhe/ação em modal (Sheet), espelhando o fluxo do beneficiário** — não têm rota própria:
+
+| Conteúdo | Componente | Aberto a partir de |
+|---|---|---|
+| PRO-10 Preview "como o beneficiário vê" | `Pro10PreviewContent` | PRO-09 (perfil) |
+| PRO-11 Configuração de agenda/disponibilidade | `Pro11AgendaContent` | PRO-09 (perfil) |
+| PRO-16 Prontuário pós-sessão | `ProntuarioForm` | PRO-15 e PRO-18 (pós-sessão) · pendências em PRO-12/PRO-13 |
+
+### Chrome compartilhado
+
+- **Mobile:** `ProTopBar` (wrapper de `MobileTopBar`) injeta o tema claro/escuro e o sino de notificações (com contador de não lidas via `ProContext.unreadNotifs`, navegando para `/pro/notificacoes`) em todas as telas logadas.
+- **Desktop:** os mesmos controles de tema + sino ficam na `ProSidebar`.
+- **Fundo:** todas as telas logadas usam o `bg-yna-gradient-soft` (dark: `--yna-gradient-dark`), igual ao beneficiário.
+
+### Ponto de conexão entre os dois fluxos
+
+A **sala de sessão** é o componente `src/components/SessionRoom.tsx`, parametrizado por `role` (`beneficiario | profissional`). `Ben17VideoRoom` e `Pro15Sessao`/`Pro18Emergencia` são wrappers finos: a sala é idêntica; muda só o participante exibido, o self-view, o botão de ajuda (só beneficiário) e o que ocorre ao encerrar (beneficiário → feedback em Sheet; profissional → prontuário em Sheet).
+
+### Diferenças intencionais entre os perfis
+
+- **Sem botão de pânico** no profissional (ele é quem *atende* a emergência, como plantonista).
+- **Navegação própria** (Início · Agenda · Universidade · Financeiro · Perfil) via `ProSidebar` + `ProBottomNav` (reusa o `BottomNav`).
+- **Tom de copy** Cora-Sábio/Criador/Herói (par a par), não o Cuidador/Amante do beneficiário.
+- **Densidade de dados** um pouco maior em painéis operacionais (agenda, financeiro, qualidade), sempre arejada.
+- **Ranking oculto:** o painel de qualidade mostra score por critério, **nunca** a posição no ranking nem comentários (RN-PR §7.15).
+
+---
+
 ## O que está mockado e como trocar
 
 | Mock | Onde | Como trocar |
@@ -125,6 +189,9 @@ Entrega `{ status, data?, message?, reload }` para qualquer chamada assíncrona.
 | Slots de agenda | `availableSlots` em `data/mock.ts` | `GET /professionals/:id/slots` |
 | Sala de vídeo | Placeholder visual | Integrar SDK Daily.co / Twilio Video no `Ben17VideoRoom` |
 | Respostas da Nina | `ninaResponses` em `data/mock.ts` | Endpoint de LLM / chatbot |
+| Fluxo do Profissional (perfil, sessões, beneficiários, prontuários, plantão, financeiro, trilhas, lives, supervisão, qualidade, notificações) | `data/proMock.ts` via `services/pro.ts` | Endpoints REST do profissional (mesma assinatura) |
+| Validação de CRP | manual no MVP | Integração com base do CFP (backoffice) |
+| Antecipação de recebíveis | `proFinanceService` (mock) | Integração com fintech |
 
 ---
 

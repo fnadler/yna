@@ -1,18 +1,15 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 import { Icon } from '@iconify/react'
-import { YnaIcon } from '../components/YnaIcons'
-import type { YnaIconName } from '../components/YnaIcons'
 import { Avatar } from '../components/Avatar'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { OptionCard } from '../components/OptionCard'
 import { Sheet } from '../components/Sheet'
-import { TopBarIconButton } from '../components/TopBarIconButton'
-import { LogoYna } from '../components/YnaLogo'
+import { MobileTopBar } from '../components/MobileTopBar'
+import type { AppLayoutContext } from '../components/AppLayout'
 import { upcomingSessions } from '../data/mock'
 import { useApp } from '../contexts/AppContext'
-import { useTheme } from '../contexts/ThemeContext'
 import { PAGE_MAX_W } from '../lib/layout'
 import { SpecialtyBadge } from '../components/SpecialtyBadge'
 import { Ben14Agendamento } from './Ben14Agendamento'
@@ -66,52 +63,6 @@ const shortcuts = [
     desc: 'Acesse suporte imediato em situação de crise',
     variant: 'emergency' as const,
     action: 'emergency',
-  },
-]
-
-interface Notif {
-  id: string
-  icon: string
-  ynaIcon?: YnaIconName
-  iconBg: string
-  iconColor: string
-  title: string
-  body: string
-  time: string
-  read: boolean
-}
-
-const INITIAL_NOTIFS: Notif[] = [
-  {
-    id: 'n1',
-    icon: 'ph:calendar-bold',
-    iconBg: 'bg-primary-50',
-    iconColor: 'text-primary dark:text-primary-300',
-    title: 'Sessão amanhã às 19h00',
-    body: 'Com Dra. Ana Beltrão. Lembrete automático 1h antes.',
-    time: 'há 2h',
-    read: false,
-  },
-  {
-    id: 'n2',
-    icon: 'ph:flower-tulip-bold',
-    ynaIcon: 'flower' as const,
-    iconBg: 'bg-success/10',
-    iconColor: 'text-success',
-    title: 'Check-in disponível',
-    body: 'Como você está hoje? Leva menos de 1 minuto.',
-    time: 'há 5h',
-    read: false,
-  },
-  {
-    id: 'n3',
-    icon: 'ph:sparkle-bold',
-    iconBg: 'bg-lavender/30',
-    iconColor: 'text-primary dark:text-primary-300',
-    title: 'Uma reflexão da Nyna',
-    body: 'Ela preparou algo para você sobre a semana.',
-    time: 'ontem',
-    read: true,
   },
 ]
 
@@ -172,7 +123,7 @@ function NextSessionCard({
           </div>
         ) : (
           <Button
-            iconLeft="ph:waveform-bold"
+            iconLeft="ph:video-camera-bold"
             className="flex-1"
             onClick={onEnterRoom}
           >
@@ -232,7 +183,7 @@ function SessionCard({
         {isFirst ? (
           <Button
             size="sm"
-            iconLeft="ph:waveform-bold"
+            iconLeft="ph:video-camera-bold"
             className="flex-1"
             onClick={onEnterRoom}
           >
@@ -261,16 +212,7 @@ function SessionCard({
 export function Ben21Home() {
   const navigate = useNavigate()
   const { user } = useApp()
-  const { dark, toggle: toggleTheme } = useTheme()
-
-  const [notifOpen, setNotifOpen] = useState(false)
-  const [notifs, setNotifs] = useState<Notif[]>(INITIAL_NOTIFS)
-
-  const unread = notifs.filter((n) => !n.read).length
-  const markRead = (id: string) =>
-    setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
-  const markAllRead = () =>
-    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })))
+  const { openNotifications, unread } = useOutletContext<AppLayoutContext>()
 
   const [confirmedSessions, setConfirmedSessions] = useState<Set<string>>(new Set())
   const [sheet, setSheet] = useState<HomeSheet>(null)
@@ -282,134 +224,15 @@ export function Ben21Home() {
     <div className="min-h-full bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
     <div className={`mx-auto ${PAGE_MAX_W} px-5 lg:px-8`}>
 
-      {/* Mobile logo bar — sidebar handles desktop */}
-      <div className="flex items-center justify-between pt-5 pb-3 lg:hidden">
-        <LogoYna className="h-6 text-primary dark:text-lavender" />
-        <div className="flex items-center gap-1">
-          <button
-            onClick={toggleTheme}
-            aria-pressed={dark}
-            aria-label={dark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
-            className="flex h-11 w-11 items-center justify-center rounded-pill border border-border bg-surface text-ink-secondary transition-colors hover:bg-surface-hover"
-          >
-            <Icon icon={dark ? 'ph:sun-bold' : 'ph:moon-stars-bold'} width={20} aria-hidden />
-          </button>
-          <button
-            onClick={() => setNotifOpen((o) => !o)}
-            aria-label={`Notificações${unread > 0 ? `: ${unread} não lidas` : ''}`}
-            aria-expanded={notifOpen}
-            className="relative flex h-11 w-11 items-center justify-center rounded-pill border border-border bg-surface text-ink-secondary transition-colors hover:bg-surface-hover"
-          >
-            <Icon icon={unread > 0 ? 'ph:bell-ringing-bold' : 'ph:bell-bold'} width={20} aria-hidden />
-            {unread > 0 && (
-              <span
-                aria-hidden
-                className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-pill bg-danger px-1 text-[10px] font-bold text-white ring-2 ring-surface"
-              >
-                {unread}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
+      {/* Mobile top bar — sidebar handles desktop (tema + sino) */}
+      <MobileTopBar unread={unread} onBellClick={openNotifications} />
 
-      {/* Page header: greeting + desktop buttons */}
-      <div className="relative flex items-start justify-between gap-3 pt-2 pb-6 lg:pt-9 lg:pb-6">
-        <div>
-          <h1 className="text-[26px] lg:text-[32px] font-medium tracking-[-0.02em] text-ink">
-            Oi, {user.nickname}.
-          </h1>
-          <p className="mt-0.5 text-[15px] text-ink-secondary">Que bom ter você por aqui.</p>
-        </div>
-
-        <div className="hidden lg:flex shrink-0 items-center gap-2">
-          <TopBarIconButton
-            icon={dark ? 'ph:sun-bold' : 'ph:moon-stars-bold'}
-            label={dark ? 'Modo claro' : 'Modo escuro'}
-            onClick={toggleTheme}
-            pressed={dark}
-          />
-          <TopBarIconButton
-            icon={unread > 0 ? 'ph:bell-ringing-bold' : 'ph:bell-bold'}
-            label={`Notificações${unread > 0 ? `: ${unread} não lidas` : ''}`}
-            onClick={() => setNotifOpen((o) => !o)}
-            expanded={notifOpen}
-            badge={unread > 0 ? unread : undefined}
-          />
-        </div>
-
-        {notifOpen && (
-          <>
-            <div
-              className="fixed inset-0 z-30 hidden lg:block"
-              aria-hidden="true"
-              onClick={() => setNotifOpen(false)}
-            />
-            <div
-              role="dialog"
-              aria-label="Notificações"
-              className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-surface lg:absolute lg:inset-auto lg:right-0 lg:top-full lg:mt-2 lg:max-h-[70dvh] lg:w-[360px] lg:rounded-lg lg:border lg:border-border lg:shadow-xl"
-            >
-                <div className="flex shrink-0 items-center gap-3 border-b border-border px-5 pb-4 pt-14 lg:pt-4">
-                  <h2 className="flex-1 text-[15px] font-semibold text-ink">Notificações</h2>
-                  {unread > 0 && (
-                    <button
-                      onClick={markAllRead}
-                      className="font-heading text-sm font-medium text-primary transition-colors hover:text-primary-600 dark:text-primary-300"
-                    >
-                      Marcar como lidas
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setNotifOpen(false)}
-                    aria-label="Fechar notificações"
-                    className="flex h-10 w-10 items-center justify-center rounded-pill border border-border text-ink-secondary transition-colors hover:bg-surface-hover lg:hidden"
-                  >
-                    <Icon icon="ph:x-bold" width={18} aria-hidden />
-                  </button>
-                </div>
-                <div className="overflow-y-auto">
-                  {notifs.length === 0 ? (
-                    <div className="flex flex-col items-center gap-2 py-12 text-center">
-                      <Icon icon="ph:bell-slash-bold" width={28} className="text-ink-secondary" aria-hidden />
-                      <p className="text-sm text-ink-secondary">Nenhuma notificação por enquanto</p>
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-border">
-                      {notifs.map((n) => (
-                        <button
-                          key={n.id}
-                          onClick={() => markRead(n.id)}
-                          className={`flex w-full items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-surface-hover ${
-                            !n.read ? 'bg-primary-50/50 dark:bg-primary-50/10' : ''
-                          }`}
-                        >
-                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${n.iconBg}`}>
-                            {n.ynaIcon
-                              ? <YnaIcon name={n.ynaIcon} size={16} className={n.iconColor} />
-                              : <Icon icon={n.icon} width={16} className={n.iconColor} aria-hidden />
-                            }
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-3">
-                              <p className={`text-sm leading-snug ${!n.read ? 'font-semibold text-ink' : 'font-medium text-ink-secondary'}`}>
-                                {n.title}
-                              </p>
-                              <span className="shrink-0 text-[11px] text-ink-secondary">{n.time}</span>
-                            </div>
-                            <p className="mt-0.5 text-xs leading-snug text-ink-secondary">{n.body}</p>
-                          </div>
-                          {!n.read && (
-                            <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
+      {/* Page header: greeting */}
+      <div className="pt-2 pb-6 lg:pt-9 lg:pb-6">
+        <h1 className="text-[26px] lg:text-[32px] font-medium tracking-[-0.02em] text-ink">
+          Oi, {user.nickname}.
+        </h1>
+        <p className="mt-0.5 text-[15px] text-ink-secondary">Que bom ter você por aqui.</p>
       </div>
 
       {/* Main content */}

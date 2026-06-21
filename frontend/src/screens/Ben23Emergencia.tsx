@@ -246,7 +246,7 @@ function EmergencyRoom() {
                 variant="gradient"
                 size="lg"
                 fullWidth
-                iconRight="ph:arrow-right-bold"
+                iconLeft="ph:video-camera-bold"
                 onClick={() => navigate('/sessao/emergency-1')}
               >
                 Entrar na sala com o plantonista

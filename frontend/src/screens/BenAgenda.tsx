@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
-import { useTheme } from '../contexts/ThemeContext'
 import { Avatar } from '../components/Avatar'
 import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
@@ -20,7 +19,6 @@ import { Ben24bCancelConfirm } from './Ben24bCancelConfirm'
 import { Ben24cCancelConfirmacao } from './Ben24cCancelConfirmacao'
 import { Ben16PreSessao } from './Ben16PreSessao'
 import { Ben28TrocarProfissional } from './Ben28TrocarProfissional'
-import { TopBarIconButton } from '../components/TopBarIconButton'
 import type { Session, Specialty } from '../types'
 
 type AgendaSheet =
@@ -161,7 +159,7 @@ function UpcomingCard({
           </Button>
           {isNext ? (
             <Button
-              iconLeft="ph:waveform-bold"
+              iconLeft="ph:video-camera-bold"
               className="flex-1 lg:flex-none"
               onClick={onEnterRoom}
             >
@@ -257,7 +255,6 @@ function EmptyState({ tab }: { tab: Tab }) {
 
 export function BenAgenda() {
   const navigate = useNavigate()
-  const { dark, toggle: toggleTheme } = useTheme()
   const [tab, setTab] = useState<Tab>('upcoming')
   const [filterArea, setFilterArea] = useState<FilterArea>('all')
   const [addOpen, setAddOpen] = useState(false)
@@ -310,20 +307,6 @@ export function BenAgenda() {
           title="Agenda"
           subtitle="Acompanhe suas próximas sessões e o histórico do seu cuidado."
           className="!mb-0 mt-2 lg:mt-0"
-          action={
-            <div className="hidden lg:flex items-center gap-2">
-              <TopBarIconButton
-                icon={dark ? 'ph:sun-bold' : 'ph:moon-stars-bold'}
-                label={dark ? 'Modo claro' : 'Modo escuro'}
-                onClick={toggleTheme}
-                pressed={dark}
-              />
-              <TopBarIconButton
-                icon="ph:bell-bold"
-                label="Notificações"
-              />
-            </div>
-          }
         />
       </div>
 

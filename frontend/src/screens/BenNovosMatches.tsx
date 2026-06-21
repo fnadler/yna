@@ -8,12 +8,10 @@ import { Card } from '../components/Card'
 import { MobileTopBar } from '../components/MobileTopBar'
 import { Sheet } from '../components/Sheet'
 import { professionals } from '../data/mock'
-import { useTheme } from '../contexts/ThemeContext'
 import { PAGE_MAX_W } from '../lib/layout'
 import { Ben13Profissional } from './Ben13Profissional'
 import { Ben14Agendamento } from './Ben14Agendamento'
 import { Ben15Confirmacao } from './Ben15Confirmacao'
-import { TopBarIconButton } from '../components/TopBarIconButton'
 import type { Professional } from '../types'
 
 type Intent = 'switch' | 'complement' | 'explore'
@@ -41,7 +39,6 @@ const SUBTEXT: Record<Intent, string> = {
 export function BenNovosMatches() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { dark, toggle: toggleTheme } = useTheme()
 
   const intent = ((location.state as { intent?: Intent } | null)?.intent) ?? 'explore'
 
@@ -109,18 +106,6 @@ export function BenNovosMatches() {
               <p className="mt-1 text-[15px] leading-relaxed text-ink-secondary">
                 {SUBTEXT[intent]}
               </p>
-            </div>
-            <div className="hidden shrink-0 items-center gap-2 lg:flex">
-              <TopBarIconButton
-                icon={dark ? 'ph:sun-bold' : 'ph:moon-stars-bold'}
-                label={dark ? 'Modo claro' : 'Modo escuro'}
-                onClick={toggleTheme}
-                pressed={dark}
-              />
-              <TopBarIconButton
-                icon="ph:bell-bold"
-                label="Notificações"
-              />
             </div>
           </div>
 

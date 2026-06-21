@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
-import { useTheme } from '../contexts/ThemeContext'
 import { PAGE_MAX_W } from '../lib/layout'
 import { MobileTopBar } from '../components/MobileTopBar'
 import { Card } from '../components/Card'
@@ -11,12 +10,10 @@ import { Badge } from '../components/Badge'
 import { PageHeader } from '../components/PageHeader'
 import { ProfileRow } from '../components/ProfileRow'
 import { useApp } from '../contexts/AppContext'
-import { TopBarIconButton } from '../components/TopBarIconButton'
 
 export function Ben31MeusDados() {
   const { user } = useApp()
   const navigate = useNavigate()
-  const { dark, toggle: toggleTheme } = useTheme()
   const [ticketOpen, setTicketOpen] = useState(false)
   const [contactOpen, setContactOpen] = useState(false)
 
@@ -77,20 +74,6 @@ export function Ben31MeusDados() {
         title="Meu Perfil"
         subtitle="Você tem controle total. Veja o que temos e peça o que precisar, sem burocracia."
         className="mt-2 lg:mt-0"
-        action={
-          <div className="hidden lg:flex items-center gap-2">
-            <TopBarIconButton
-              icon={dark ? 'ph:sun-bold' : 'ph:moon-stars-bold'}
-              label={dark ? 'Modo claro' : 'Modo escuro'}
-              onClick={toggleTheme}
-              pressed={dark}
-            />
-            <TopBarIconButton
-              icon="ph:bell-bold"
-              label="Notificações"
-            />
-          </div>
-        }
       />
 
       {/* Desktop: 2-column; Mobile: stacked */}

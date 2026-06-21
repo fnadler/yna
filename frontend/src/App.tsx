@@ -1,10 +1,35 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AppProvider } from './contexts/AppContext'
 import { AppLayout } from './components/AppLayout'
 import { FocusLayout } from './components/FocusLayout'
 import { FlowLayout } from './components/FlowLayout'
 import { OnboardingLayout } from './components/OnboardingLayout'
+import { ProProvider } from './contexts/ProContext'
+import { ProAppLayout } from './components/ProAppLayout'
+import { Pro01Convite } from './screens/pro/Pro01Convite'
+import { Pro02LinkInvalido } from './screens/pro/Pro02LinkInvalido'
+import { Pro03BoasVindas } from './screens/pro/Pro03BoasVindas'
+import { Pro04Cadastro } from './screens/pro/Pro04Cadastro'
+import { Pro05FinanceiroSetup } from './screens/pro/Pro05FinanceiroSetup'
+import { Pro06Integracao } from './screens/pro/Pro06Integracao'
+import { Pro07Status } from './screens/pro/Pro07Status'
+import { Pro08Ativado } from './screens/pro/Pro08Ativado'
+import { Pro09Perfil } from './screens/pro/Pro09Perfil'
+import { Pro12Home } from './screens/pro/Pro12Home'
+import { Pro13Agenda } from './screens/pro/Pro13Agenda'
+import { Pro14Beneficiario } from './screens/pro/Pro14Beneficiario'
+import { Pro15Sessao } from './screens/pro/Pro15Sessao'
+import { Pro17Plantao } from './screens/pro/Pro17Plantao'
+import { Pro18Emergencia } from './screens/pro/Pro18Emergencia'
+import { Pro20Supervisao } from './screens/pro/Pro20Supervisao'
+import { Pro21Universidade } from './screens/pro/Pro21Universidade'
+import { Pro22Lives } from './screens/pro/Pro22Lives'
+import { Pro23Qualidade } from './screens/pro/Pro23Qualidade'
+import { Pro24Financeiro } from './screens/pro/Pro24Financeiro'
+import { Pro19Ausencias } from './screens/pro/Pro19Ausencias'
+import { Pro25PerfilConta } from './screens/pro/Pro25PerfilConta'
+import { Pro26Notificacoes } from './screens/pro/Pro26Notificacoes'
 
 import { Ben00BemVindo } from './screens/Ben00BemVindo'
 import { Ben00Apresentacao } from './screens/Ben00Apresentacao'
@@ -43,6 +68,15 @@ import { Ben30Relatorio } from './screens/Ben30Relatorio'
 import { Ben31MeusDados } from './screens/Ben31MeusDados'
 import { Ben32to35MigracaoStub } from './screens/Ben32to35MigracaoStub'
 import { BenNovosMatches } from './screens/BenNovosMatches'
+
+/* Raiz do fluxo do Profissional: provê o ProContext (isolado do beneficiário). */
+function ProRoot() {
+  return (
+    <ProProvider>
+      <Outlet />
+    </ProProvider>
+  )
+}
 
 export function App() {
   return (
@@ -119,6 +153,48 @@ export function App() {
             <Route path="/bem-comecar" element={<Ben04Transicao />} />
             <Route path="/pronto" element={<Ben08bTransicao />} />
             <Route path="/matches/carregando" element={<Ben11Loader />} />
+
+            {/* ====================================================
+                FLUXO 3 — PROFISSIONAL (jornada separada, namespace /pro)
+                ProContext isolado; reusa o design system do beneficiário.
+                ==================================================== */}
+            <Route element={<ProRoot />}>
+              {/* Entrada & Onboarding — layout de foco */}
+              <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" exitTo="/pro/convite/demo" />}>
+                <Route path="/pro/convite/invalido" element={<Pro02LinkInvalido />} />
+                <Route path="/pro/convite/:token" element={<Pro01Convite />} />
+                <Route path="/pro/boas-vindas" element={<Pro03BoasVindas />} />
+                <Route path="/pro/cadastro/:passo" element={<Pro04Cadastro />} />
+                <Route path="/pro/financeiro/setup" element={<Pro05FinanceiroSetup />} />
+                <Route path="/pro/integracao" element={<Pro06Integracao />} />
+                <Route path="/pro/status" element={<Pro07Status />} />
+                <Route path="/pro/ativado" element={<Pro08Ativado />} />
+              </Route>
+
+              {/* Sessão e sala de emergência — full-screen (SessionRoom compartilhado).
+                  O prontuário pós-sessão abre em Sheet dentro da própria sala. */}
+              <Route path="/pro/sessao/:id" element={<Pro15Sessao />} />
+              <Route path="/pro/plantao/emergencia/:id" element={<Pro18Emergencia />} />
+
+              {/* Área logada do profissional — sidebar/bottom-nav próprios */}
+              <Route element={<ProAppLayout />}>
+                <Route path="/pro/home" element={<Pro12Home />} />
+                <Route path="/pro/agenda" element={<Pro13Agenda />} />
+                <Route path="/pro/beneficiario/:id" element={<Pro14Beneficiario />} />
+                <Route path="/pro/perfil" element={<Pro09Perfil />} />
+                <Route path="/pro/plantao" element={<Pro17Plantao />} />
+                <Route path="/pro/ausencias" element={<Pro19Ausencias />} />
+                <Route path="/pro/supervisao" element={<Pro20Supervisao />} />
+                <Route path="/pro/universidade" element={<Pro21Universidade />} />
+                <Route path="/pro/universidade/lives" element={<Pro22Lives />} />
+                <Route path="/pro/qualidade" element={<Pro23Qualidade />} />
+                <Route path="/pro/financeiro" element={<Pro24Financeiro />} />
+                <Route path="/pro/conta" element={<Pro25PerfilConta />} />
+                <Route path="/pro/notificacoes" element={<Pro26Notificacoes />} />
+              </Route>
+
+              <Route path="/pro" element={<Navigate to="/pro/home" replace />} />
+            </Route>
 
             <Route path="/" element={<Navigate to="/convite/demo" replace />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
