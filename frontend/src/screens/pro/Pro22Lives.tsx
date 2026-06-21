@@ -30,7 +30,7 @@ export function Pro22Lives() {
           </button>
           <div>
             <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-primary dark:text-primary-300">Universidade YNA</p>
-            <h1 className="font-heading text-lg font-semibold text-ink">Lives Domus</h1>
+            <h1 className="font-heading text-lg font-semibold text-ink">Lives YNA</h1>
           </div>
         </header>
 

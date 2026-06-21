@@ -7,7 +7,7 @@ import { Badge } from '../../components/Badge'
 const MODULOS = [
   { id: 'm1', titulo: 'A proposta da YNA', desc: 'Missão, posicionamento e a persona Cora.', min: 6 },
   { id: 'm2', titulo: 'Usando a plataforma', desc: 'Agenda, sala de vídeo, prontuário e financeiro.', min: 8 },
-  { id: 'm3', titulo: 'O que esperamos de você', desc: 'Postura, padrão Domus e conduta clínica online.', min: 7 },
+  { id: 'm3', titulo: 'O que esperamos de você', desc: 'Postura, padrão YNA e conduta clínica online.', min: 7 },
   { id: 'm4', titulo: 'Plantão e emergências', desc: 'Como funciona o acionamento e o seu papel.', min: 5 },
   { id: 'm5', titulo: 'LGPD, CFP e sigilo', desc: 'Aspectos legais e proteção de dados.', min: 6 },
 ]

@@ -19,7 +19,7 @@ export function Pro10PreviewContent() {
         <div className="relative flex h-44 items-center justify-center bg-yna-gradient">
           <Icon icon={profile.videoUrl ? 'ph:play-circle-fill' : 'ph:video-camera-slash-bold'} width={48} className="text-white/90" aria-hidden />
           <span className="absolute left-3 top-3">
-            <Badge tone="solid" icon="ph:seal-check-bold">Curadoria Domus</Badge>
+            <Badge tone="solid" icon="ph:seal-check-bold">Curadoria YNA</Badge>
           </span>
           {!profile.videoUrl && (
             <span className="absolute bottom-3 left-3 right-3 rounded-sm bg-black/30 px-2 py-1 text-center text-[11px] font-medium text-white backdrop-blur-sm">

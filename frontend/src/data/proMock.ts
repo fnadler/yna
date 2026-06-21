@@ -292,7 +292,7 @@ export const proRecebimentos: ProRecebimento[] = [
 
 export const proNotificacoes: ProNotificacao[] = [
   { id: 'n-1', tipo: 'troca', icon: 'ph:shuffle-bold', titulo: 'Um beneficiário seguiu com outro profissional', descricao: 'Faz parte do cuidado. Nenhum dado pessoal é compartilhado nessa transição.', quando: 'há 2 dias', lida: false },
-  { id: 'n-2', tipo: 'supervisao', icon: 'ph:users-three-bold', titulo: 'Nova supervisão Domus agendada', descricao: '01/07 às 19:00 — Manejo de risco e encaminhamentos.', quando: 'há 3 dias', lida: true },
+  { id: 'n-2', tipo: 'supervisao', icon: 'ph:users-three-bold', titulo: 'Nova supervisão YNA agendada', descricao: '01/07 às 19:00 — Manejo de risco e encaminhamentos.', quando: 'há 3 dias', lida: true },
   { id: 'n-3', tipo: 'plataforma', icon: 'ph:sparkle-bold', titulo: 'Complete seu vídeo de apresentação', descricao: 'Perfis completos aparecem para mais beneficiários.', quando: 'há 5 dias', lida: true },
 ]
 
@@ -303,9 +303,9 @@ export const proTrilhas: Trilha[] = [
 ]
 
 export const proSupervisoes: ProSupervisao[] = [
-  { id: 'sup-1', tema: 'Casos de ansiedade no trabalho', data: '24/06', horario: '19:00', supervisor: 'Virgínia (Domus)', inscrito: false, status: 'agendada' },
-  { id: 'sup-2', tema: 'Manejo de risco e encaminhamentos', data: '01/07', horario: '19:00', supervisor: 'Andrea (Domus)', inscrito: true, status: 'agendada' },
-  { id: 'sup-0', tema: 'Vínculo terapêutico online', data: '10/06', horario: '19:00', supervisor: 'Virgínia (Domus)', inscrito: true, status: 'realizada' },
+  { id: 'sup-1', tema: 'Casos de ansiedade no trabalho', data: '24/06', horario: '19:00', supervisor: 'Virgínia (YNA)', inscrito: false, status: 'agendada' },
+  { id: 'sup-2', tema: 'Manejo de risco e encaminhamentos', data: '01/07', horario: '19:00', supervisor: 'Andrea (YNA)', inscrito: true, status: 'agendada' },
+  { id: 'sup-0', tema: 'Vínculo terapêutico online', data: '10/06', horario: '19:00', supervisor: 'Virgínia (YNA)', inscrito: true, status: 'realizada' },
 ]
 
 export const proLives: ProLive[] = [

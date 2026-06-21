@@ -22,7 +22,7 @@ export function Pro20Supervisao() {
     <div className="min-h-full bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
       <div className={`mx-auto ${PAGE_MAX_W} px-5 lg:px-8 pt-0 lg:pt-9 pb-10`}>
         <ProTopBar />
-        <PageHeader title="Supervisão Domus" subtitle="Rounds técnicos para discutir casos com pares e supervisores." className="mt-2 lg:mt-0" />
+        <PageHeader title="Supervisão YNA" subtitle="Rounds técnicos para discutir casos com pares e supervisores." className="mt-2 lg:mt-0" />
 
         {sup.status === 'loading' && (
           <div className="flex flex-col gap-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}</div>

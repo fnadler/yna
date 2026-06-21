@@ -38,7 +38,7 @@ export function Ben12Matches() {
           </h1>
           <p className="mt-2 text-[15px] lg:text-[17px] leading-relaxed text-ink-secondary">
             O algoritmo encontra. Gente confirma. Cada um desses perfis passou pela revisão de uma
-            psicóloga da equipe Domus antes de chegar até aqui.
+            psicóloga da equipe YNA antes de chegar até aqui.
           </p>
         </div>
 
@@ -155,7 +155,7 @@ function ProfessionalCard({
           {pro.videoLength}
         </span>
         <span className="absolute left-3 top-3">
-          <Badge tone="solid" icon="ph:seal-check-bold">Curadoria Domus</Badge>
+          <Badge tone="solid" icon="ph:seal-check-bold">Curadoria YNA</Badge>
         </span>
       </div>
 

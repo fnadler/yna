@@ -30,7 +30,7 @@ export function Pro21Universidade() {
           >
             <Icon icon="ph:broadcast-bold" width={24} className="shrink-0 text-primary dark:text-primary-300" aria-hidden />
             <div className="flex-1">
-              <p className="font-heading text-sm font-semibold text-ink">Lives Domus</p>
+              <p className="font-heading text-sm font-semibold text-ink">Lives YNA</p>
               <p className="text-[13px] text-ink-secondary">Rounds técnicos ao vivo e replays</p>
             </div>
             <Icon icon="ph:caret-right-bold" width={16} className="shrink-0 text-ink-muted" aria-hidden />
@@ -41,7 +41,7 @@ export function Pro21Universidade() {
           >
             <Icon icon="ph:users-three-bold" width={24} className="shrink-0 text-primary dark:text-primary-300" aria-hidden />
             <div className="flex-1">
-              <p className="font-heading text-sm font-semibold text-ink">Supervisão Domus</p>
+              <p className="font-heading text-sm font-semibold text-ink">Supervisão YNA</p>
               <p className="text-[13px] text-ink-secondary">Encontros clínicos e casos</p>
             </div>
             <Icon icon="ph:caret-right-bold" width={16} className="shrink-0 text-ink-muted" aria-hidden />

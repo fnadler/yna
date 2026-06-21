@@ -76,7 +76,7 @@ export function Pro04Cadastro() {
             </div>
             <Input label="Nome completo" value={form.nome} onChange={(e) => set('nome', e.target.value)} />
             <Input label="CPF" value={form.cpf} onChange={(e) => set('cpf', e.target.value)} placeholder="000.000.000-00" inputMode="numeric" />
-            <Input label="E-mail" value={form.email} onChange={(e) => set('email', e.target.value)} hint="Recebido da indicação Domus" />
+            <Input label="E-mail" value={form.email} onChange={(e) => set('email', e.target.value)} hint="Recebido da indicação YNA" />
             <Input label="Telefone (opcional)" value={form.telefone} onChange={(e) => set('telefone', e.target.value)} placeholder="(11) 90000-0000" inputMode="tel" />
           </div>
         )}

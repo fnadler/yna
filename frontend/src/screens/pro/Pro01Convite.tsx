@@ -42,13 +42,13 @@ export function Pro01Convite() {
             <Icon icon="ph:hand-waving-bold" width={24} aria-hidden />
           </span>
           <p className="mt-5 font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-primary dark:text-primary-300">
-            Convite · Indicação Domus
+            Convite · Indicação YNA
           </p>
           <h1 className="mt-2 font-heading text-[28px] font-medium leading-[1.1] tracking-[-0.02em] text-ink">
             Você foi indicado(a) para fazer parte da YNA
           </h1>
           <p className="mt-4 text-[15px] leading-relaxed text-ink-secondary">
-            A Domus reconhece o seu trabalho — e nós queremos construir esse cuidado com você.
+            A YNA reconhece o seu trabalho — e nós queremos construir esse cuidado com você.
             Aqui você atende com autonomia, suporte clínico e uma estrutura que respeita o seu ofício.
           </p>
 
