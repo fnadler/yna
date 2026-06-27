@@ -53,8 +53,8 @@ export function Pro01Convite() {
           </p>
 
           <div className="mt-8 flex flex-col gap-3">
-            <Button size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/pro/boas-vindas')}>
-              Começar
+            <Button size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/pro/bem-vindo')}>
+              Conhecer a YNA
             </Button>
             <Button variant="ghost" fullWidth onClick={() => navigate('/pro/home')}>
               Já tenho conta

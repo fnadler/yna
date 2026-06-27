@@ -1,74 +1,77 @@
-import { Icon } from '@iconify/react'
-import { Avatar } from '../../components/Avatar'
-import { Badge } from '../../components/Badge'
-import { Button } from '../../components/Button'
+import { useState } from 'react'
+import { MatchCard } from '../../components/MatchCard'
+import { ProfessionalProfileView } from '../../components/ProfessionalProfileView'
 import { usePro } from '../../contexts/ProContext'
+import type { ProProfile, Professional } from '../../types'
 
-/* PRO-10 — pré-visualização "na perspectiva do beneficiário".
-   Espelha o card de match do beneficiário (BEN-12/13) em modo leitura.
-   Renderizado dentro de um Sheet a partir do PRO-09 (consistência com
-   os fluxos de detalhe/ação do beneficiário). */
+/* Mapeia o perfil do profissional (ProProfile) para o formato que os
+   componentes do beneficiário (MatchCard / ProfessionalProfileView) esperam,
+   para reusar exatamente o mesmo layout. */
+function toProfessional(p: ProProfile): Professional {
+  return {
+    id: p.id,
+    name: p.name,
+    crp: `CRP ${p.crp}`,
+    approach: p.linhasTeoricas[0] ?? 'Abordagem clínica',
+    approachLong: p.linhasTeoricas.join(' · ') || 'Abordagem clínica',
+    specialties: p.areasAtuacao,
+    nextSlot: 'Seg, 22/06 · 09h00',
+    videoLength: p.videoUrl ? '1:30' : '—',
+    whyThisMatch: p.comoTrabalha || p.bio,
+    initials: p.initials,
+    palette: p.palette,
+    bio: p.bio,
+    formation: p.formation,
+    yearsExp: p.yearsExp,
+    sessionDuration: p.sessionDuration,
+  }
+}
+
+/* PRO-10 — pré-visualização "na perspectiva do beneficiário", com alternância
+   entre a listagem de matches e o perfil completo. Botões inativos. */
 export function Pro10PreviewContent() {
   const { profile } = usePro()
+  const [view, setView] = useState<'lista' | 'completo'>('lista')
+  const pro = toProfessional(profile)
 
   return (
-    <div className="px-5 py-6 lg:px-6">
-      {/* Card de match (read-only) */}
-      <article className="mx-auto max-w-md overflow-hidden rounded-lg border border-border bg-surface">
-        {/* Thumb do vídeo */}
-        <div className="relative flex h-44 items-center justify-center bg-yna-gradient">
-          <Icon icon={profile.videoUrl ? 'ph:play-circle-fill' : 'ph:video-camera-slash-bold'} width={48} className="text-white/90" aria-hidden />
-          <span className="absolute left-3 top-3">
-            <Badge tone="solid" icon="ph:seal-check-bold">Curadoria YNA</Badge>
-          </span>
-          {!profile.videoUrl && (
-            <span className="absolute bottom-3 left-3 right-3 rounded-sm bg-black/30 px-2 py-1 text-center text-[11px] font-medium text-white backdrop-blur-sm">
-              Sem vídeo de apresentação ainda
-            </span>
-          )}
+    <div className="py-6">
+      {/* Alternância de visualização */}
+      <div className="px-5 lg:px-6">
+        <div className="flex gap-1 rounded-lg bg-surface-2 p-1">
+          {([['lista', 'Na listagem'], ['completo', 'Perfil completo']] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setView(key)}
+              className={`flex-1 rounded-lg py-2.5 font-heading text-sm font-semibold transition-all ${
+                view === key ? 'bg-surface text-ink shadow-xs' : 'text-ink-secondary hover:text-ink'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
+        <p className="mt-2 text-[12.5px] text-ink-secondary">
+          {view === 'lista'
+            ? 'É assim que você aparece na lista de indicações do beneficiário.'
+            : 'É assim que o beneficiário vê o seu perfil completo.'}
+        </p>
+      </div>
 
-        <div className="p-5">
-          <div className="flex items-center gap-3">
-            <Avatar initials={profile.initials} size={48} palette={profile.palette} />
-            <div className="min-w-0">
-              <p className="font-heading font-semibold text-ink">{profile.name}</p>
-              <p className="text-xs text-ink-muted">CRP {profile.crp}</p>
+      {/* Conteúdo */}
+      <div className="mt-5">
+        {view === 'lista' ? (
+          <div className="px-5 lg:px-6">
+            <div className="mx-auto max-w-md">
+              <MatchCard pro={pro} disabled />
             </div>
           </div>
+        ) : (
+          <ProfessionalProfileView pro={pro} variant="preview" />
+        )}
+      </div>
 
-          <div className="mt-3 flex flex-wrap gap-2">
-            {profile.linhasTeoricas.map((l) => (
-              <Badge key={l} tone="primary">{l}</Badge>
-            ))}
-          </div>
-
-          {profile.comoTrabalha && (
-            <p className="mt-4 border-l-2 border-primary-200 pl-3 text-sm italic leading-relaxed text-ink-secondary">
-              “{profile.comoTrabalha}”
-            </p>
-          )}
-
-          {profile.areasAtuacao.length > 0 && (
-            <div className="mt-4">
-              <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-muted">Atua com</p>
-              <p className="mt-1 text-sm text-ink">{profile.areasAtuacao.join(' · ')}</p>
-            </div>
-          )}
-
-          <div className="mt-4 flex items-center gap-1.5 text-sm text-ink-secondary">
-            <Icon icon="ph:clock-bold" width={15} aria-hidden />
-            Próximo horário: seg, 22/06 às 09:00
-          </div>
-
-          <div className="mt-5 flex gap-2">
-            <Button fullWidth disabled>Agendar</Button>
-            <Button variant="secondary" fullWidth disabled>Ver perfil</Button>
-          </div>
-        </div>
-      </article>
-
-      <p className="mt-4 text-center text-[13px] text-ink-secondary">
+      <p className="mt-4 px-5 text-center text-[13px] text-ink-secondary lg:px-6">
         Esta é uma prévia. Os botões ficam ativos para o beneficiário.
       </p>
     </div>

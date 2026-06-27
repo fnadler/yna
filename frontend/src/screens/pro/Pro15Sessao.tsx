@@ -6,7 +6,10 @@ import { Sheet } from '../../components/Sheet'
 import { useService } from '../../hooks/useService'
 import { usePro } from '../../contexts/ProContext'
 import { proSessionService } from '../../services/pro'
-import { ProntuarioForm } from './Pro16Prontuario'
+import { ProntuarioFinalizar } from './ProntuarioFinalizar'
+import { SessionHistoryPanel } from './SessionHistoryPanel'
+import { emptyProntuarioDraft } from '../../lib/prontuario'
+import type { ProntuarioDraft } from '../../lib/prontuario'
 
 export function Pro15Sessao() {
   const { id } = useParams<{ id: string }>()
@@ -14,6 +17,10 @@ export function Pro15Sessao() {
   const { profile } = usePro()
   const session = useService(() => proSessionService.get(id ?? ''), [id])
   const [prontuario, setProntuario] = useState(false)
+  // Rascunho do prontuário, compartilhado entre o painel (durante a sessão) e o
+  // modal de encerramento (finalizar / salvar rascunho).
+  const [draft, setDraft] = useState<ProntuarioDraft>(emptyProntuarioDraft())
+  const patchDraft = (patch: Partial<ProntuarioDraft>) => setDraft((d) => ({ ...d, ...patch }))
 
   if (session.status === 'loading' || session.status === 'idle') {
     return (
@@ -44,9 +51,12 @@ export function Pro15Sessao() {
         peer={{ name: s.beneficiarioApelido, initials: s.beneficiarioInitials, palette: s.beneficiarioPalette }}
         self={{ initials: profile.initials, palette: profile.palette }}
         onEnd={() => setProntuario(true)}
+        historyContent={
+          <SessionHistoryPanel beneficiarioId={s.beneficiarioId} draft={draft} onDraftChange={patchDraft} />
+        }
       />
 
-      {/* Registro de prontuário em modal, logo após a sessão */}
+      {/* Finalização do prontuário em modal, logo após a sessão */}
       <Sheet
         open={prontuario}
         onClose={() => navigate('/pro/agenda')}
@@ -54,7 +64,9 @@ export function Pro15Sessao() {
         icon="ph:note-pencil-bold"
         size="md"
       >
-        <ProntuarioForm
+        <ProntuarioFinalizar
+          draft={draft}
+          onDraftChange={patchDraft}
           sessionId={s.id}
           onDone={() => navigate('/pro/agenda')}
           onCancel={() => navigate('/pro/agenda')}

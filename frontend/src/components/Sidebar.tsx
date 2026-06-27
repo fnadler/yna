@@ -122,7 +122,7 @@ export function Sidebar({
           {onEmergencyClick ? (
             <button
               onClick={onEmergencyClick}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-danger px-4 py-3 font-heading text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#C24A5E]"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-danger/30 bg-danger-bg px-4 py-3 font-heading text-sm font-semibold text-danger-ink transition-all hover:border-danger"
             >
               <Icon icon="ph:first-aid-bold" width={18} aria-hidden />
               {emergencyItem.label}
@@ -130,11 +130,7 @@ export function Sidebar({
           ) : (
             <NavLink
               to={emergencyItem.to}
-              className={({ isActive }) =>
-                `flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-heading text-sm font-semibold transition-all ${
-                  isActive ? 'bg-danger text-white' : 'bg-danger text-white shadow-sm hover:bg-[#C24A5E]'
-                }`
-              }
+              className="flex w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-danger/30 bg-danger-bg px-4 py-3 font-heading text-sm font-semibold text-danger-ink transition-all hover:border-danger"
             >
               <Icon icon="ph:first-aid-bold" width={18} aria-hidden />
               {emergencyItem.label}

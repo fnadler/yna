@@ -25,8 +25,8 @@ const variantStyles = {
   danger: {
     card: 'border-danger/30 bg-danger-bg hover:border-danger',
     iconBg: 'bg-danger/10',
-    iconColor: 'text-danger',
-    label: 'text-danger',
+    iconColor: 'text-danger-ink',
+    label: 'text-danger-ink',
   },
   warning: {
     card: 'border-warning/30 bg-warning-bg hover:border-warning',

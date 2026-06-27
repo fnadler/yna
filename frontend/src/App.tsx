@@ -7,10 +7,30 @@ import { FlowLayout } from './components/FlowLayout'
 import { OnboardingLayout } from './components/OnboardingLayout'
 import { ProProvider } from './contexts/ProContext'
 import { ProAppLayout } from './components/ProAppLayout'
+import { RhProvider } from './contexts/RhContext'
+import { RhAppLayout } from './components/RhAppLayout'
+import { RH00BemVindo } from './screens/rh/RH00BemVindo'
+import { RH00Apresentacao } from './screens/rh/RH00Apresentacao'
+import { RH01Convite } from './screens/rh/RH01Convite'
+import { RH02LinkInvalido } from './screens/rh/RH02LinkInvalido'
+import { RH04CadastroConta } from './screens/rh/RH04CadastroConta'
+import { RH05ContaCriada } from './screens/rh/RH05ContaCriada'
+import { RH06Onboarding } from './screens/rh/RH06Onboarding'
+import { RH10Home } from './screens/rh/RH10Home'
+import { RH11Beneficiarios } from './screens/rh/RH11Beneficiarios'
+import { RH12Convites } from './screens/rh/RH12Convites'
+import { RH13Indicadores } from './screens/rh/RH13Indicadores'
+import { RH14Departamentos } from './screens/rh/RH14Departamentos'
+import { RH15Equipe } from './screens/rh/RH15Equipe'
+import { RH16Conta } from './screens/rh/RH16Conta'
+import { RH17Mais } from './screens/rh/RH17Mais'
+import { Pro00BemVindo } from './screens/pro/Pro00BemVindo'
+import { Pro00Apresentacao } from './screens/pro/Pro00Apresentacao'
 import { Pro01Convite } from './screens/pro/Pro01Convite'
 import { Pro02LinkInvalido } from './screens/pro/Pro02LinkInvalido'
-import { Pro03BoasVindas } from './screens/pro/Pro03BoasVindas'
-import { Pro04Cadastro } from './screens/pro/Pro04Cadastro'
+import { Pro03CadastroConta } from './screens/pro/Pro03CadastroConta'
+import { Pro03bContaCriada } from './screens/pro/Pro03bContaCriada'
+import { Pro04OnboardingPerfil } from './screens/pro/Pro04OnboardingPerfil'
 import { Pro05FinanceiroSetup } from './screens/pro/Pro05FinanceiroSetup'
 import { Pro06Integracao } from './screens/pro/Pro06Integracao'
 import { Pro07Status } from './screens/pro/Pro07Status'
@@ -30,6 +50,9 @@ import { Pro24Financeiro } from './screens/pro/Pro24Financeiro'
 import { Pro19Ausencias } from './screens/pro/Pro19Ausencias'
 import { Pro25PerfilConta } from './screens/pro/Pro25PerfilConta'
 import { Pro26Notificacoes } from './screens/pro/Pro26Notificacoes'
+import { Pro27Clientes } from './screens/pro/Pro27Clientes'
+import { Pro28Mais } from './screens/pro/Pro28Mais'
+import { Pro31LiveRoom } from './screens/pro/Pro31LiveRoom'
 
 import { Ben00BemVindo } from './screens/Ben00BemVindo'
 import { Ben00Apresentacao } from './screens/Ben00Apresentacao'
@@ -75,6 +98,15 @@ function ProRoot() {
     <ProProvider>
       <Outlet />
     </ProProvider>
+  )
+}
+
+/* Raiz do fluxo do RH/Empresa: provê o RhContext (isolado dos demais perfis). */
+function RhRoot() {
+  return (
+    <RhProvider>
+      <Outlet />
+    </RhProvider>
   )
 }
 
@@ -159,12 +191,22 @@ export function App() {
                 ProContext isolado; reusa o design system do beneficiário.
                 ==================================================== */}
             <Route element={<ProRoot />}>
-              {/* Entrada & Onboarding — layout de foco */}
+              {/* Etapa 1 — Apresentação (boas-vindas + slides comerciais).
+                  Telas full-bleed com layout/composição próprios. */}
+              <Route path="/pro/bem-vindo" element={<Pro00BemVindo />} />
+              <Route path="/pro/apresentacao/:passo" element={<Pro00Apresentacao />} />
+
+              {/* Transição "Conta criada" — full-screen */}
+              <Route path="/pro/conta-criada" element={<Pro03bContaCriada />} />
+
+              {/* Entrada (convite) + Etapas 2 e 3 (Cadastro da conta e Onboarding
+                  do perfil) + setup financeiro/integração/ativação existentes —
+                  layout de foco com barra inferior fixa. */}
               <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" exitTo="/pro/convite/demo" />}>
                 <Route path="/pro/convite/invalido" element={<Pro02LinkInvalido />} />
                 <Route path="/pro/convite/:token" element={<Pro01Convite />} />
-                <Route path="/pro/boas-vindas" element={<Pro03BoasVindas />} />
-                <Route path="/pro/cadastro/:passo" element={<Pro04Cadastro />} />
+                <Route path="/pro/cadastro" element={<Pro03CadastroConta />} />
+                <Route path="/pro/onboarding" element={<Pro04OnboardingPerfil />} />
                 <Route path="/pro/financeiro/setup" element={<Pro05FinanceiroSetup />} />
                 <Route path="/pro/integracao" element={<Pro06Integracao />} />
                 <Route path="/pro/status" element={<Pro07Status />} />
@@ -175,11 +217,15 @@ export function App() {
                   O prontuário pós-sessão abre em Sheet dentro da própria sala. */}
               <Route path="/pro/sessao/:id" element={<Pro15Sessao />} />
               <Route path="/pro/plantao/emergencia/:id" element={<Pro18Emergencia />} />
+              {/* Sala de transmissão de live — full-screen */}
+              <Route path="/pro/live/:id" element={<Pro31LiveRoom />} />
 
               {/* Área logada do profissional — sidebar/bottom-nav próprios */}
               <Route element={<ProAppLayout />}>
                 <Route path="/pro/home" element={<Pro12Home />} />
                 <Route path="/pro/agenda" element={<Pro13Agenda />} />
+                <Route path="/pro/clientes" element={<Pro27Clientes />} />
+                <Route path="/pro/mais" element={<Pro28Mais />} />
                 <Route path="/pro/beneficiario/:id" element={<Pro14Beneficiario />} />
                 <Route path="/pro/perfil" element={<Pro09Perfil />} />
                 <Route path="/pro/plantao" element={<Pro17Plantao />} />
@@ -196,7 +242,46 @@ export function App() {
               <Route path="/pro" element={<Navigate to="/pro/home" replace />} />
             </Route>
 
-            <Route path="/" element={<Navigate to="/convite/demo" replace />} />
+            {/* ====================================================
+                FLUXO 1 — RH / EMPRESA B2B (jornada separada, namespace /rh)
+                RhContext isolado; reusa o design system dos demais perfis.
+                Não se conecta aos dados de beneficiário/profissional —
+                tudo é agregado e anonimizado (LGPD).
+                ==================================================== */}
+            <Route element={<RhRoot />}>
+              {/* Etapa 1 — Apresentação (boas-vindas + slides comerciais).
+                  Telas full-bleed com layout/composição próprios. */}
+              <Route path="/rh/bem-vindo" element={<RH00BemVindo />} />
+              <Route path="/rh/apresentacao/:passo" element={<RH00Apresentacao />} />
+
+              {/* Transição "Conta criada" — full-screen */}
+              <Route path="/rh/conta-criada" element={<RH05ContaCriada />} />
+
+              {/* Entrada (convite) + Etapas 2 e 3 (Cadastro da conta e
+                  Onboarding) — layout de foco com barra inferior fixa. */}
+              <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" exitTo="/rh/convite/demo" />}>
+                <Route path="/rh/convite/invalido" element={<RH02LinkInvalido />} />
+                <Route path="/rh/convite/:token" element={<RH01Convite />} />
+                <Route path="/rh/cadastro" element={<RH04CadastroConta />} />
+                <Route path="/rh/onboarding" element={<RH06Onboarding />} />
+              </Route>
+
+              {/* Área logada do RH — sidebar/bottom-nav próprios */}
+              <Route element={<RhAppLayout />}>
+                <Route path="/rh/home" element={<RH10Home />} />
+                <Route path="/rh/beneficiarios" element={<RH11Beneficiarios />} />
+                <Route path="/rh/convites" element={<RH12Convites />} />
+                <Route path="/rh/indicadores" element={<RH13Indicadores />} />
+                <Route path="/rh/departamentos" element={<RH14Departamentos />} />
+                <Route path="/rh/equipe" element={<RH15Equipe />} />
+                <Route path="/rh/conta" element={<RH16Conta />} />
+                <Route path="/rh/mais" element={<RH17Mais />} />
+              </Route>
+
+              <Route path="/rh" element={<Navigate to="/rh/home" replace />} />
+            </Route>
+
+            <Route path="/" element={<Navigate to="/rh/bem-vindo" replace />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </BrowserRouter>

@@ -1,9 +1,10 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { ProTopBar } from '../../components/ProTopBar'
 import { PageHeader } from '../../components/PageHeader'
 import { ProfileStrengthCard } from '../../components/ProfileStrengthCard'
+import { DisponibilidadeResumo } from '../../components/DisponibilidadeResumo'
 import { Avatar } from '../../components/Avatar'
 import { Badge } from '../../components/Badge'
 import { Button } from '../../components/Button'
@@ -15,7 +16,6 @@ import { PAGE_MAX_W } from '../../lib/layout'
 import { usePro } from '../../contexts/ProContext'
 import { LINHAS_TEORICAS, AREAS_ATUACAO } from '../../data/proMock'
 import { Pro10PreviewContent } from './Pro10Preview'
-import { Pro11AgendaContent } from './Pro11Agenda'
 
 function Section({ id, title, hint, children }: { id: string; title: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -28,10 +28,11 @@ function Section({ id, title, hint, children }: { id: string; title: string; hin
 }
 
 export function Pro09Perfil() {
-  const { profile, updateProfile, strength } = usePro()
+  const { profile, updateProfile, strength, disponibilidade } = usePro()
   const location = useLocation()
+  const navigate = useNavigate()
   const [novaFormacao, setNovaFormacao] = useState('')
-  const [sheet, setSheet] = useState<'preview' | 'agenda' | null>(null)
+  const [sheet, setSheet] = useState<'preview' | null>(null)
 
   // Deep-link dos atalhos do "Perfil pronto para match" (#foto, #video, ...)
   useEffect(() => {
@@ -162,9 +163,15 @@ export function Pro09Perfil() {
             </div>
           </Section>
 
-          <Section id="agenda" title="Agenda e disponibilidade" hint="Defina seus horários, recorrência e bloqueios.">
-            <Button variant="secondary" iconLeft="ph:calendar-bold" onClick={() => setSheet('agenda')}>
-              Configurar agenda
+          <Section id="agenda" title="Agenda e disponibilidade" hint="Seus horários de atendimento, plantão e bloqueios. Você gerencia tudo isso na Agenda.">
+            <DisponibilidadeResumo disponibilidade={disponibilidade} />
+            <Button
+              variant="secondary"
+              iconRight="ph:arrow-right-bold"
+              className="mt-4"
+              onClick={() => navigate('/pro/agenda', { state: { openDisponibilidade: true } })}
+            >
+              Gerenciar na agenda
             </Button>
           </Section>
         </div>
@@ -173,12 +180,11 @@ export function Pro09Perfil() {
       <Sheet
         open={sheet !== null}
         onClose={() => setSheet(null)}
-        title={sheet === 'agenda' ? 'Agenda e disponibilidade' : 'Como você aparece'}
-        icon={sheet === 'agenda' ? 'ph:calendar-bold' : 'ph:eye-bold'}
+        title="Como você aparece"
+        icon="ph:eye-bold"
         size="lg"
       >
         {sheet === 'preview' && <Pro10PreviewContent />}
-        {sheet === 'agenda' && <Pro11AgendaContent onClose={() => setSheet(null)} />}
       </Sheet>
     </div>
   )

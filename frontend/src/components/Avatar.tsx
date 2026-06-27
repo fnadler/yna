@@ -23,14 +23,13 @@ export function Avatar({ initials, size = 48, palette = 'lavender', className = 
       className={`shrink-0 rounded-pill ${className}`}
     >
       <circle cx="24" cy="24" r="24" fill={bg} />
-      <circle cx="24" cy="18.5" r="7.5" fill={fg} opacity="0.28" />
-      <path d="M8 44c2.5-9 9-13 16-13s13.5 4 16 13" fill={fg} opacity="0.28" />
       <text
         x="24"
-        y="29"
+        y="24"
         textAnchor="middle"
+        dominantBaseline="central"
         fontFamily="Inter Variable, Inter, sans-serif"
-        fontSize="15"
+        fontSize="16"
         fontWeight="700"
         fill={fg}
       >

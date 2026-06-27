@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Icon } from '@iconify/react'
 import { Avatar } from './Avatar'
 
@@ -26,15 +26,17 @@ export interface SessionRoomProps {
   onEnd: () => void
   /** Beneficiário: aciona suporte de emergência. Ausente para o profissional. */
   onEmergency?: () => void
+  /** Profissional: conteúdo do histórico do beneficiário (abre em painel lateral, como o chat). */
+  historyContent?: ReactNode
 }
 
 /* Sala de sessão online — compartilhada entre Beneficiário e Profissional.
    A aparência é idêntica nos dois fluxos; variam o participante, o self-view,
    o botão de ajuda (só beneficiário) e o que acontece ao encerrar (onEnd). */
-export function SessionRoom({ role, peer, self, minutesLeft = 32, onEnd, onEmergency }: SessionRoomProps) {
+export function SessionRoom({ role, peer, self, minutesLeft = 32, onEnd, onEmergency, historyContent }: SessionRoomProps) {
   const [muted, setMuted] = useState(false)
   const [cameraOff, setCameraOff] = useState(false)
-  const [chatOpen, setChatOpen] = useState(false)
+  const [panel, setPanel] = useState<'chat' | 'historico' | null>(null)
   const [showWarning, setShowWarning] = useState(false)
   const [sessionEnded, setSessionEnded] = useState(false)
 
@@ -146,9 +148,17 @@ export function SessionRoom({ role, peer, self, minutesLeft = 32, onEnd, onEmerg
         <ControlButton
           icon="ph:chat-circle-text-bold"
           label="Abrir chat da sessão"
-          active={chatOpen}
-          onClick={() => setChatOpen((v) => !v)}
+          active={panel === 'chat'}
+          onClick={() => setPanel((p) => (p === 'chat' ? null : 'chat'))}
         />
+        {historyContent && (
+          <ControlButton
+            icon="ph:clock-counter-clockwise-bold"
+            label="Ver histórico do beneficiário"
+            active={panel === 'historico'}
+            onClick={() => setPanel((p) => (p === 'historico' ? null : 'historico'))}
+          />
+        )}
         <button
           aria-label="Encerrar sessão"
           onClick={handleEnd}
@@ -159,11 +169,11 @@ export function SessionRoom({ role, peer, self, minutesLeft = 32, onEnd, onEmerg
       </footer>
 
       {/* Chat */}
-      {chatOpen && (
-        <div className="absolute inset-y-0 right-0 z-20 flex w-80 flex-col border-l border-[rgba(255,255,255,0.1)] bg-[#1a1828] shadow-xl">
+      {panel === 'chat' && (
+        <div className="absolute inset-y-0 right-0 z-20 flex w-80 max-w-[85vw] flex-col border-l border-[rgba(255,255,255,0.1)] bg-[#1a1828] shadow-xl">
           <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.1)] px-4 py-3">
             <h2 className="text-sm font-semibold text-[#F2EFF8]">Chat da sessão</h2>
-            <button onClick={() => setChatOpen(false)} className="text-[#807A99] hover:text-[#F2EFF8]" aria-label="Fechar chat">
+            <button onClick={() => setPanel(null)} className="text-[#807A99] hover:text-[#F2EFF8]" aria-label="Fechar chat">
               <Icon icon="ph:x-bold" width={18} aria-hidden />
             </button>
           </div>
@@ -177,6 +187,19 @@ export function SessionRoom({ role, peer, self, minutesLeft = 32, onEnd, onEmerg
               className="w-full rounded-pill bg-[#221F44] px-4 py-2 text-sm text-[#F2EFF8] outline-none placeholder:text-[#807A99] focus:ring-1 focus:ring-primary"
             />
           </div>
+        </div>
+      )}
+
+      {/* Histórico/registro do beneficiário (profissional) — painel lateral, como o chat */}
+      {panel === 'historico' && historyContent && (
+        <div className="absolute inset-y-0 right-0 z-20 flex w-[420px] max-w-[90vw] flex-col border-l border-[rgba(255,255,255,0.1)] bg-[#1a1828] shadow-xl">
+          <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.1)] px-4 py-3">
+            <h2 className="text-sm font-semibold text-[#F2EFF8]">Beneficiário</h2>
+            <button onClick={() => setPanel(null)} className="text-[#807A99] hover:text-[#F2EFF8]" aria-label="Fechar painel">
+              <Icon icon="ph:x-bold" width={18} aria-hidden />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1">{historyContent}</div>
         </div>
       )}
     </div>

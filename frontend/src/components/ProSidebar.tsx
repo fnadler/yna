@@ -94,7 +94,20 @@ export function ProSidebar({ items }: { items: NavItem[] }) {
         ))}
       </nav>
 
-      <div className="border-t border-border px-4 py-4">
+      <div className="flex flex-col gap-2 border-t border-border px-4 py-4">
+        <NavLink
+          to="/pro/conta"
+          className={({ isActive }) =>
+            `flex w-full items-center justify-center gap-2 rounded-lg border px-2 py-2 font-heading text-xs font-semibold transition-colors ${
+              isActive
+                ? 'border-border bg-surface-hover text-ink'
+                : 'border-border bg-surface text-ink-secondary hover:bg-surface-hover hover:text-ink'
+            }`
+          }
+        >
+          <Icon icon="ph:gear-bold" width={14} aria-hidden />
+          Configurações
+        </NavLink>
         <button
           onClick={() => navigate('/pro/convite/demo')}
           className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface px-2 py-2 font-heading text-xs font-semibold text-ink-secondary transition-colors hover:border-danger/30 hover:bg-danger-bg hover:text-danger"

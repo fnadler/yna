@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
-import type { ProProfile, ProfileStrength } from '../types'
-import { proProfile, proNotificacoes } from '../data/proMock'
+import type { ProProfile, ProfileStrength, ProDisponibilidade } from '../types'
+import { proProfile, proNotificacoes, disponibilidadeInicial } from '../data/proMock'
 import { computeProfileStrength } from '../services/pro'
 
 /* Estado do fluxo do Profissional. Isolado do AppContext (beneficiário).
@@ -14,6 +14,9 @@ interface ProContextValue {
   strength: ProfileStrength
   /** Notificações não lidas — usado pelo sino (top-bar mobile + sidebar desktop). */
   unreadNotifs: number
+  /** Disponibilidade (atendimento, plantão, bloqueios) — editada no PRO-11, resumida no PRO-09. */
+  disponibilidade: ProDisponibilidade
+  setDisponibilidade: (d: ProDisponibilidade) => void
 }
 
 const ProContext = createContext<ProContextValue | null>(null)
@@ -27,9 +30,10 @@ export function ProProvider({ children }: { children: ReactNode }) {
 
   const strength = useMemo(() => computeProfileStrength(profile), [profile])
   const unreadNotifs = useMemo(() => proNotificacoes.filter((n) => !n.lida).length, [])
+  const [disponibilidade, setDisponibilidade] = useState<ProDisponibilidade>(disponibilidadeInicial)
 
   return (
-    <ProContext.Provider value={{ profile, setProfile, updateProfile, strength, unreadNotifs }}>
+    <ProContext.Provider value={{ profile, setProfile, updateProfile, strength, unreadNotifs, disponibilidade, setDisponibilidade }}>
       {children}
     </ProContext.Provider>
   )

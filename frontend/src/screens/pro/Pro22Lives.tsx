@@ -1,21 +1,30 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
-import { Button } from '../../components/Button'
-import { Badge } from '../../components/Badge'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
 import { useService } from '../../hooks/useService'
 import { proUniversidadeService } from '../../services/pro'
+import { LiveCardActions } from './universidadeParts'
+import { LiveModal } from './LiveModal'
+import type { ProLive } from '../../types'
 
 export function Pro22Lives() {
   const navigate = useNavigate()
   const lives = useService(() => proUniversidadeService.lives(), [])
   const [inscritos, setInscritos] = useState<Record<string, boolean>>({})
+  const [detalhe, setDetalhe] = useState<ProLive | null>(null)
 
   const data = lives.status === 'success' ? lives.data : []
   const agendadas = data.filter((l) => l.status === 'agendada')
   const replays = data.filter((l) => l.status === 'replay')
+
+  const isInscrito = (l: ProLive) => inscritos[l.id] ?? l.inscrito
+  const toggleInscrito = (l: ProLive) => setInscritos((s) => ({ ...s, [l.id]: !isInscrito(l) }))
+  const entrar = (l: ProLive) => navigate(`/pro/live/${l.id}`)
+  const props = (l: ProLive) => ({
+    live: l, inscrito: isInscrito(l), onToggleInscrito: () => toggleInscrito(l), onDetalhe: () => setDetalhe(l), onEntrar: () => entrar(l),
+  })
 
   return (
     <div className="min-h-full bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
@@ -35,45 +44,35 @@ export function Pro22Lives() {
         </header>
 
         {lives.status === 'loading' && (
-          <div className="flex flex-col gap-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}</div>
+          <div className="flex flex-col gap-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}</div>
         )}
         {lives.status === 'error' && <ErrorState message={lives.message} onRetry={lives.reload} />}
         {lives.status === 'success' && (
           <>
             <h2 className="mb-3 text-[15px] font-semibold text-ink">Próximas</h2>
             <div className="flex flex-col gap-2">
-              {agendadas.map((l) => {
-                const isOn = inscritos[l.id] ?? l.inscrito
-                return (
-                  <div key={l.id} className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-4">
-                    <Icon icon="ph:broadcast-bold" width={22} className="shrink-0 text-primary dark:text-primary-300" aria-hidden />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-heading text-sm font-semibold text-ink">{l.titulo}</p>
-                      <p className="font-mono text-[13px] text-ink-secondary">{l.data} · {l.horario}</p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant={isOn ? 'soft' : 'primary'}
-                      iconLeft={isOn ? 'ph:check-bold' : undefined}
-                      onClick={() => setInscritos((s) => ({ ...s, [l.id]: !isOn }))}
-                    >
-                      {isOn ? 'Inscrito' : 'Inscrever'}
-                    </Button>
+              {agendadas.map((l) => (
+                <div key={l.id} className="flex flex-col gap-3 rounded-lg border border-border bg-surface px-4 py-4 sm:flex-row sm:items-center">
+                  <Icon icon="ph:broadcast-bold" width={22} className="shrink-0 text-primary dark:text-primary-300" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-heading text-sm font-semibold text-ink">{l.titulo}</p>
+                    <p className="font-mono text-[13px] text-ink-secondary">{l.data} · {l.horario}{l.aoVivoSeg != null && ' · ao vivo agora'}</p>
                   </div>
-                )
-              })}
+                  <LiveCardActions {...props(l)} />
+                </div>
+              ))}
             </div>
 
             <h2 className="mb-3 mt-8 text-[15px] font-semibold text-ink">Replays</h2>
             <div className="flex flex-col gap-2">
               {replays.map((l) => (
-                <div key={l.id} className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-4">
+                <div key={l.id} className="flex flex-col gap-3 rounded-lg border border-border bg-surface px-4 py-4 sm:flex-row sm:items-center">
                   <Icon icon="ph:play-circle-bold" width={22} className="shrink-0 text-ink-secondary" aria-hidden />
                   <div className="min-w-0 flex-1">
                     <p className="font-heading text-sm font-semibold text-ink">{l.titulo}</p>
                     <p className="font-mono text-[13px] text-ink-secondary">{l.data}</p>
                   </div>
-                  <Badge tone="neutral">Replay</Badge>
+                  <LiveCardActions {...props(l)} />
                 </div>
               ))}
             </div>
@@ -85,6 +84,14 @@ export function Pro22Lives() {
           </>
         )}
       </div>
+
+      <LiveModal
+        live={detalhe}
+        inscrito={detalhe ? isInscrito(detalhe) : false}
+        onToggleInscrito={() => detalhe && toggleInscrito(detalhe)}
+        onEntrar={() => { if (detalhe) { const l = detalhe; setDetalhe(null); entrar(l) } }}
+        onClose={() => setDetalhe(null)}
+      />
     </div>
   )
 }

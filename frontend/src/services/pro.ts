@@ -3,14 +3,20 @@ import type {
   ProSession,
   ProntuarioEntry,
   ProBeneficiarioDetail,
+  PlanoTerapeutico,
   PlantaoShift,
   ProAcionamento,
   FinanceSummary,
   Trilha,
+  Curso,
+  Artigo,
+  UniversidadeStats,
   QualityScore,
   ProSupervisao,
   ProLive,
   ProRecebimento,
+  ExtratoItem,
+  NotaFiscal,
   ProNotificacao,
   ProfileStrength,
 } from '../types'
@@ -23,10 +29,15 @@ import {
   proAcionamento,
   proFinance,
   proTrilhas,
+  proCursos,
+  proArtigos,
+  proUniversidadeStats,
   proQualityScores,
   proSupervisoes,
   proLives,
   proRecebimentos,
+  proExtratoRaw,
+  proNotasFiscais,
   proNotificacoes,
 } from '../data/proMock'
 
@@ -88,12 +99,29 @@ export const proSessionService = {
     await delay(rand(200, 400))
     return proSessions.find((s) => s.id === id)
   },
+  cancel: async (id: string): Promise<void> => {
+    await delay(rand(300, 500))
+    const s = proSessions.find((x) => x.id === id)
+    if (s) { s.status = 'cancelled'; s.salaAbertaSeg = undefined }
+  },
 }
 
 export const proBeneficiarioService = {
+  list: async (): Promise<ProBeneficiarioDetail[]> => {
+    await delay(rand(300, 600))
+    return proBeneficiarios
+  },
   get: async (id: string): Promise<ProBeneficiarioDetail | undefined> => {
     await delay(rand(300, 600))
     return proBeneficiarios.find((b) => b.id === id)
+  },
+  /** Salva o plano terapêutico (carimba a data de atualização). */
+  savePlano: async (id: string, plano: PlanoTerapeutico): Promise<PlanoTerapeutico> => {
+    await delay(rand(200, 400))
+    const stamped: PlanoTerapeutico = { ...plano, atualizadoEm: new Date().toLocaleDateString('pt-BR') }
+    const b = proBeneficiarios.find((x) => x.id === id)
+    if (b) b.plano = stamped
+    return stamped
   },
 }
 
@@ -129,6 +157,22 @@ export const proFinanceService = {
     await delay(rand(300, 500))
     return proRecebimentos
   },
+  /** Extrato de conta corrente: sessão credita, resgate debita. Saldo acumulado,
+     mais recente primeiro. */
+  extrato: async (): Promise<ExtratoItem[]> => {
+    await delay(rand(300, 600))
+    const asc = [...proExtratoRaw].sort((a, b) => a.data.localeCompare(b.data))
+    let saldo = 0
+    const comSaldo = asc.map((it) => {
+      saldo += it.tipo === 'resgate' ? -it.valor : it.valor
+      return { ...it, saldo }
+    })
+    return comSaldo.reverse()
+  },
+  notasFiscais: async (): Promise<NotaFiscal[]> => {
+    await delay(rand(300, 500))
+    return proNotasFiscais
+  },
 }
 
 export const proNotificacaoService = {
@@ -146,6 +190,26 @@ export const proUniversidadeService = {
   lives: async (): Promise<ProLive[]> => {
     await delay(rand(300, 600))
     return proLives
+  },
+  cursos: async (): Promise<Curso[]> => {
+    await delay(rand(300, 600))
+    return proCursos
+  },
+  curso: async (id: string): Promise<Curso | undefined> => {
+    await delay(rand(200, 400))
+    return proCursos.find((c) => c.id === id)
+  },
+  artigos: async (): Promise<Artigo[]> => {
+    await delay(rand(300, 600))
+    return proArtigos
+  },
+  artigo: async (id: string): Promise<Artigo | undefined> => {
+    await delay(rand(200, 400))
+    return proArtigos.find((a) => a.id === id)
+  },
+  stats: async (): Promise<UniversidadeStats> => {
+    await delay(rand(200, 400))
+    return proUniversidadeStats
   },
 }
 
