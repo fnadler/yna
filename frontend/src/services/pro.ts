@@ -17,6 +17,8 @@ import type {
   ProRecebimento,
   ExtratoItem,
   NotaFiscal,
+  ProFatura,
+  MngModeloDocumento,
   ProNotificacao,
   ProfileStrength,
 } from '../types'
@@ -38,8 +40,10 @@ import {
   proRecebimentos,
   proExtratoRaw,
   proNotasFiscais,
+  proFaturas,
   proNotificacoes,
 } from '../data/proMock'
+import { modelosDocumento } from '../data/modelosDocumento'
 
 /* Camada de serviços do Profissional — mockada, com latência simulada.
    Assinaturas espelham a futura API REST; trocar o corpo por fetch/axios. */
@@ -172,6 +176,19 @@ export const proFinanceService = {
   notasFiscais: async (): Promise<NotaFiscal[]> => {
     await delay(rand(300, 500))
     return proNotasFiscais
+  },
+  /** Faturas mensais (modelo "fatura de cartão"). */
+  faturas: async (): Promise<ProFatura[]> => {
+    await delay(rand(300, 600))
+    return proFaturas
+  },
+}
+
+export const proModeloDocService = {
+  /** Modelos de documentos disponíveis para o tipo do profissional (psicólogo). */
+  list: async (): Promise<MngModeloDocumento[]> => {
+    await delay(rand(250, 500))
+    return modelosDocumento.filter((m) => m.publicoTipos.length === 0 || m.publicoTipos.includes('psicologo'))
   },
 }
 

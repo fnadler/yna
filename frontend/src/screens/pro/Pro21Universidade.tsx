@@ -55,10 +55,10 @@ export function Pro21Universidade() {
     <div className="min-h-full bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
       <div className={`mx-auto ${PAGE_MAX_W} px-5 lg:px-8 pt-0 lg:pt-9 pb-10`}>
         <ProTopBar />
-        <PageHeader title="Universidade YNA" subtitle="Aprofunde sua prática no seu tempo." className="mt-2 lg:mt-0" />
+        <PageHeader title="Academia YNA" subtitle="Aprofunde sua prática no seu tempo." className="mt-2 lg:mt-0" />
 
         {/* Abas */}
-        <div className="mb-5 flex gap-1 rounded-lg bg-surface-2 p-1" role="tablist" aria-label="Seções da Universidade">
+        <div className="mb-5 flex gap-1 rounded-lg bg-surface-2 p-1" role="tablist" aria-label="Seções da Academia">
           {TABS.map((t) => (
             <button
               key={t.key}

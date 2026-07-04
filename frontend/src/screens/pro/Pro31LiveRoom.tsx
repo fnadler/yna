@@ -5,7 +5,7 @@ import { useService } from '../../hooks/useService'
 import { usePro } from '../../contexts/ProContext'
 import { proUniversidadeService } from '../../services/pro'
 
-/* PRO-31 — Sala de transmissão de uma live da Universidade YNA. */
+/* PRO-31 — Sala de transmissão de uma live da Academia YNA. */
 export function Pro31LiveRoom() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -28,7 +28,7 @@ export function Pro31LiveRoom() {
       <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-[#14122A] px-6 text-center text-[#DCD4F0]">
         <Icon icon="ph:warning-circle-bold" width={32} className="text-danger" aria-hidden />
         <p className="text-sm">Não foi possível abrir esta live.</p>
-        <button onClick={() => navigate('/pro/universidade')} className="rounded-pill bg-[rgba(242,239,248,0.14)] px-4 py-2 text-sm font-medium">Voltar à Universidade</button>
+        <button onClick={() => navigate('/pro/universidade')} className="rounded-pill bg-[rgba(242,239,248,0.14)] px-4 py-2 text-sm font-medium">Voltar à Academia</button>
       </div>
     )
   }

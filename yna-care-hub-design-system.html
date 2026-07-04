@@ -41,10 +41,13 @@
   /* Semantic */
   --success:   #4EA88B;
   --success-bg: #E3F4ED;
+  --success-ink: #2E7D63;   /* texto acessível sobre --success-bg (AA) */
   --warning:   #E8A640;
   --warning-bg: #FCEFD6;
+  --warning-ink: #8A5C14;   /* texto acessível sobre --warning-bg (AA) */
   --danger:    #D75A6E;
   --danger-bg: #FAE0E5;
+  --danger-ink: #AB3A4E;    /* texto acessível sobre --danger-bg (AA) */
   --info:      var(--yna-primary);
   --info-bg:   var(--yna-primary-50);
 
@@ -144,8 +147,11 @@ body[data-theme="dark"] {
   --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.56);
 
   --success-bg: rgba(78, 168, 139, 0.15);
+  --success-ink: #6FC4A8;
   --warning-bg: rgba(232, 166, 64, 0.15);
+  --warning-ink: #E8A640;
   --danger-bg:  rgba(215, 90, 110, 0.15);
+  --danger-ink: #EF93A3;
   --info-bg:    rgba(108, 111, 194, 0.15);
 }
 
@@ -2024,6 +2030,12 @@ body[data-theme="dark"] .tooltip { background: #F2EFF8; color: #1F1B2D; }
 
   <span class="ds-sidebar-section">Telas</span>
   <a href="#telas-lgpd" class="ds-sidebar-link"><span class="dot"></span> LGPD · Privacidade</a>
+
+  <span class="ds-sidebar-section">Padrões de produto</span>
+  <a href="#controles" class="ds-sidebar-link"><span class="dot"></span> Controles de Conteúdo</a>
+  <a href="#salas" class="ds-sidebar-link"><span class="dot"></span> Salas Imersivas</a>
+  <a href="#analytics-rh" class="ds-sidebar-link"><span class="dot"></span> Analytics RH (NR-1)</a>
+  <a href="#apoio" class="ds-sidebar-link"><span class="dot"></span> Padrões de Apoio</a>
 </nav>
 
 <!-- ============================================================
@@ -3110,6 +3122,30 @@ body[data-theme="dark"] .tooltip { background: #F2EFF8; color: #1F1B2D; }
           <tr><th>--text-muted</th><td>#7E789A / #807A99</td></tr>
         </table>
       </div>
+
+      <h3 class="ds-subsection-title">3.8 — Tons de texto acessíveis (<code>-ink</code>) · pares semânticos</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Texto semântico sobre fundo semântico (WCAG AA)</div>
+        <p style="margin: 0 0 var(--space-4); font-size: 13px; color: var(--text-secondary); max-width: 60ch;">
+          As cores semânticas cheias (<code>--danger</code>, <code>--warning</code>, <code>--success</code>) <strong>não</strong> atingem AA como texto sobre seus fundos claros (<code>*-bg</code>). Para texto e ícones use os tons <code>-ink</code>, criados para passar AA em light e dark. Reserve as cores cheias para preenchimentos, ícones grandes e barras.
+        </p>
+        <div class="showcase-render" style="gap: var(--space-3); flex-wrap: wrap;">
+          <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius: var(--radius-pill); background: var(--danger-bg); color: var(--danger-ink); font-size:13px; font-weight:500;"><iconify-icon icon="ph:warning-bold"></iconify-icon> danger-ink · AA</span>
+          <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius: var(--radius-pill); background: var(--warning-bg); color: var(--warning-ink); font-size:13px; font-weight:500;"><iconify-icon icon="ph:clock-bold"></iconify-icon> warning-ink · AA</span>
+          <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius: var(--radius-pill); background: var(--success-bg); color: var(--success-ink); font-size:13px; font-weight:500;"><iconify-icon icon="ph:check-bold"></iconify-icon> success-ink · AA</span>
+        </div>
+        <div style="margin-top: var(--space-4); padding: var(--space-3) var(--space-4); background: var(--danger-bg); color: var(--danger-ink); border-radius: var(--radius-sm); font-size: 13px; display:flex; gap: var(--space-2); align-items:center;">
+          <iconify-icon icon="ph:seal-check-bold"></iconify-icon>
+          <span>Correção WCAG: <code>--danger</code> (#D75A6E) sobre <code>--danger-bg</code> reprovava AA (~3:1). <code>--danger-ink</code> passa (~4.9:1).</span>
+        </div>
+        <table class="specs">
+          <tr><th>Token</th><td><strong style="color:var(--text-primary);">Light</strong>  /  <strong style="color:var(--text-primary);">Dark</strong></td></tr>
+          <tr><th>--danger-ink</th><td>#AB3A4E / #EF93A3</td></tr>
+          <tr><th>--warning-ink</th><td>#8A5C14 / #E8A640</td></tr>
+          <tr><th>--success-ink</th><td>#2E7D63 / #6FC4A8</td></tr>
+          <tr><th>uso</th><td>texto/ícone sobre <code>*-bg</code> · badges · estados inline</td></tr>
+        </table>
+      </div>
     </div>
   </section>
 
@@ -3221,6 +3257,24 @@ body[data-theme="dark"] .tooltip { background: #F2EFF8; color: #1F1B2D; }
           <tr><th>background</th><td>linear-gradient(120deg, primary, pink)</td></tr>
           <tr><th>hover</th><td>background-position shift (600ms organic)</td></tr>
           <tr><th>uso</th><td>Apenas para 1 ação por tela — o "convite central"</td></tr>
+        </table>
+      </div>
+
+      <h3 class="ds-subsection-title">4.6 — Botões contextuais da plataforma</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Entrar na sessão · Emergência</div>
+        <div class="showcase-render" style="gap: var(--space-3); flex-wrap: wrap;">
+          <!-- EntrarSessaoButton — estado agendado -->
+          <button class="btn btn-primary"><iconify-icon icon="ph:video-camera-bold"></iconify-icon> Entrar na sala</button>
+          <!-- EntrarSessaoButton — sala aberta (ao vivo) com contador -->
+          <button class="btn" style="background: var(--success); color:#fff; box-shadow: 0 0 0 4px var(--success-bg);"><span style="width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 0 0 rgba(255,255,255,.6);animation: yna-pulse 1.6s infinite;"></span> Entrar · 12:34</button>
+          <!-- Botão de Emergência — danger claro, WCAG AA -->
+          <button class="btn" style="background: var(--danger-bg); color: var(--danger-ink); border:1.5px solid rgba(215,90,110,.35);"><iconify-icon icon="ph:phone-call-bold"></iconify-icon> Emergência</button>
+        </div>
+        <table class="specs">
+          <tr><th>EntrarSessaoButton</th><td>2 estados — agendado (primary) · sala aberta ao vivo (success + dot pulsante + contador <code>mm:ss</code> desde a abertura)</td></tr>
+          <tr><th>Emergência</th><td>fundo <code>--danger-bg</code> · texto/ícone <code>--danger-ink</code> · borda danger 35% — variante "danger claro" (AA), não o botão danger sólido</td></tr>
+          <tr><th>uso</th><td>o botão sólido <code>.btn-danger</code> fica para ações destrutivas; Emergência usa o tom claro acolhedor</td></tr>
         </table>
       </div>
     </div>
@@ -3354,6 +3408,78 @@ body[data-theme="dark"] .tooltip { background: #F2EFF8; color: #1F1B2D; }
           <tr><th>field-error</th><td>12px · --danger · com ícone leading</td></tr>
         </table>
       </div>
+
+      <h3 class="ds-subsection-title">5.3 — Select customizado, data, valor e anexo</h3>
+      <div class="showcase-grid">
+        <div class="showcase-card">
+          <div class="showcase-label">Select customizado (Select.tsx) · datas · valor</div>
+          <div class="showcase-render col">
+            <!-- Custom Select: botão que abre dropdown (não é o <select> nativo) -->
+            <div class="field">
+              <label class="field-label">Fuso horário</label>
+              <button class="input" style="display:flex; align-items:center; justify-content:space-between; text-align:left; cursor:pointer;">
+                <span>(UTC−03:00) São Paulo</span>
+                <iconify-icon icon="ph:caret-down-bold" style="color:var(--text-muted);"></iconify-icon>
+              </button>
+              <div style="margin-top:6px; border:1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-lg); overflow:hidden; max-width:260px;">
+                <div style="padding:10px 14px; font-size:14px; background: var(--yna-primary-50); color: var(--yna-primary); display:flex; align-items:center; justify-content:space-between;">(UTC−03:00) São Paulo <iconify-icon icon="ph:check-bold"></iconify-icon></div>
+                <div style="padding:10px 14px; font-size:14px;">(UTC−04:00) Manaus</div>
+                <div style="padding:10px 14px; font-size:14px;">(UTC−02:00) Fernando de Noronha</div>
+              </div>
+            </div>
+            <!-- Data + valor -->
+            <div class="field">
+              <label class="field-label">Data de vencimento</label>
+              <div class="input-wrap"><input class="input" type="date" value="2026-06-30"></div>
+            </div>
+            <div class="field">
+              <label class="field-label">Valor a antecipar</label>
+              <div class="input-wrap">
+                <span style="position:absolute; left:16px; top:50%; transform:translateY(-50%); font-size:14px; color:var(--text-muted);">R$</span>
+                <input class="input" style="padding-left:40px; font-weight:600;" type="number" value="1050" inputmode="decimal">
+              </div>
+            </div>
+          </div>
+          <table class="specs">
+            <tr><th>Select custom</th><td>trigger = <code>.input</code> + caret · painel flutuante (shadow-lg) · item ativo em <code>primary-50</code> + check</td></tr>
+            <tr><th>Data</th><td><code>input[type=date]</code> com estilo <code>.input</code></td></tr>
+            <tr><th>Valor</th><td>prefixo <code>R$</code> absoluto · <code>font-weight 600</code> · <code>inputmode="decimal"</code></td></tr>
+          </table>
+        </div>
+
+        <div class="showcase-card">
+          <div class="showcase-label">Anexo de arquivo · copiar</div>
+          <div class="showcase-render col">
+            <!-- Estado vazio: dropzone -->
+            <div class="field">
+              <label class="field-label">Arquivo da nota fiscal</label>
+              <button style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px 16px; border:1.5px dashed var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text-secondary); font-size:13px; font-weight:500; cursor:pointer;">
+                <iconify-icon icon="ph:upload-simple-bold"></iconify-icon> Anexar nota fiscal (PDF)
+              </button>
+            </div>
+            <!-- Estado preenchido -->
+            <div class="field">
+              <label class="field-label">Enviado</label>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border:1px solid var(--border); border-radius: var(--radius); background: var(--surface);">
+                <span style="display:flex; align-items:center; gap:8px; font-size:13px;"><iconify-icon icon="ph:file-pdf-bold" style="color:var(--yna-primary);"></iconify-icon> nota-fiscal.pdf</span>
+                <button class="btn btn-ghost btn-icon" title="Remover"><iconify-icon icon="ph:x-bold"></iconify-icon></button>
+              </div>
+            </div>
+            <!-- Copiar valor -->
+            <div class="field">
+              <label class="field-label">CNPJ do tomador</label>
+              <div style="display:flex; align-items:center; gap:8px; font-size:14px;">48.221.045/0001-70
+                <button class="btn btn-ghost btn-icon btn-sm" title="Copiar" style="color:var(--yna-primary);"><iconify-icon icon="ph:copy-bold"></iconify-icon></button>
+              </div>
+            </div>
+          </div>
+          <table class="specs">
+            <tr><th>Dropzone</th><td>borda <code>1.5px dashed</code> · hover → borda/texto primary</td></tr>
+            <tr><th>Anexo enviado</th><td>ícone tipo + nome truncado + remover (ghost icon)</td></tr>
+            <tr><th>Copiar</th><td>ghost icon <code>ph:copy-bold</code> ao lado do valor (dados de nota/instruções)</td></tr>
+          </table>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -3450,6 +3576,94 @@ body[data-theme="dark"] .tooltip { background: #F2EFF8; color: #1F1B2D; }
           </div>
         </div>
       </div>
+
+      <h3 class="ds-subsection-title">6.3 — StatTile · big numbers</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">KPI compacto — ícone + valor + label (Home, Financeiro, RH, Universidade)</div>
+        <div class="showcase-render" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-2); padding: var(--space-6); max-width:520px;">
+          <div style="display:flex; align-items:center; gap:12px; padding:16px; border:1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface);">
+            <div style="display:flex; width:40px; height:40px; align-items:center; justify-content:center; border-radius: var(--radius); background: var(--yna-primary-50); color: var(--yna-primary);"><iconify-icon icon="ph:wallet-bold" width="20"></iconify-icon></div>
+            <div><p style="margin:0; font-family: var(--font-heading); font-size:20px; font-weight:700; color:var(--text-primary);">R$ 1.200</p><p style="margin:0; font-size:12.5px; color:var(--text-secondary);">Saldo a receber</p></div>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; padding:16px; border:1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface);">
+            <div style="display:flex; width:40px; height:40px; align-items:center; justify-content:center; border-radius: var(--radius); background: var(--yna-primary-50); color: var(--yna-primary);"><iconify-icon icon="ph:hand-coins-bold" width="20"></iconify-icon></div>
+            <div><p style="margin:0; font-family: var(--font-heading); font-size:20px; font-weight:700; color:var(--text-primary);">R$ 1.350</p><p style="margin:0; font-size:12.5px; color:var(--text-secondary);">Total resgatado</p></div>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>estrutura</th><td>ícone (40px, radius em <code>primary-50</code>) + valor (heading 20px/700) + label (12.5px, secondary)</td></tr>
+          <tr><th>grid</th><td><code>grid-cols-2</code> (mobile) · <code>lg:grid-cols-4</code> nos dashboards</td></tr>
+          <tr><th>diferença do <code>card--metric</code></th><td>StatTile é horizontal e compacto (linha de KPIs); metric card é vertical com trend</td></tr>
+        </table>
+      </div>
+
+      <h3 class="ds-subsection-title">6.4 — OptionCard (linha de ação e atalho)</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Default · atalho (shortcut) · warning · danger</div>
+        <div class="showcase-render col" style="padding: var(--space-6); gap: var(--space-2); max-width:560px;">
+          <!-- default: linha ícone + label + desc + chevron -->
+          <button style="display:flex; align-items:center; gap:14px; width:100%; text-align:left; padding:16px; border:1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); cursor:pointer;">
+            <iconify-icon icon="ph:user-circle-bold" width="24" style="color:var(--yna-primary);"></iconify-icon>
+            <span style="flex:1;"><span style="display:block; font-weight:600; font-size:14px; color:var(--text-primary);">Dados da conta</span><span style="display:block; font-size:13px; color:var(--text-secondary);">Nome, e-mail e telefone</span></span>
+            <iconify-icon icon="ph:caret-right-bold" style="color:var(--text-muted);"></iconify-icon>
+          </button>
+          <!-- shortcut: 3 colunas, vertical -->
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2);">
+            <div style="display:flex; flex-direction:column; gap:8px; padding:16px; border:1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface);">
+              <iconify-icon icon="ph:wallet-bold" width="22" style="color:var(--yna-primary);"></iconify-icon>
+              <span style="font-weight:600; font-size:14px; color:var(--text-primary);">Financeiro</span>
+              <span style="font-size:12.5px; color:var(--text-secondary);">Recebimentos e antecipação</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; padding:16px; border:1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface);">
+              <iconify-icon icon="ph:broadcast-bold" width="22" style="color:var(--yna-primary);"></iconify-icon>
+              <span style="font-weight:600; font-size:14px; color:var(--text-primary);">Lives YNA</span>
+              <span style="font-size:12.5px; color:var(--text-secondary);">Rounds ao vivo e replays</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; padding:16px; border:1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface);">
+              <iconify-icon icon="ph:sliders-horizontal-bold" width="22" style="color:var(--yna-primary);"></iconify-icon>
+              <span style="font-weight:600; font-size:14px; color:var(--text-primary);">Disponibilidade</span>
+              <span style="font-size:12.5px; color:var(--text-secondary);">Horários de atendimento</span>
+            </div>
+          </div>
+          <!-- warning -->
+          <button style="display:flex; align-items:center; gap:14px; width:100%; text-align:left; padding:16px; border:1px solid rgba(232,166,64,.35); border-radius: var(--radius-lg); background: var(--warning-bg); cursor:pointer;">
+            <iconify-icon icon="ph:note-pencil-bold" width="24" style="color:var(--warning-ink);"></iconify-icon>
+            <span style="flex:1;"><span style="display:block; font-weight:600; font-size:14px; color:var(--warning-ink);">Prontuário pendente — Bruno</span><span style="display:block; font-size:13px; color:var(--warning-ink); opacity:.85;">Sessão de 15/06 · finalize para concluir</span></span>
+          </button>
+          <!-- danger -->
+          <button style="display:flex; align-items:center; gap:14px; width:100%; text-align:left; padding:16px; border:1px solid rgba(215,90,110,.35); border-radius: var(--radius-lg); background: var(--danger-bg); cursor:pointer;">
+            <iconify-icon icon="ph:phone-call-bold" width="24" style="color:var(--danger-ink);"></iconify-icon>
+            <span style="flex:1;"><span style="display:block; font-weight:600; font-size:14px; color:var(--danger-ink);">Emergência</span><span style="display:block; font-size:13px; color:var(--danger-ink); opacity:.85;">Falar com plantonista agora</span></span>
+          </button>
+        </div>
+        <table class="specs">
+          <tr><th>default</th><td>linha: ícone + (label + desc) + chevron · <code>to</code> ou <code>onClick</code></td></tr>
+          <tr><th>layout="shortcut"</th><td>vertical, em grid de 3 — atalhos da home</td></tr>
+          <tr><th>variant="warning"</th><td>bg <code>warning-bg</code> · texto/ícone <code>warning-ink</code> · borda 35%</td></tr>
+          <tr><th>variant="danger"</th><td>bg <code>danger-bg</code> · texto/ícone <code>danger-ink</code> (AA) · borda 35%</td></tr>
+        </table>
+      </div>
+
+      <h3 class="ds-subsection-title">6.5 — Painel (bloco com cabeçalho + ação)</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Título + ação "Ver todos" + corpo (Universidade, Home)</div>
+        <div class="showcase-render" style="padding: var(--space-6); max-width:420px;">
+          <div style="border:1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); overflow:hidden;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-bottom:1px solid var(--border);">
+              <h4 style="margin:0; font-family: var(--font-heading); font-size:14px; font-weight:600; color:var(--text-primary);">Últimos artigos</h4>
+              <button style="display:inline-flex; align-items:center; gap:4px; background:none; border:none; cursor:pointer; font-size:13px; font-weight:500; color:var(--yna-primary);">Ver todos <iconify-icon icon="ph:arrow-right-bold" width="12"></iconify-icon></button>
+            </div>
+            <div style="padding:8px 16px;">
+              <div style="padding:10px 0; border-bottom:1px solid var(--border); font-size:13.5px; color:var(--text-primary);">Como sustentar o vínculo terapêutico online</div>
+              <div style="padding:10px 0; font-size:13.5px; color:var(--text-primary);">Manejo de risco: primeiros passos</div>
+            </div>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>cabeçalho</th><td>título (heading 14/600) + ação opcional (link primary com seta)</td></tr>
+          <tr><th>uso</th><td>agrupa listas/carrosséis: "Próxima live", "Últimos artigos", "Explorar cursos"</td></tr>
+        </table>
+      </div>
     </div>
   </section>
 
@@ -3531,6 +3745,98 @@ body[data-theme="dark"] .tooltip { background: #F2EFF8; color: #1F1B2D; }
           <tr><th>item ativo</th><td>bg --yna-primary-50 · color --yna-primary · indicador 3px à esquerda</td></tr>
         </table>
       </div>
+
+      <h3 class="ds-subsection-title">7.3 — Três shells por persona</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Beneficiário · Profissional · RH — mesmo padrão, navegação distinta</div>
+        <div class="showcase-render" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); padding: var(--space-4); align-items:start;">
+          <div style="border:1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); padding:12px;">
+            <div style="font-family: var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:var(--yna-primary); margin-bottom:8px;">Beneficiário</div>
+            <div class="app-nav-item active" style="font-size:13px;"><iconify-icon icon="ph:house-bold"></iconify-icon> Início</div>
+            <div class="app-nav-item" style="font-size:13px;"><iconify-icon icon="ph:calendar-bold"></iconify-icon> Agenda</div>
+            <div class="app-nav-item" style="font-size:13px;"><iconify-icon icon="ph:chat-circle-bold"></iconify-icon> Nyna</div>
+            <div class="app-nav-item" style="font-size:13px;"><iconify-icon icon="ph:user-bold"></iconify-icon> Perfil</div>
+          </div>
+          <div style="border:1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); padding:12px;">
+            <div style="font-family: var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:var(--yna-primary); margin-bottom:8px;">Profissional</div>
+            <div class="app-nav-item active" style="font-size:13px;"><iconify-icon icon="ph:house-bold"></iconify-icon> Início</div>
+            <div class="app-nav-item" style="font-size:13px;"><iconify-icon icon="ph:calendar-bold"></iconify-icon> Agenda</div>
+            <div class="app-nav-item" style="font-size:13px;"><iconify-icon icon="ph:users-three-bold"></iconify-icon> Clientes</div>
+            <div class="app-nav-item" style="font-size:13px;"><iconify-icon icon="ph:graduation-cap-bold"></iconify-icon> Universidade</div>
+            <div class="app-nav-item" style="font-size:13px;"><iconify-icon icon="ph:wallet-bold"></iconify-icon> Financeiro</div>
+          </div>
+          <div style="border:1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); padding:12px;">
+            <div style="font-family: var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:var(--yna-primary); margin-bottom:8px;">RH / Empresa</div>
+            <div class="app-nav-item active" style="font-size:13px;"><iconify-icon icon="ph:chart-pie-slice-bold"></iconify-icon> Indicadores</div>
+            <div class="app-nav-item" style="font-size:13px;"><iconify-icon icon="ph:users-bold"></iconify-icon> Beneficiários</div>
+            <div class="app-nav-item" style="font-size:13px;"><iconify-icon icon="ph:paper-plane-tilt-bold"></iconify-icon> Convites</div>
+            <div class="app-nav-item" style="font-size:13px;"><iconify-icon icon="ph:buildings-bold"></iconify-icon> Departamentos</div>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>componentes</th><td>Beneficiário: <code>Sidebar</code>/<code>AppLayout</code> · Profissional: <code>ProSidebar</code>/<code>ProAppLayout</code>/<code>ProTopBar</code> · RH: <code>RhSidebar</code>/<code>RhAppLayout</code>/<code>RhTopBar</code></td></tr>
+          <tr><th>base compartilhada</th><td>mesmo padrão visual do 7.2 (widths, item ativo, grupos) — muda o conjunto de itens por persona</td></tr>
+        </table>
+      </div>
+
+      <h3 class="ds-subsection-title">7.4 — Navegação mobile · bottom nav + "Mais"</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">BottomNav — barra inferior fixa com item "Mais"</div>
+        <div class="showcase-render" style="padding: var(--space-4);">
+          <div style="display:flex; justify-content:space-around; align-items:center; max-width:420px; margin:0 auto; padding:8px 4px; border:1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-sm);">
+            <span style="display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11px; color:var(--yna-primary);"><iconify-icon icon="ph:house-fill" width="22"></iconify-icon> Início</span>
+            <span style="display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11px; color:var(--text-muted);"><iconify-icon icon="ph:calendar-bold" width="22"></iconify-icon> Agenda</span>
+            <span style="display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11px; color:var(--text-muted);"><iconify-icon icon="ph:users-three-bold" width="22"></iconify-icon> Clientes</span>
+            <span style="display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11px; color:var(--text-muted);"><iconify-icon icon="ph:dots-three-outline-bold" width="22"></iconify-icon> Mais</span>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>item ativo</th><td>ícone <code>-fill</code> + label em <code>--yna-primary</code>; inativos em <code>--text-muted</code></td></tr>
+          <tr><th>"Mais"</th><td>abre a tela/menu com os itens secundários que não cabem na barra (Configurações, Qualidade, etc.)</td></tr>
+          <tr><th>par desktop</th><td>substitui a sidebar no mobile; no desktop, sidebar completa (7.2/7.3)</td></tr>
+        </table>
+      </div>
+
+      <h3 class="ds-subsection-title">7.5 — PageHeader</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Título + subtítulo + ação — cabeçalho padrão das telas internas</div>
+        <div class="showcase-render" style="padding: var(--space-6);">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; width:100%; max-width:640px;">
+            <div>
+              <h2 style="margin:0; font-family: var(--font-heading); font-size:24px; font-weight:600; letter-spacing:-0.02em; color:var(--text-primary);">Agenda</h2>
+              <p style="margin:4px 0 0; font-size:14px; color:var(--text-secondary);">Suas sessões e a disponibilidade que você oferece.</p>
+            </div>
+            <button class="btn btn-secondary"><iconify-icon icon="ph:sliders-horizontal-bold"></iconify-icon> Disponibilidade</button>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>título</th><td>heading 24px/600 · <code>tracking -0.02em</code></td></tr>
+          <tr><th>subtítulo</th><td>14px · <code>--text-secondary</code></td></tr>
+          <tr><th>ação</th><td>opcional, alinhada à direita (botão/ícone)</td></tr>
+        </table>
+      </div>
+
+      <h3 class="ds-subsection-title">7.6 — Utilitários de topo</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">ViewAsSwitcher · NotificationsPanel · ThemeToggle</div>
+        <div class="showcase-render" style="gap: var(--space-4); flex-wrap:wrap;">
+          <!-- ViewAsSwitcher -->
+          <div style="display:inline-flex; gap:4px; padding:4px; border-radius: var(--radius-pill); background: var(--surface-2);">
+            <span style="padding:6px 14px; border-radius: var(--radius-pill); background: var(--surface); font-size:13px; font-weight:600; box-shadow: var(--shadow-xs);">Beneficiário</span>
+            <span style="padding:6px 14px; border-radius: var(--radius-pill); font-size:13px; color:var(--text-secondary);">Profissional</span>
+            <span style="padding:6px 14px; border-radius: var(--radius-pill); font-size:13px; color:var(--text-secondary);">RH</span>
+          </div>
+          <!-- ThemeToggle -->
+          <button class="btn btn-ghost btn-icon" title="Alternar tema"><iconify-icon icon="ph:moon-bold"></iconify-icon></button>
+          <!-- Notifications trigger -->
+          <button class="btn btn-ghost btn-icon" style="position:relative;" title="Notificações"><iconify-icon icon="ph:bell-bold"></iconify-icon><span class="counter" style="position:absolute; top:2px; right:2px; background: var(--danger);">3</span></button>
+        </div>
+        <table class="specs">
+          <tr><th>ViewAsSwitcher</th><td>alterna a persona visualizada no protótipo (segmented pill)</td></tr>
+          <tr><th>NotificationsPanel</th><td>painel deslizante com lista de notificações + contador de não lidas</td></tr>
+          <tr><th>ThemeToggle</th><td>alterna light/dark (persistido)</td></tr>
+        </table>
+      </div>
     </div>
   </section>
 
@@ -3576,6 +3882,38 @@ body[data-theme="dark"] .tooltip { background: #F2EFF8; color: #1F1B2D; }
           <tr><th>header padding</th><td>24px 24px 16px</td></tr>
           <tr><th>body padding</th><td>0 24px 24px</td></tr>
           <tr><th>footer</th><td>16px 24px · bg --surface-sunken · border-top</td></tr>
+        </table>
+      </div>
+
+      <h3 class="ds-subsection-title">8.2 — Sheet (padrão atual da plataforma)</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Slide-up no mobile · centralizado no desktop · header ícone + título + fechar</div>
+        <p style="margin: 0 0 var(--space-4); font-size: 13px; color: var(--text-secondary); max-width: 62ch;">
+          O <strong>Sheet</strong> é o padrão de modal adotado ao longo do projeto e <strong>substituiu o Diálogo (8.1)</strong> na maioria dos fluxos (edições, prontuário, antecipação, disponibilidade, detalhes). Sobe do rodapé no mobile e aparece centralizado no desktop, sempre com cabeçalho ícone + título + fechar.
+        </p>
+        <div class="showcase-render" style="padding: 0; background: transparent;">
+          <div class="dialog-overlay" style="width:100%;">
+            <div class="dialog" style="max-width: 520px;">
+              <div class="dialog-header" style="align-items:center; gap:10px;">
+                <span style="display:flex; width:32px; height:32px; align-items:center; justify-content:center; border-radius: var(--radius-sm); background: var(--yna-primary-50); color: var(--yna-primary);"><iconify-icon icon="ph:receipt-bold"></iconify-icon></span>
+                <h3 class="dialog-title" style="flex:1;">Emitir nota fiscal</h3>
+                <button class="dialog-close"><iconify-icon icon="ph:x-bold"></iconify-icon></button>
+              </div>
+              <div class="dialog-body" style="padding: 20px 24px 24px;">
+                <div style="padding:14px 16px; border:1px solid var(--border); border-radius: var(--radius); background: var(--surface-2);">
+                  <p style="margin:0 0 8px; font-size:13px; font-weight:600; color:var(--text-primary);"><iconify-icon icon="ph:info-bold" style="color:var(--yna-primary);"></iconify-icon> O que deve constar na nota</p>
+                  <p style="margin:0; font-size:13px; color:var(--text-secondary);">Valor · Tomador (YNA) · Vencimento · Descrição dos serviços</p>
+                </div>
+                <button class="btn btn-primary" style="width:100%; margin-top:16px; justify-content:center;"><iconify-icon icon="ph:paper-plane-tilt-bold"></iconify-icon> Enviar nota</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>mobile</th><td>slide-up do rodapé · cantos superiores arredondados · full-width</td></tr>
+          <tr><th>desktop</th><td>centralizado · max-width por tamanho — <code>md</code> 520px · <code>lg</code> 720px</td></tr>
+          <tr><th>header</th><td>ícone (32px em <code>primary-50</code>) + título + botão fechar</td></tr>
+          <tr><th>Sheet × Modal (8.1)</th><td>Sheet é o default; o Diálogo fica para confirmações curtas destrutivas</td></tr>
         </table>
       </div>
     </div>
@@ -3648,6 +3986,39 @@ body[data-theme="dark"] .tooltip { background: #F2EFF8; color: #1F1B2D; }
           <tr><th>min-width · height</th><td>20px</td></tr>
           <tr><th>font</th><td>mono · 10.5px · 600</td></tr>
           <tr><th>posição absoluta</th><td>top 2px / right 2px (sobre ícone)</td></tr>
+        </table>
+      </div>
+
+      <h3 class="ds-subsection-title">9.4 — Badges especializados da plataforma</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Status de sessão · especialidade · ao vivo · categoria de live</div>
+        <div class="showcase-render col" style="align-items:flex-start; gap: var(--space-3);">
+          <!-- SessionStatusBadge -->
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <span class="badge badge--primary">Agendada</span>
+            <span class="badge badge--success"><iconify-icon icon="ph:check-bold"></iconify-icon> Confirmada</span>
+            <span class="badge badge--neutral">Realizada</span>
+            <span class="badge badge--danger"><iconify-icon icon="ph:x-bold"></iconify-icon> Cancelada</span>
+          </div>
+          <!-- SpecialtyBadge -->
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <span class="badge badge--outline-primary"><iconify-icon icon="ph:brain-bold"></iconify-icon> Saúde mental</span>
+            <span class="badge badge--outline"><iconify-icon icon="ph:carrot-bold"></iconify-icon> Nutrição</span>
+            <span class="badge badge--outline"><iconify-icon icon="ph:person-simple-run-bold"></iconify-icon> Fisioterapia</span>
+          </div>
+          <!-- AoVivoBadge + CategoriaLiveBadge -->
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius: var(--radius-pill); background: var(--danger-bg); color: var(--danger-ink); font-size:12px; font-weight:600;"><span style="width:7px;height:7px;border-radius:50%;background:var(--danger);"></span> AO VIVO</span>
+            <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius: var(--radius-pill); background: var(--yna-primary-50); color: var(--yna-primary); font-size:12px; font-weight:500;"><iconify-icon icon="ph:graduation-cap-bold"></iconify-icon> Conteúdo</span>
+            <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius: var(--radius-pill); background: var(--warning-bg); color: var(--warning-ink); font-size:12px; font-weight:500;"><iconify-icon icon="ph:users-three-bold"></iconify-icon> Supervisão</span>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>SessionStatusBadge</th><td>mapeia o status efetivo → tom (agendada primary · confirmada success · realizada neutral · cancelada danger)</td></tr>
+          <tr><th>SpecialtyBadge</th><td>especialidade com ícone (saúde mental / nutrição / fisioterapia)</td></tr>
+          <tr><th>AoVivoBadge</th><td>ponto <code>--danger</code> + "AO VIVO" sobre <code>danger-bg</code>/<code>danger-ink</code></td></tr>
+          <tr><th>CategoriaLiveBadge</th><td>conteúdo (primary · graduation-cap) · supervisão (warning · users-three)</td></tr>
+          <tr><th>base Badge</th><td>tons <code>primary·success·warning·danger·neutral·solid</code> + prop <code>icon</code>; texto usa <code>-ink</code> nas variantes claras</td></tr>
         </table>
       </div>
     </div>
@@ -4364,6 +4735,24 @@ body[data-theme="dark"] .tooltip { background: #F2EFF8; color: #1F1B2D; }
           </div>
         </div>
       </div>
+
+      <h3 class="ds-subsection-title">15.5 — ErrorState (com retry)</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Falha de carregamento com ação de tentar novamente</div>
+        <div class="showcase-render" style="padding: var(--space-8);">
+          <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; max-width:340px; margin:0 auto;">
+            <span style="display:flex; width:48px; height:48px; align-items:center; justify-content:center; border-radius:50%; background: var(--danger-bg); color: var(--danger-ink);"><iconify-icon icon="ph:cloud-warning-bold" width="24"></iconify-icon></span>
+            <p style="margin:0; font-family: var(--font-heading); font-size:15px; font-weight:600; color:var(--text-primary);">Não conseguimos carregar</p>
+            <p style="margin:0; font-size:13px; color:var(--text-secondary);">Algo saiu do previsto ao buscar seus dados. Tente novamente em instantes.</p>
+            <button class="btn btn-secondary btn-sm"><iconify-icon icon="ph:arrow-clockwise-bold"></iconify-icon> Tentar novamente</button>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>estrutura</th><td>ícone em <code>danger-bg</code>/<code>danger-ink</code> + título + mensagem + botão <em>retry</em></td></tr>
+          <tr><th>uso</th><td>estados <code>error</code> do <code>useService</code> (com <code>onRetry = reload</code>)</td></tr>
+          <tr><th>Toasts (15.1)</th><td>documentados no DS, mas ainda <strong>não há componente Toast</strong> no código — o feedback hoje é inline (estados de sucesso/erro nas telas). Alinhar: implementar Toast ou marcar 15.1 como padrão futuro.</td></tr>
+        </table>
+      </div>
     </div>
   </section>
 
@@ -4549,13 +4938,351 @@ body[data-theme="dark"] .tooltip { background: #F2EFF8; color: #1F1B2D; }
   </section>
 
   <!-- ============================================================
+       SECTION 17 — CONTROLES DE CONTEÚDO
+       ============================================================ -->
+  <section class="ds-section-wrap" id="controles">
+    <div class="ds-section">
+      <div class="ds-section-header">
+        <div class="ds-badge">
+          <iconify-icon icon="ph:sliders-bold"></iconify-icon>
+          17 — Controles de conteúdo
+        </div>
+        <h2 class="ds-section-title">Alternar, filtrar e <span class="accent">percorrer</span></h2>
+        <p class="ds-section-subtitle">Padrões recorrentes para segmentar visões, filtrar listas e navegar coleções sem sair da tela. Nascidos nas jornadas de Agenda, Financeiro e Universidade.</p>
+      </div>
+
+      <h3 class="ds-subsection-title">17.1 — Segmented control</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Alternância entre visões (Agenda, Financeiro, Universidade)</div>
+        <div class="showcase-render col" style="align-items:stretch; gap: var(--space-3); max-width:480px;">
+          <div style="display:flex; gap:4px; padding:4px; border-radius: var(--radius-lg); background: var(--surface-2);">
+            <span style="flex:1; text-align:center; padding:10px; border-radius: var(--radius); background: var(--surface); font-size:14px; font-weight:600; box-shadow: var(--shadow-xs);">Extrato</span>
+            <span style="flex:1; text-align:center; padding:10px; border-radius: var(--radius); font-size:14px; color:var(--text-secondary);">Notas Fiscais</span>
+          </div>
+          <div style="display:flex; gap:4px; padding:4px; border-radius: var(--radius-lg); background: var(--surface-2); align-self:flex-start;">
+            <span style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius: var(--radius); background: var(--surface); font-size:14px; font-weight:600; box-shadow: var(--shadow-xs);"><iconify-icon icon="ph:list-bullets-bold"></iconify-icon> Lista</span>
+            <span style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius: var(--radius); font-size:14px; color:var(--text-secondary);"><iconify-icon icon="ph:calendar-blank-bold"></iconify-icon> Calendário</span>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>trilho</th><td>bg <code>--surface-2</code> · padding 4px · radius-lg</td></tr>
+          <tr><th>opção ativa</th><td>bg <code>--surface</code> + <code>shadow-xs</code> + peso 600</td></tr>
+          <tr><th>uso</th><td>2–3 visões mutuamente exclusivas da mesma tela</td></tr>
+        </table>
+      </div>
+
+      <h3 class="ds-subsection-title">17.2 — Tabs (abas)</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Universidade (Todos/Cursos/Lives/Artigos) · modal do beneficiário (Perfil/Prontuários/Sessões)</div>
+        <div class="showcase-render col" style="align-items:stretch; max-width:520px;">
+          <div style="display:flex; gap:24px; border-bottom:1px solid var(--border);">
+            <span style="padding:12px 2px; font-size:14px; font-weight:600; color:var(--yna-primary); border-bottom:2px solid var(--yna-primary); margin-bottom:-1px;">Todos</span>
+            <span style="padding:12px 2px; font-size:14px; color:var(--text-secondary);">Cursos</span>
+            <span style="padding:12px 2px; font-size:14px; color:var(--text-secondary);">Lives</span>
+            <span style="padding:12px 2px; font-size:14px; color:var(--text-secondary);">Artigos</span>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>aba ativa</th><td>texto <code>--yna-primary</code> + underline 2px</td></tr>
+          <tr><th>diferença do segmented</th><td>tabs para seções de conteúdo (mais itens); segmented para 2–3 visões compactas</td></tr>
+        </table>
+      </div>
+
+      <h3 class="ds-subsection-title">17.3 — Filtros de período (pills)</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Seleção única + intervalo personalizado (Financeiro)</div>
+        <div class="showcase-render col" style="align-items:flex-start; gap: var(--space-3);">
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <span style="padding:6px 14px; border-radius: var(--radius-pill); border:1.5px solid var(--yna-primary); background: var(--yna-primary-50); color: var(--yna-primary); font-size:12.5px; font-weight:500;">30 dias</span>
+            <span style="padding:6px 14px; border-radius: var(--radius-pill); border:1.5px solid var(--border); font-size:12.5px; color:var(--text-secondary);">7 dias</span>
+            <span style="padding:6px 14px; border-radius: var(--radius-pill); border:1.5px solid var(--border); font-size:12.5px; color:var(--text-secondary);">15 dias</span>
+            <span style="padding:6px 14px; border-radius: var(--radius-pill); border:1.5px solid var(--border); font-size:12.5px; color:var(--text-secondary);">60 dias</span>
+            <span style="padding:6px 14px; border-radius: var(--radius-pill); border:1.5px solid var(--border); font-size:12.5px; color:var(--text-secondary);">Personalizado</span>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>pill ativa</th><td>borda + texto <code>--yna-primary</code> · fundo <code>primary-50</code></td></tr>
+          <tr><th>personalizado</th><td>revela dois <code>input[type=date]</code> (início/fim)</td></tr>
+        </table>
+      </div>
+
+      <h3 class="ds-subsection-title">17.4 — Carrossel paginado (uma linha)</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Coleção em linha única com paginação por setas (CursoCarrossel · ResizeObserver)</div>
+        <div class="showcase-render col" style="align-items:stretch; padding: var(--space-5);">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+            <h4 style="margin:0; font-family: var(--font-heading); font-size:15px; font-weight:600;">Últimos lançamentos</h4>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <button class="btn btn-secondary btn-icon btn-sm"><iconify-icon icon="ph:caret-left-bold"></iconify-icon></button>
+              <button class="btn btn-secondary btn-icon btn-sm"><iconify-icon icon="ph:caret-right-bold"></iconify-icon></button>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3);">
+            <div style="border:1px solid var(--border); border-radius: var(--radius-lg); overflow:hidden; background: var(--surface);"><div style="height:76px; background: linear-gradient(135deg,#DCD4F0,#B8B9E5);"></div><div style="padding:10px;"><p style="margin:0; font-size:13px; font-weight:600;">Vínculo terapêutico</p><p style="margin:2px 0 0; font-size:11.5px; color:var(--text-muted);">8 aulas · 1h20</p></div></div>
+            <div style="border:1px solid var(--border); border-radius: var(--radius-lg); overflow:hidden; background: var(--surface);"><div style="height:76px; background: linear-gradient(135deg,#F2A8C5,#FBC85E);"></div><div style="padding:10px;"><p style="margin:0; font-size:13px; font-weight:600;">Manejo de risco</p><p style="margin:2px 0 0; font-size:11.5px; color:var(--text-muted);">5 aulas · 55min</p></div></div>
+            <div style="border:1px solid var(--border); border-radius: var(--radius-lg); overflow:hidden; background: var(--surface);"><div style="height:76px; background: linear-gradient(135deg,#B8B9E5,#4749A8);"></div><div style="padding:10px;"><p style="margin:0; font-size:13px; font-weight:600;">Escuta ativa</p><p style="margin:2px 0 0; font-size:11.5px; color:var(--text-muted);">6 aulas · 1h</p></div></div>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>layout</th><td>linha única · nº de cards por página medido por <code>ResizeObserver</code></td></tr>
+          <tr><th>controles</th><td>setas prev/next + link "Ver todos" opcional no cabeçalho</td></tr>
+          <tr><th>containment</th><td><code>min-w-0</code> nos wrappers para não vazar a coluna (fix de rolagem lateral)</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 18 — SALAS IMERSIVAS
+       ============================================================ -->
+  <section class="ds-section-wrap" id="salas">
+    <div class="ds-section">
+      <div class="ds-section-header">
+        <div class="ds-badge">
+          <iconify-icon icon="ph:video-camera-bold"></iconify-icon>
+          18 — Salas imersivas
+        </div>
+        <h2 class="ds-section-title">Presença em <span class="accent">tela cheia</span></h2>
+        <p class="ds-section-subtitle">Superfícies escuras e imersivas para vídeo — sessão 1:1 (SessionRoom) e transmissão ao vivo (LiveRoom). Tema dark dedicado, fora do sistema light/dark das demais telas, para foco total.</p>
+      </div>
+
+      <h3 class="ds-subsection-title">18.1 — SessionRoom (videochamada) · LiveRoom (transmissão)</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Palco de vídeo + barra de controles</div>
+        <div class="showcase-render" style="padding: var(--space-4);">
+          <div style="width:100%; max-width:640px; margin:0 auto; border-radius: var(--radius-xl); overflow:hidden; background:#14121F; color:#EDEAF6;">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px;">
+              <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius: var(--radius-pill); background: rgba(215,90,110,.2); color:#EF93A3; font-size:11px; font-weight:600;"><span style="width:7px;height:7px;border-radius:50%;background:#EF93A3;"></span> AO VIVO · 12:34</span>
+              <span style="font-size:12px; color:rgba(237,234,246,.6);"><iconify-icon icon="ph:eye-bold"></iconify-icon> 128</span>
+            </div>
+            <div style="height:200px; margin:0 16px; border-radius: var(--radius-lg); background: radial-gradient(circle at 50% 40%, #2A2740, #14121F); display:flex; align-items:center; justify-content:center;">
+              <div style="width:64px; height:64px; border-radius:50%; background: rgba(255,255,255,.08); display:flex; align-items:center; justify-content:center;"><iconify-icon icon="ph:user-bold" width="28" style="color:rgba(237,234,246,.5);"></iconify-icon></div>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:center; gap:12px; padding:16px;">
+              <button style="width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:#EDEAF6;cursor:pointer;"><iconify-icon icon="ph:microphone-bold"></iconify-icon></button>
+              <button style="width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:#EDEAF6;cursor:pointer;"><iconify-icon icon="ph:video-camera-bold"></iconify-icon></button>
+              <button style="width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:#EDEAF6;cursor:pointer;"><iconify-icon icon="ph:chat-circle-bold"></iconify-icon></button>
+              <button style="width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:#EDEAF6;cursor:pointer;"><iconify-icon icon="ph:users-three-bold"></iconify-icon></button>
+              <button style="width:44px;height:44px;border-radius:50%;border:none;background: var(--danger);color:#fff;cursor:pointer;"><iconify-icon icon="ph:phone-x-bold"></iconify-icon></button>
+            </div>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>tema</th><td>dark fixo (<code>#14121F</code>) via <code>createPortal</code> em tela cheia — independente do ThemeToggle</td></tr>
+          <tr><th>SessionRoom</th><td>sessão 1:1 · painel de prontuário estruturado (abas) durante a sessão</td></tr>
+          <tr><th>LiveRoom</th><td>transmissão · badge AO VIVO + espectadores + timer</td></tr>
+          <tr><th>controles</th><td>botões circulares 44px · sair em <code>--danger</code></td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 19 — ANALYTICS RH (NR-1)
+       ============================================================ -->
+  <section class="ds-section-wrap" id="analytics-rh">
+    <div class="ds-section">
+      <div class="ds-section-header">
+        <div class="ds-badge">
+          <iconify-icon icon="ph:chart-pie-slice-bold"></iconify-icon>
+          19 — Analytics RH (NR-1)
+        </div>
+        <h2 class="ds-section-title">Dados que <span class="accent">protegem</span> pessoas</h2>
+        <p class="ds-section-subtitle">Painel do RH: indicadores agregados, mapa de calor de risco psicossocial (NR-1) e alertas — sempre com k-anonimato ≥ 4, sem exposição individual.</p>
+      </div>
+
+      <h3 class="ds-subsection-title">19.1 — KPI card com variação (delta)</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Big number + tendência</div>
+        <div class="showcase-render" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); padding: var(--space-6);">
+          <div style="padding:16px; border:1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface);">
+            <div style="display:flex; align-items:center; gap:8px; color:var(--text-secondary); font-size:12.5px;"><iconify-icon icon="ph:users-bold"></iconify-icon> Adesão</div>
+            <p style="margin:8px 0 0; font-family: var(--font-heading); font-size:24px; font-weight:700;">68%</p>
+            <span style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:var(--success-ink);"><iconify-icon icon="ph:trend-up-bold"></iconify-icon> +6 pts</span>
+          </div>
+          <div style="padding:16px; border:1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface);">
+            <div style="display:flex; align-items:center; gap:8px; color:var(--text-secondary); font-size:12.5px;"><iconify-icon icon="ph:calendar-check-bold"></iconify-icon> Sessões/mês</div>
+            <p style="margin:8px 0 0; font-family: var(--font-heading); font-size:24px; font-weight:700;">342</p>
+            <span style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:var(--danger-ink);"><iconify-icon icon="ph:trend-down-bold"></iconify-icon> −4%</span>
+          </div>
+          <div style="padding:16px; border:1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface);">
+            <div style="display:flex; align-items:center; gap:8px; color:var(--text-secondary); font-size:12.5px;"><iconify-icon icon="ph:smiley-bold"></iconify-icon> NPS</div>
+            <p style="margin:8px 0 0; font-family: var(--font-heading); font-size:24px; font-weight:700;">72</p>
+            <span style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:var(--text-muted);">estável</span>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>delta</th><td>up → <code>success-ink</code> · down → <code>danger-ink</code> · neutro → <code>text-muted</code></td></tr>
+        </table>
+      </div>
+
+      <h3 class="ds-subsection-title">19.2 — Mapa de calor NR-1 (k-anonimato)</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Nível de atenção por departamento × dimensão</div>
+        <div class="showcase-render col" style="align-items:stretch; padding: var(--space-5); gap: var(--space-2);">
+          <div style="display:grid; grid-template-columns: 140px repeat(4, 1fr); gap:6px; align-items:center;">
+            <span></span>
+            <span style="font-size:10.5px; color:var(--text-muted); text-align:center;">Carga</span>
+            <span style="font-size:10.5px; color:var(--text-muted); text-align:center;">Autonomia</span>
+            <span style="font-size:10.5px; color:var(--text-muted); text-align:center;">Relações</span>
+            <span style="font-size:10.5px; color:var(--text-muted); text-align:center;">Clima</span>
+
+            <span style="font-size:13px;">Engenharia</span>
+            <span style="height:30px; border-radius:6px; background: var(--success-bg);"></span>
+            <span style="height:30px; border-radius:6px; background: var(--warning-bg);"></span>
+            <span style="height:30px; border-radius:6px; background: var(--success-bg);"></span>
+            <span style="height:30px; border-radius:6px; background: var(--success-bg);"></span>
+
+            <span style="font-size:13px;">Vendas</span>
+            <span style="height:30px; border-radius:6px; background: var(--danger-bg);"></span>
+            <span style="height:30px; border-radius:6px; background: var(--warning-bg);"></span>
+            <span style="height:30px; border-radius:6px; background: var(--danger-bg);"></span>
+            <span style="height:30px; border-radius:6px; background: var(--warning-bg);"></span>
+
+            <span style="font-size:13px; display:flex; align-items:center; gap:4px;">Diretoria <iconify-icon icon="ph:lock-simple-bold" width="12" style="color:var(--text-muted);"></iconify-icon></span>
+            <span style="height:30px; border-radius:6px; background: repeating-linear-gradient(45deg, var(--surface-2), var(--surface-2) 4px, var(--surface) 4px, var(--surface) 8px); grid-column: span 4; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--text-muted);">&lt; 4 pessoas · anonimizado</span>
+          </div>
+          <div style="display:flex; gap:16px; margin-top:8px; font-size:11.5px; color:var(--text-secondary);">
+            <span style="display:flex; align-items:center; gap:6px;"><span style="width:12px;height:12px;border-radius:3px;background:var(--success-bg);"></span> Baixo</span>
+            <span style="display:flex; align-items:center; gap:6px;"><span style="width:12px;height:12px;border-radius:3px;background:var(--warning-bg);"></span> Médio</span>
+            <span style="display:flex; align-items:center; gap:6px;"><span style="width:12px;height:12px;border-radius:3px;background:var(--danger-bg);"></span> Alto</span>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>níveis</th><td>0 sem dado/anonimizado · 1 baixo (success) · 2 médio (warning) · 3 alto (danger)</td></tr>
+          <tr><th>k-anonimato</th><td>departamento com &lt; 4 beneficiários → linha bloqueada (hachura + cadeado)</td></tr>
+        </table>
+      </div>
+
+      <h3 class="ds-subsection-title">19.3 — Alerta de risco psicossocial</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Threshold NR-1 disparado</div>
+        <div class="showcase-render col" style="align-items:stretch; max-width:520px;">
+          <div style="display:flex; gap:12px; padding:14px 16px; border:1px solid rgba(215,90,110,.3); border-radius: var(--radius-lg); background: var(--danger-bg);">
+            <iconify-icon icon="ph:warning-octagon-bold" width="22" style="color:var(--danger-ink); flex-shrink:0;"></iconify-icon>
+            <div>
+              <p style="margin:0; font-size:13.5px; font-weight:600; color:var(--danger-ink);">Atenção alta · Vendas — Carga de trabalho</p>
+              <p style="margin:2px 0 0; font-size:12.5px; color:var(--danger-ink); opacity:.85;">O indicador ultrapassou o limite recomendado nas últimas 2 semanas.</p>
+            </div>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>nível alto</th><td>bg <code>danger-bg</code> · texto <code>danger-ink</code></td></tr>
+          <tr><th>nível médio</th><td>bg <code>warning-bg</code> · texto <code>warning-ink</code></td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 20 — PADRÕES DE APOIO
+       ============================================================ -->
+  <section class="ds-section-wrap" id="apoio">
+    <div class="ds-section">
+      <div class="ds-section-header">
+        <div class="ds-badge">
+          <iconify-icon icon="ph:puzzle-piece-bold"></iconify-icon>
+          20 — Padrões de apoio
+        </div>
+        <h2 class="ds-section-title">Peças que <span class="accent">completam</span></h2>
+        <p class="ds-section-subtitle">Componentes de apoio recorrentes: identidade visual de pessoas, acionamento de emergência, formulário clínico e visualizações fora do MVP.</p>
+      </div>
+
+      <h3 class="ds-subsection-title">20.1 — Avatar</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Iniciais + paletas + tamanhos</div>
+        <div class="showcase-render" style="align-items:center; gap: var(--space-4);">
+          <span style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;background:var(--yna-lavender);color:var(--yna-primary);">MS</span>
+          <span style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;background:var(--yna-pink-soft);color:#B04A73;">BR</span>
+          <span style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;background:var(--yna-yellow-soft);color:#8A5C14;">LA</span>
+        </div>
+        <table class="specs">
+          <tr><th>paletas</th><td>lavender · pink · yellow (fundo soft + texto do tom)</td></tr>
+          <tr><th>tamanhos</th><td>32 · 36 · 40 · 48px · iniciais 2 letras</td></tr>
+        </table>
+      </div>
+
+      <h3 class="ds-subsection-title">20.2 — Emergência (PanicButton + EmergencyModal)</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Acionamento de plantão a partir de sinais de risco</div>
+        <div class="showcase-render col" style="align-items:flex-start; gap: var(--space-4);">
+          <button style="display:inline-flex; align-items:center; gap:8px; padding:12px 22px; border-radius: var(--radius-pill); border:1.5px solid rgba(215,90,110,.35); background: var(--danger-bg); color: var(--danger-ink); font-size:14px; font-weight:600; cursor:pointer;"><iconify-icon icon="ph:phone-call-bold"></iconify-icon> Preciso de ajuda agora</button>
+          <div style="width:100%; max-width:420px; border:1px solid var(--border); border-radius: var(--radius-xl); background: var(--surface); overflow:hidden; box-shadow: var(--shadow-lg);">
+            <div style="padding:16px; background: var(--danger-bg); display:flex; align-items:center; gap:10px;">
+              <iconify-icon icon="ph:heart-bold" width="22" style="color:var(--danger-ink);"></iconify-icon>
+              <span style="font-family: var(--font-heading); font-weight:600; color:var(--danger-ink);">Você não está sozinho</span>
+            </div>
+            <div style="padding:16px;">
+              <p style="margin:0 0 12px; font-size:13.5px; color:var(--text-secondary);">Um plantonista pode falar com você agora. Escolha como prefere:</p>
+              <button class="btn btn-primary" style="width:100%; justify-content:center; margin-bottom:8px;"><iconify-icon icon="ph:phone-call-bold"></iconify-icon> Falar com plantonista</button>
+              <button class="btn btn-secondary" style="width:100%; justify-content:center;">CVV · 188</button>
+            </div>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>PanicButton</th><td>tom "danger claro" (bg <code>danger-bg</code> · <code>danger-ink</code>) — acolhedor, não alarmante</td></tr>
+          <tr><th>EmergencyModal</th><td>cabeçalho acolhedor + opções de contato (plantonista, CVV)</td></tr>
+          <tr><th>gatilho</th><td>botão manual + detecção de palavras-chave pela Nyna</td></tr>
+        </table>
+      </div>
+
+      <h3 class="ds-subsection-title">20.3 — Formulário clínico estruturado (prontuário)</h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Registro pós-sessão — chips, CID e seções progressivas</div>
+        <div class="showcase-render col" style="align-items:stretch; max-width:560px; gap: var(--space-3);">
+          <div>
+            <span style="display:block; font-size:13px; font-weight:600; margin-bottom:6px;">Comparecimento</span>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <span style="padding:6px 14px; border-radius: var(--radius-pill); border:1.5px solid var(--yna-primary); background: var(--yna-primary-50); color: var(--yna-primary); font-size:12.5px;">Compareceu</span>
+              <span style="padding:6px 14px; border-radius: var(--radius-pill); border:1.5px solid var(--border); font-size:12.5px; color:var(--text-secondary);">Faltou</span>
+              <span style="padding:6px 14px; border-radius: var(--radius-pill); border:1.5px solid var(--border); font-size:12.5px; color:var(--text-secondary);">Remarcada</span>
+            </div>
+          </div>
+          <div>
+            <span style="display:block; font-size:13px; font-weight:600; margin-bottom:6px;">Temas</span>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <span class="tag-removable">Ansiedade <button>×</button></span>
+              <span class="tag-removable">Trabalho <button>×</button></span>
+              <span class="tag-removable">Sono <button>×</button></span>
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius: var(--radius-sm); background: var(--surface-2); font-size:12.5px;"><iconify-icon icon="ph:tag-bold" style="color:var(--yna-primary);"></iconify-icon> CID-10 · F41.1</span>
+            <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius: var(--radius-sm); background: var(--danger-bg); color:var(--danger-ink); font-size:12.5px;"><iconify-icon icon="ph:warning-bold"></iconify-icon> Sem risco</span>
+          </div>
+        </div>
+        <table class="specs">
+          <tr><th>durante a sessão</th><td>registro enxuto (comparecimento, temas, evolução)</td></tr>
+          <tr><th>ao finalizar</th><td>campos adicionais progressivos (CID, técnicas, encaminhamentos, risco)</td></tr>
+          <tr><th>nível do paciente</th><td>Plano terapêutico editável (demanda, objetivos, hipótese CID-10, risco atual)</td></tr>
+        </table>
+      </div>
+
+      <h3 class="ds-subsection-title">20.4 — RadarChart · Roda da Vida <span style="font-size:11px; font-weight:500; color:var(--warning-ink); background:var(--warning-bg); padding:2px 8px; border-radius: var(--radius-pill); margin-left:6px;">Fora do MVP</span></h3>
+      <div class="showcase-card">
+        <div class="showcase-label">Radar de pilares de vida (documentado, fora do escopo do MVP)</div>
+        <div class="showcase-render" style="padding: var(--space-6);">
+          <svg width="180" height="180" viewBox="0 0 200 200">
+            <polygon points="100,20 168,60 168,140 100,180 32,140 32,60" fill="none" stroke="var(--border)" stroke-width="1"/>
+            <polygon points="100,60 142,80 142,130 100,150 58,130 58,80" fill="rgba(71,73,168,.15)" stroke="var(--yna-primary)" stroke-width="1.5"/>
+            <circle cx="100" cy="60" r="3" fill="var(--yna-primary)"/><circle cx="142" cy="80" r="3" fill="var(--yna-primary)"/><circle cx="142" cy="130" r="3" fill="var(--yna-primary)"/><circle cx="100" cy="150" r="3" fill="var(--yna-primary)"/><circle cx="58" cy="130" r="3" fill="var(--yna-primary)"/><circle cx="58" cy="80" r="3" fill="var(--yna-primary)"/>
+          </svg>
+        </div>
+        <table class="specs">
+          <tr><th>status</th><td><strong>Fora do MVP</strong> — componente existe (<code>RadarChart</code>), mas a feature Roda da Vida não está no escopo atual</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
        FOOTER
        ============================================================ -->
   <footer class="ds-footer">
     <span class="yna-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="480 370 960 340" fill="currentColor"><path d="M 781.31 516.97 L 821.63 421.6 C 826.21 410.82 821.18 398.36 810.39 393.78 C 799.61 389.2 787.15 394.23 782.57 405.02 C 782.57 405.02 741.98 500.61 729.02 531.25 C 712.76 569.69 692.88 584.96 659.99 584.96 C 623.86 584.96 599.64 551.12 586.51 522.36 C 573.21 493.23 537.33 405.09 537.33 405.09 C 532.88 394.52 520.7 389.54 510.12 393.99 C 499.54 398.43 494.57 410.61 499.02 421.2 C 499.02 421.2 529.16 492.86 539.18 516.77 C 560.98 568.79 602.21 597.07 660.01 597.05 C 677.02 597.05 693.54 593.75 708.8 587.66 L 689.49 635.47 C 680.49 655.31 669.34 673.35 647.3 673.42 C 613.45 673.53 607.36 638.75 602.86 630.43 C 596.64 618.92 583.02 616.38 574.32 622.04 C 566.78 626.94 565.4 638.87 570.08 649.61 L 570.71 651.07 C 588.5 684.59 615.12 699.91 641.91 701.22 C 675.02 702.84 708.63 691.63 734.66 625.75 L 777.75 524.62 C 779 522.11 780.2 519.57 781.31 516.97 "/><path d="M 1129.64 393.78 C 1118.86 389.2 1106.4 394.23 1101.82 405.02 L 1018.64 620.61 C 1016.93 625.04 1010.66 625.04 1008.95 620.61 L 925.77 405.02 C 922.45 397.18 914.76 392.1 906.24 392.09 C 897.73 392.09 890.04 397.18 886.71 405.02 L 779.16 658.3 C 774.58 669.09 779.61 681.55 790.39 686.12 C 801.18 690.71 813.64 685.68 818.21 674.89 L 901.39 459.38 C 903.1 454.95 909.38 454.95 911.08 459.38 L 994.27 674.98 C 997.59 682.82 1005.28 687.91 1013.8 687.91 C 1022.31 687.91 1030 682.82 1033.32 674.98 L 1140.88 421.6 C 1145.46 410.82 1140.43 398.36 1129.64 393.78 "/><path d="M 1420.98 658.8 C 1420.98 658.8 1390.84 587.13 1380.82 563.23 C 1359.02 511.21 1317.79 482.93 1259.99 482.95 C 1242.98 482.95 1226.46 486.25 1211.2 492.34 L 1230.51 444.53 C 1239.51 424.69 1250.66 406.65 1272.7 406.58 C 1306.55 406.46 1312.64 441.25 1317.14 449.57 C 1323.36 461.08 1336.99 463.63 1345.68 457.96 C 1353.22 453.06 1354.6 441.13 1349.92 430.39 L 1349.29 428.93 C 1331.5 395.41 1304.88 380.09 1278.09 378.78 C 1244.98 377.16 1211.37 388.38 1185.34 454.25 L 1142.25 555.38 C 1141 557.89 1139.8 560.43 1138.69 563.03 L 1098.37 658.4 C 1093.79 669.18 1098.82 681.64 1109.61 686.22 C 1120.39 690.8 1132.85 685.77 1137.43 674.98 C 1137.43 674.98 1178.02 579.39 1190.98 548.75 C 1207.24 510.31 1227.12 495.04 1260.01 495.04 C 1296.14 495.04 1320.36 528.88 1333.49 557.64 C 1346.79 586.77 1382.67 674.91 1382.67 674.91 C 1387.12 685.48 1399.3 690.46 1409.88 686.01 C 1420.46 681.57 1425.43 669.39 1420.98 658.8 "/></svg></span>
-    <p><strong>YNA Care Hub · Design System v1.0</strong></p>
+    <p><strong>YNA Care Hub · Design System v1.1</strong></p>
     <p>Saúde integrativa digital · You are never alone</p>
-    <div class="meta">CONSTRUÍDO COM CUIDADO · MAIO 2026</div>
+    <div class="meta">CONSTRUÍDO COM CUIDADO · MAIO 2026 · ATUALIZADO JUN 2026</div>
   </footer>
 
 </main>

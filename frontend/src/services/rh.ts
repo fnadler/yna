@@ -9,6 +9,7 @@ import type {
   RhAlerta,
   RhNotificacao,
   RhImportResult,
+  RhParcela,
 } from '../types'
 import {
   rhEmpresa,
@@ -20,6 +21,7 @@ import {
   rhHeatmap,
   rhAlertas,
   rhNotificacoes,
+  rhParcelas,
 } from '../data/rhMock'
 
 /* Camada de serviços do RH / Empresa B2B — mockada, com latência simulada.
@@ -220,5 +222,20 @@ export const rhNotificacaoService = {
   list: async (): Promise<RhNotificacao[]> => {
     await delay(rand(200, 400))
     return rhNotificacoes
+  },
+}
+
+export const rhFinanceiroService = {
+  /** Parcelas dos contratos da empresa, ordenadas por vencimento crescente. */
+  parcelas: async (): Promise<RhParcela[]> => {
+    await delay(rand(300, 600))
+    return [...rhParcelas].sort((a, b) => a.vencimento.localeCompare(b.vencimento))
+  },
+  /** Informar pagamento — registra data, valor e comprovante; parcela vira "pago". */
+  informarPagamento: async (id: string, dataPagamento: string, valorPago: number, comprovante: string): Promise<{ ok: boolean }> => {
+    await delay(rand(300, 600))
+    const p = rhParcelas.find((x) => x.id === id)
+    if (p) { p.status = 'pago'; p.dataPagamento = dataPagamento; p.valorPago = valorPago; p.comprovante = comprovante }
+    return { ok: true }
   },
 }

@@ -9,7 +9,7 @@ import { triagemService } from '../services'
 export function Ben09Triagem() {
   const { passo } = useParams<{ passo: string }>()
   const navigate = useNavigate()
-  const questionIndex = Math.max(0, Math.min(4, parseInt(passo ?? '1', 10) - 1))
+  const questionIndex = Math.max(0, Math.min(triagemQuestions.length - 1, parseInt(passo ?? '1', 10) - 1))
   const question = triagemQuestions[questionIndex]!
   const [selected, setSelected] = useState<number | null>(null)
   const [openText, setOpenText] = useState('')

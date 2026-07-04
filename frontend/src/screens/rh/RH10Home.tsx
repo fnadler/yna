@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { RhTopBar } from '../../components/RhTopBar'
 import { Button } from '../../components/Button'
+import { Badge } from '../../components/Badge'
 import { OptionCard } from '../../components/OptionCard'
 import { StatTile } from '../../components/StatTile'
 import { Skeleton } from '../../components/Skeleton'
@@ -9,10 +10,13 @@ import { ErrorState } from '../../components/ErrorState'
 import { PAGE_MAX_W } from '../../lib/layout'
 import { useService } from '../../hooks/useService'
 import { useRh } from '../../contexts/RhContext'
-import { rhConviteService, rhDashboardService, rhBeneficiarioService } from '../../services/rh'
+import { rhConviteService, rhDashboardService, rhBeneficiarioService, rhFinanceiroService } from '../../services/rh'
 
 /* RH-10 — Visão geral (home do RH). Resumo de adesão, funil de convites,
    alertas NR-1 e atalhos para as ações operacionais. Tudo agregado. */
+
+const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+const fmtData = (iso: string) => { const [, m, d] = iso.split('-'); return `${d}/${m}` }
 
 export function RH10Home() {
   const { empresa, usuario } = useRh()
@@ -20,6 +24,14 @@ export function RH10Home() {
   const funil = useService(() => rhConviteService.funil(), [])
   const alertas = useService(() => rhDashboardService.alertas(), [])
   const beneficiarios = useService(() => rhBeneficiarioService.list(), [])
+  const parcelas = useService(() => rhFinanceiroService.parcelas(), [])
+
+  // Parcela aberta (pagável) mais recente — a com NF/boleto e maior vencimento.
+  const parcelaAberta = parcelas.status === 'success'
+    ? [...parcelas.data]
+        .filter((p) => p.status === 'a-vencer' || p.status === 'em-atraso')
+        .sort((a, b) => b.vencimento.localeCompare(a.vencimento))[0]
+    : undefined
 
   const firstName = usuario.nome.split(' ')[0]
   const ativos = beneficiarios.status === 'success'
@@ -122,6 +134,34 @@ export function RH10Home() {
 
           {/* Coluna lateral */}
           <div className="mt-6 flex flex-col gap-5 lg:mt-0">
+            {/* Parcela em aberto — atalho para o financeiro */}
+            {parcelaAberta && (
+              <section>
+                <h2 className="mb-3 text-[15px] font-semibold text-ink">Parcela em aberto</h2>
+                <button
+                  onClick={() => navigate('/rh/financeiro')}
+                  className={`flex w-full flex-col gap-3 rounded-lg border bg-surface p-4 text-left transition-colors hover:border-border-strong ${parcelaAberta.status === 'em-atraso' ? 'border-danger/40' : 'border-border'}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-secondary">
+                      <Icon icon="ph:receipt-bold" width={15} className="text-primary dark:text-primary-300" aria-hidden />
+                      Parcela {parcelaAberta.numero}/{parcelaAberta.totalParcelas}
+                    </span>
+                    <Badge tone={parcelaAberta.status === 'em-atraso' ? 'danger' : 'primary'} icon={parcelaAberta.status === 'em-atraso' ? 'ph:warning-bold' : 'ph:calendar-dot-bold'}>
+                      {parcelaAberta.status === 'em-atraso' ? 'Em atraso' : 'A vencer'}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold leading-none text-ink">{brl(parcelaAberta.valor)}</p>
+                    <p className="mt-1.5 text-[12.5px] text-ink-secondary">Contrato {parcelaAberta.contrato} · vence {fmtData(parcelaAberta.vencimento)}</p>
+                  </div>
+                  <span className="flex items-center gap-1 text-[12.5px] font-medium text-primary dark:text-primary-300">
+                    Baixar NF e boleto · informar pagamento <Icon icon="ph:arrow-right-bold" width={13} aria-hidden />
+                  </span>
+                </button>
+              </section>
+            )}
+
             {/* Licenças */}
             <section>
               <h2 className="mb-3 text-[15px] font-semibold text-ink">Licenças</h2>

@@ -14,8 +14,9 @@ const proSidebarItems: NavItem[] = [
   { icon: 'ph:house-bold', label: 'Início', to: '/pro/home' },
   { icon: 'ph:calendar-bold', label: 'Agenda', to: '/pro/agenda' },
   { icon: 'ph:users-three-bold', label: 'Clientes', to: '/pro/clientes' },
-  { icon: 'ph:graduation-cap-bold', label: 'Universidade', to: '/pro/universidade' },
+  { icon: 'ph:graduation-cap-bold', label: 'Academia', to: '/pro/universidade' },
   { icon: 'ph:wallet-bold', label: 'Financeiro', to: '/pro/financeiro' },
+  { icon: 'ph:files-bold', label: 'Documentos', to: '/pro/documentos' },
   { icon: 'ph:user-circle-bold', ynaIcon: 'profile' as const, label: 'Perfil', to: '/pro/perfil' },
 ]
 
@@ -23,7 +24,7 @@ const proBottomItems: NavItem[] = [
   { icon: 'ph:house-bold', label: 'Início', to: '/pro/home' },
   { icon: 'ph:calendar-bold', label: 'Agenda', to: '/pro/agenda' },
   { icon: 'ph:users-three-bold', label: 'Clientes', to: '/pro/clientes' },
-  { icon: 'ph:graduation-cap-bold', label: 'Universidade', to: '/pro/universidade' },
+  { icon: 'ph:graduation-cap-bold', label: 'Academia', to: '/pro/universidade' },
   { icon: 'ph:dots-three-circle-bold', label: 'Mais', to: '/pro/mais' },
 ]
 

@@ -1,9 +1,9 @@
 # **DOCUMENTO DE REQUISITOS — MVP YNA CARE HUB**
 
-**Versão:** 1.1  
-**Data:** 20 de junho de 2026   
+**Versão:** 1.2  
+**Data:** 03 de julho de 2026   
 **Autor:** Fabiano Nadler (FDN) com apoio de IA   
-**Status:** Atualizado após implementação do frontend do Beneficiário (Fluxo 2)
+**Status:** Atualizado após implementação do frontend do Manager / Backoffice (Fluxo 4)
 
 ---
 
@@ -14,12 +14,13 @@
 | 0.127/05/2026FDN | Rascunho inicial — fluxos Empresa/RH e Colaborador. |
 | 1.007/06/2026FDN | Incorporadas respostas sobre o fluxo do psicólogo. Renomeado “Colaborador” → “Beneficiário”. Removidas etapas de retenção do escopo MVP. Adicionados fluxos do Profissional e dos Gestores YNA. Ajustes no Beneficiário (Nyna, check-in opcional, prontuário sob solicitação). |
 | 1.120/06/2026FDN | Atualização do Fluxo 2 (Beneficiário) após implementação do frontend. Assistente IA renomeada "Nina" → "Nyna". Adicionados: apresentação/boas-vindas antes do gate LGPD; agendamento recorrente além de sessão única; reagendamento/cancelamento com escopo de recorrência e política de antecedência; troca de profissional e novos matches por intenção; sala de emergência com plantonista e Nyna de companhia; tela "Meu Perfil" (ex-"Meus dados") com "Fale Conosco" e ações de direitos LGPD. **Retirados do escopo do MVP:** Roda da Vida, Conquistas (gamificação leve), Carta de Progresso (relatório pessoal) e exportação de PDF do beneficiário — permanecem no roadmap pós-piloto. |
+| 1.203/07/2026FDN | Atualização do Fluxo 4 (Gestores YNA / Manager) após implementação do frontend. **Renomeações:** "Gestores YNA" → "Usuários", "Universidade YNA" → "Academia YNA", "Perfil clínico" → "Perfil profissional". **Detalhados/adicionados:** gestão de Usuários (convite por e-mail, Super-Admin como marcação independente do perfil, inativação, filtros por nome/perfil/status); **Tipos de profissional** com **perguntas de triagem** e **campos de cadastro flexíveis** (text, textarea, select, multiselect, número, data) que passam a **dirigir o cadastro do profissional e a triagem do beneficiário**; **Academia YNA** (CMS de cursos, lives e artigos com cadastro específico por tipo e métricas de performance); **Modelos de documentos** (CRUD com público-alvo por tipo, consumidos pelo profissional); **Financeiro em duas visões** — notas de profissionais e parcelas das empresas — com destaque de **antecipação** e **valor da taxa**; **Suporte** com filtros, big numbers clicáveis e atendimento de tickets; **Dashboard** reformulado como **cockpit do gestor** organizado por temporalidade (bloco **Foto atual** de estoque + bloco **Por período** de fluxo, com navegação por mês e consolidado do ano), além do bloco "Suas pendências" e da **central de notificações** com deep-link para o detalhe; padronização de filtros (bloco no desktop / botão + painel deslizante no mobile) e deep-links por status entre telas. |
 
 ---
 
 ## **1\. INTRODUÇÃO E CONTEXTO DO PROJETO**
 
-A YNA Care Hub é uma plataforma de saúde mental integrada que combina rigor clínico-acadêmico (via parceria Domus), tecnologia com propósito e cuidado humano real. O objetivo deste MVP é validar com um piloto controlado a jornada integral de cuidado em três frentes interdependentes (Empresa/RH, Beneficiário e Profissional), comprovando o valor da plataforma para justificar a evolução do produto e a comercialização em escala. A plataforma se posiciona como um **concierge** que conduz o beneficiário pela jornada — não como um marketplace de soluções.
+A YNA Care Hub é uma plataforma de saúde mental integrada que combina rigor clínico-acadêmico, tecnologia com propósito e cuidado humano real. O objetivo deste MVP é validar com um piloto controlado a jornada integral de cuidado em três frentes interdependentes (Empresa/RH, Beneficiário e Profissional), comprovando o valor da plataforma para justificar a evolução do produto e a comercialização em escala. A plataforma se posiciona como um **concierge** que conduz o beneficiário pela jornada — não como um marketplace de soluções.
 
 Este documento detalha os requisitos dos quatro fluxos relevantes para o MVP (Empresa/RH, Beneficiário, Profissional e Gestores YNA) e servirá como base para a etapa de Planejamento técnico e para a geração do prompt de construção do MVP.
 
@@ -45,7 +46,7 @@ Este documento detalha os requisitos dos quatro fluxos relevantes para o MVP (Em
 
 * **Perfil do beneficiário-piloto:** jovem, 100% São Paulo e Rio de Janeiro, perfil digital.
 
-* **Profissionais:** 30 a 50 psicólogos selecionados pela Domus para o piloto.
+* **Profissionais:** 30 a 50 psicólogos selecionados pela YNA para o piloto.
 
 * **Comunicação prévia ao lançamento:** média de 15 dias antes do go-live.
 
@@ -53,7 +54,7 @@ Este documento detalha os requisitos dos quatro fluxos relevantes para o MVP (Em
 
 * **Empresa já comprometida:** o fluxo B2B inicia diretamente no kick-off operacional, sem landing de captação ou funil de vendas no MVP.
 
-* **Profissionais pré-selecionados:** já aprovados pela Domus entram diretamente em onboarding (sem candidatura, triagem ou entrevista no MVP).
+* **Profissionais pré-selecionados:** já aprovados pela YNA entram diretamente em onboarding (sem candidatura, triagem ou entrevista no MVP).
 
 * **Fluxo do Beneficiário é o mais completo:** é o objeto central do MVP.
 
@@ -93,7 +94,6 @@ Este documento detalha os requisitos dos quatro fluxos relevantes para o MVP (Em
 | Termo | Definição |
 | ----- | ----- |
 | **YNA Care Hub** | Plataforma SaaS de saúde mental integrada (objeto do MVP). |
-| **Domus** | Parceira institucional de 35 anos, responsável pela seleção, formação e supervisão clínica dos psicólogos. |
 | **B2B** | Modelo de venda para empresas (RH/DHO contrata para beneficiários). |
 | **B2P2C** | Modelo onde o profissional (psicólogo) é credenciado pela YNA e atende o consumidor. |
 | **B2C** | Modelo direto-ao-consumidor (beneficiário continua na plataforma após o fim do contrato corporativo ou contrata individualmente). |
@@ -102,7 +102,7 @@ Este documento detalha os requisitos dos quatro fluxos relevantes para o MVP (Em
 | **NR-1** | Norma Regulamentadora vigente desde 2025 que exige diagnóstico e gestão de riscos psicossociais nas empresas. Valor central do produto. |
 | **CSM** | Customer Success Manager — responsável por acompanhar a empresa cliente (no piloto: Fernanda). |
 | **DHO** | Departamento de Desenvolvimento Humano e Organizacional. |
-| **Universidade YNA** | Plataforma de cursos proprietária — trilhas em texto e vídeo \+ lives em canal fechado do YouTube. |
+| **Academia YNA** | Plataforma de conteúdos proprietária (antes “Universidade YNA”) — cursos, lives (canal fechado do YouTube) e artigos. |
 | **Plantonistas** | Profissionais YNA disponíveis para atendimento de emergência (gatilho: palavras-chave detectadas pela Nyna). |
 | **Roda da Vida** | Ferramenta visual (radar) que o beneficiário usa para avaliar pilares da própria vida. |
 
@@ -112,11 +112,11 @@ Este documento detalha os requisitos dos quatro fluxos relevantes para o MVP (Em
 
 * **Beneficiário:** usuário final do programa corporativo, possível futuro usuário B2C.
 
-* **Profissional:** psicólogo credenciado pela YNA via Domus (no MVP). Roadmap futuro: outras especialidades (psiquiatra, nutricionista, etc.).
+* **Profissional:** psicólogo credenciado pela YNA (no MVP). Roadmap futuro: outros tipos de profissional (psiquiatra, nutricionista, fisioterapeuta, etc.).
 
 * **Gestores YNA (backoffice):** comitê e equipes operacionais que gerenciam a plataforma.
 
-* **Domus (curadoria clínica):** Virgínia e Andrea são os pontos de contato clínico. Revisam triagem, matching, supervisionam profissionais.
+* **Curadoria clínica YNA:** Virgínia e Andrea são os pontos de contato clínico. Revisam triagem, matching, supervisionam profissionais.
 
 ### **Atores tangenciais**
 
@@ -215,7 +215,7 @@ MVP em **PT-BR** apenas. Internacionalização fora do escopo.
 | ----- | ----- |
 | Ativação | Kick-off (fora da plataforma) → backoffice YNA cria conta da empresa |
 | Configuração | Setup plataforma → Cadastro de beneficiários (carga via planilha) → Envio de convites (após distribuição do kit pelo parceiro) |
-| Gestão | Dashboard RH → Gestão dos acessos dos beneficiários |
+| Gestão | Dashboard RH → Gestão dos acessos dos beneficiários → **Financeiro da empresa (parcelas dos contratos)** |
 
 ### **5.2 Etapa — Kick-off (Ativação)**
 
@@ -407,7 +407,7 @@ RF-RH-06.5 — Alertas configuráveis para thresholds NR-1.
 
 RN-RH-06.1 — Sigilo individual inegociável. Toda visualização é agregada com k-anonimato ≥ 4\. 
 
-RN-RH-06.2 — Conjunto exato de KPIs específicos da NR-1 e thresholds: **pendente detalhamento técnico clínico** com Domus e jurídico YNA.
+RN-RH-06.2 — Conjunto exato de KPIs específicos da NR-1 e thresholds: **pendente detalhamento técnico clínico** com a curadoria clínica e o jurídico YNA.
 
 **Requisitos não-funcionais** 
 
@@ -440,6 +440,33 @@ RF-RH-07.4 — Bloqueio de inclusões quando o número de beneficiários ativos 
 RN-RH-07.1 — Ao excluir beneficiário: dados gerais anonimizados permanecem na YNA; dados pessoais identificáveis são excluídos. 
 
 RN-RH-07.2 — **Portabilidade prevista:** B2B → B2C, B2B → outro B2B, B2C → B2B. Sempre com período de transição.
+
+### **5.8 Etapa — Financeiro da empresa (Gestão)**
+
+**Objetivo:** Dar ao RH visibilidade e controle sobre as **parcelas dos contratos** da empresa — acompanhar vencimentos, baixar a nota fiscal e o boleto e **informar o pagamento**.
+
+**Atores:** Master, Operador.
+
+**Requisitos funcionais** 
+
+RF-RH-08.1 — Feature **Financeiro** no menu do RH (**abaixo de Indicadores**), com **big numbers clicáveis** que filtram a lista: **Parcelas pagas** e **Parcelas abertas** (por padrão, *Abertas* ativo; abertas = a vencer + em atraso + futuras). 
+
+RF-RH-08.2 — **Filtros** por **contrato** (select) e por **período de vencimento** (data de início e fim). 
+
+RF-RH-08.3 — **Lista de parcelas** ordenada por **vencimento crescente**, mostrando **nº da parcela/total, valor, número do contrato, vencimento** e **status (Pago / A vencer / Em atraso)**. 
+
+RF-RH-08.4 — **Ações por status:** 
+
+* **Pago** → **ver detalhes**: data do pagamento, **nota fiscal** e **comprovante** (download). 
+* **A vencer / Em atraso** → **baixar NF e boleto** e **informar o pagamento** (data do pagamento, valor pago e **anexo do comprovante**). 
+
+RF-RH-08.5 — **Parcelas futuras** ainda **não têm NF nem boleto** (gerados apenas no **mês do vencimento**); aparecem como abertas, sem ação de pagamento. 
+
+RF-RH-08.6 — **Atalho no dashboard (visão geral):** bloco **“Parcela em aberto”** na coluna lateral, destacando a **parcela aberta pagável mais recente** (valor, contrato e vencimento; realce se em atraso). Ao clicar, direciona ao **Financeiro** para baixar NF/boleto e informar o pagamento. 
+
+**Regra de negócio** 
+
+RN-RH-08.1 — A NF e o boleto de uma parcela só ficam disponíveis a partir do **mês do vencimento** (parcelas futuras não os possuem).
 
 ---
 
@@ -583,7 +610,7 @@ RNF-CO-04.2 — Aderência ao OWASP Top 10\.
 
   * **Necessidades específicas** do beneficiário
 
-* **Definição final das perguntas** sob responsabilidade da **Virgínia (Domus)** — pendente reunião específica (pode ocorrer assíncrona devido a agenda).
+* **Definição final das perguntas** sob responsabilidade da **Virgínia (YNA)** — pendente reunião específica (pode ocorrer assíncrona devido a agenda).
 
 **User stories** 
 
@@ -593,9 +620,9 @@ RNF-CO-04.2 — Aderência ao OWASP Top 10\.
 
 **Requisitos funcionais** 
 
-RF-CO-05.1 — Wizard de 5 perguntas fixas, mistas (fechadas \+ abertas), com copy Cora-Cuidador. 
+RF-CO-05.1 — Wizard de triagem cujas **perguntas são definidas no tipo de profissional** (CMS do Manager — ver 8.5): o **número, o texto, o tipo e as opções** de cada pergunta vêm da configuração do tipo, com copy Cora-Cuidador. 
 
-RF-CO-05.2 — Tipologia de pergunta variada: múltipla escolha, escala visual, chips/tags, textarea para abertas. 
+RF-CO-05.2 — Tipologia de pergunta variada, conforme o tipo configurado: **resposta aberta** (textarea), **escolha única / múltipla** (opções) e **escala**. 
 
 RF-CO-05.3 — Salvamento progressivo (resposta a resposta). 
 
@@ -605,21 +632,21 @@ RF-CO-05.4 — Possibilidade de pular pergunta (registra como “preferência n�
 
 RN-CO-05.1 — As respostas integram o prontuário inicial (LGPD-protegido) e são visíveis ao profissional escolhido. 
 
-RN-CO-05.2 — Triagem **fixa** (sem ramificações). Decisão tomada para evitar complexidade no MVP.
+RN-CO-05.2 — Triagem sem ramificações; **as perguntas são parametrizadas por tipo de profissional** no CMS (texto, tipo, opções e obrigatoriedade), permitindo ajustá-las sem reescrita. No MVP, valem as perguntas do tipo **Psicólogo**.
 
-**Pendência:** texto exato das 5 perguntas e tipo (fechada/aberta) — responsável Virgínia (Domus) com apoio FDN para tom de voz.
+**Pendência:** texto exato das 5 perguntas e tipo (fechada/aberta) — responsável Virgínia (YNA) com apoio FDN para tom de voz.
 
 ### **6.7 Etapa — 3 matches curados (Match)**
 
-**Objetivo:** Apresentar três opções de profissionais selecionados por algoritmo \+ curadoria Domus.
+**Objetivo:** Apresentar três opções de profissionais selecionados por algoritmo \+ curadoria YNA.
 
 **Definições confirmadas (kickoff)** 
 
 * **Vídeos de apresentação dos profissionais** são previstos (não opcionais) — prática que aumenta a eficácia do match. 
 
-* **Critérios de matching:** definidos junto à Virgínia (Domus), com base nas respostas da triagem e na especialidade do psicólogo. 
+* **Critérios de matching:** definidos junto à Virgínia (YNA), com base nas respostas da triagem e na especialidade do psicólogo. 
 
-* **Ranking interno YNA:** **oculto para o beneficiário no MVP** (uso interno YNA / Domus apenas). 
+* **Ranking interno YNA:** **oculto para o beneficiário no MVP** (uso interno YNA apenas). 
 
 * **A primeira sessão é o teste de “química”** entre beneficiário e terapeuta — caso não se sinta confortável, pode solicitar novo profissional.
 
@@ -641,7 +668,7 @@ RF-CO-06.4 — Botão “ver outras opções” → recalcula matches ou permite
 
 **Regras de negócio** 
 
-RN-CO-06.1 — Os 3 perfis são gerados pelo algoritmo \+ curadoria Domus. 
+RN-CO-06.1 — Os 3 perfis são gerados pelo algoritmo \+ curadoria YNA. 
 
 RN-CO-06.2 — Volume mínimo de profissionais no piloto: garantir diversidade de 3 matches por beneficiário (com 30-50 profissionais previstos, é viável). 
 
@@ -717,7 +744,9 @@ RF-CO-09.5 — Tempo padrão: 50 minutos. Aviso 5 min antes do término.
 
 RF-CO-09.6 — Log de presença e duração da sessão (timestamps de entrada/saída). 
 
-RF-CO-09.7 — Pós-sessão (beneficiário): feedback da sessão (ver 6.12 — substitui “NPS pós-sessão”).
+RF-CO-09.7 — **Aviso de espera quando o profissional está finalizando outra sessão:** ao entrar na sala antes do profissional, o beneficiário recebe um **aviso discreto** informando que o profissional está terminando outra sessão. O aviso **se atualiza** quando o profissional informa o **tempo de atraso** (ex.: “vai atrasar cerca de 10 min”) ou o **cancelamento** da consulta (com orientação para reagendar). *(ver 7.7)* 
+
+RF-CO-09.8 — Pós-sessão (beneficiário): feedback da sessão (ver 6.12 — substitui “NPS pós-sessão”).
 
 **Regras de negócio** 
 
@@ -769,7 +798,7 @@ RN-CO-10.2 — **Trocar de profissional não zera o histórico do beneficiário*
 
   * **Avaliação da plataforma (YNA)** (cadência maior — base do NPS macro)
 
-* Dados consolidados (não individualizados) servem ao RH e à gestão clínica da Domus, preservando sigilo individual.
+* Dados consolidados (não individualizados) servem ao RH e à gestão clínica da YNA, preservando sigilo individual.
 
 **Requisitos funcionais** 
 
@@ -845,7 +874,7 @@ RN-CO-12.2 — Protocolo de crise:
 
 4. Registra evento na trilha de auditoria. 
 
-RN-CO-12.3 — Lista exata de palavras-chave e protocolo: pendente definição com Domus.
+RN-CO-12.3 — Lista exata de palavras-chave e protocolo: pendente definição com a curadoria clínica YNA.
 
 ### **6.14 Etapa — Check-in de bem-estar (Fidelização)**
 
@@ -955,26 +984,26 @@ RN-CO-15.2 — Caso o profissional não esteja disponível para B2C, beneficiár
 
 **Macro-jornada:** Onboarding → Ativação → Operação → Crescimento 
 
-**Premissa-chave:** Profissionais já foram pré-selecionados pela Domus — entram direto no onboarding. No MVP, o ator “Profissional” refere-se exclusivamente a **psicólogos**; demais especialidades ficam para o roadmap.
+**Premissa-chave:** Profissionais já foram pré-selecionados pela YNA — entram direto no onboarding. No MVP, o ator “Profissional” refere-se exclusivamente a **psicólogos**; demais especialidades ficam para o roadmap.
 
 ### **7.1 Visão geral do fluxo**
 
 | Fase | Etapas |
 | :---: | ----- |
-| Onboarding | Boas-vindas Domus → Cadastro (conselho, CPF, PJ, linha teórica) → Setup financeiro → Trilha de integração obrigatória |
-| Ativação | Perfil clínico \+ vídeo de apresentação → Perfil ativo (fast-track 48h) |
-| Operação | Atendimentos (agenda \+ sala \+ prontuário pós-sessão obrigatório) → Supervisão Domus → Gestão financeira (antecipação) |
-| Crescimento | Trilhas avançadas (Universidade YNA) \+ Lives Domus → Avaliações → Ranking YNA (oculto no MVP) |
+| Onboarding | Boas-vindas YNA → **Criação da conta** → Cadastro do perfil (empresa → **perfil profissional** → formação → disponibilidade) → Trilha de integração obrigatória |
+| Ativação | **Ativação da conta** (revisar perfil → confirmar disponibilidade → gravar vídeo → vídeos de onboarding) → Perfil ativo (fast-track 48h) |
+| Operação | Atendimentos (agenda \+ sala \+ prontuário pós-sessão obrigatório) → Supervisão YNA → Gestão financeira (**fatura por período** \+ antecipação) → **Modelos de documentos** |
+| Crescimento | Cursos avançados (Academia YNA) \+ Lives YNA → Avaliações → Ranking YNA (oculto no MVP) |
 
-### **7.2 Etapa — Boas-vindas Domus (Onboarding)**
+### **7.2 Etapa — Boas-vindas YNA (Onboarding)**
 
-**Objetivo:** Receber o profissional já aprovado pela Domus com kit de integração e clareza sobre os próximos passos.
+**Objetivo:** Receber o profissional já aprovado pela YNA com kit de integração e clareza sobre os próximos passos.
 
 **Atores:** Gestor YNA (envia onboarding), Profissional (recebe).
 
 **Requisitos funcionais** 
 
-RF-PR-01.1 — Backoffice YNA cadastra profissional pré-selecionado (informações iniciais vindas da Domus) e dispara convite por e-mail. 
+RF-PR-01.1 — Backoffice YNA cadastra profissional pré-selecionado (informações iniciais do pré-cadastro) e dispara convite por e-mail. 
 
 RF-PR-01.2 — E-mail de boas-vindas com tom Cora-Sábio-Criador (par a par), explicando próximos passos e expectativas.
 
@@ -1002,21 +1031,21 @@ RF-PR-01.2 — E-mail de boas-vindas com tom Cora-Sábio-Criador (par a par), ex
 
 **User stories** 
 
-*Como profissional, quero preencher meu cadastro em um wizard estruturado (dados pessoais → PJ → clínicos → vídeo), para entender o que falta sem me perder.* 
+*Como profissional, quero criar minha conta e depois montar meu perfil em etapas claras (empresa → perfil profissional → formação → disponibilidade), para entender o que falta sem me perder.* 
 
 *Como profissional, quero anexar certificados e ver quais já foram validados pela YNA, para manter meu perfil atualizado.*
 
 **Requisitos funcionais** 
 
-RF-PR-02.1 — Wizard de cadastro em 5 etapas: (1) dados pessoais; (2) dados da PJ; (3) dados clínicos (CRP, linha teórica, áreas de atuação); (4) formação e certificados (upload); (5) vídeo de apresentação (upload). 
+RF-PR-02.1 — **Dois momentos distintos:** (a) **Criação da conta** numa **tela única** — nome, CPF, e-mail, telefone, **senha** e **aceite dos Termos**; e (b) **Cadastro do perfil** num **wizard de 4 etapas** — (1) **Dados da empresa (PJ)** (CNPJ, razão social, contrato social, dados bancários/PIX); (2) **Perfil profissional** (campos **definidos pelo tipo de profissional** — ver 8.5; para Psicólogo: linhas teóricas, áreas de atuação, apresentação, como trabalha, Instagram); (3) **Formação** (formações, cursos/certificados e idiomas, com período e “em andamento”); (4) **Disponibilidade** (dias, horários e plantão). O cadastro é **precedido por uma tela de introdução** (o que é preciso — inclui **empresa/CNPJ**, com ajuda para formalizar o CNPJ) e **seguido por uma tela de andamento do processo** (Cadastro → Análise da YNA → Ativação da conta → Habilitado). Segue o padrão visual do onboarding (header/footer/conteúdo). 
 
 RF-PR-02.2 — Validação do CRP (idealmente integração com base do CFP — pode ser manual no MVP via backoffice YNA). 
 
 RF-PR-02.3 — Upload de certificados (PDF/imagem) com tamanho máximo e tipos aceitos. 
 
-RF-PR-02.4 — Upload do vídeo de apresentação (formato MP4, duração sugerida: 1-2 minutos). 
+RF-PR-02.4 — O **vídeo de apresentação** é capturado na **ativação da conta** (ver 7.6), após a aprovação — não no cadastro. 
 
-RF-PR-02.5 — Status do cadastro: rascunho / em revisão YNA / aprovado / requer ajuste. 
+RF-PR-02.5 — Status do cadastro: rascunho / em análise YNA / aprovado / requer ajuste. 
 
 RF-PR-02.6 — **Manter atualizações de formação e certificados ao longo do tempo** — área no perfil para adicionar novos certificados / cursos.
 
@@ -1070,7 +1099,7 @@ RN-PR-03.2 — Taxa de antecipação informada em real time no momento da escolh
 
   * Como usar a plataforma (agenda, prontuário, sala de vídeo, antecipação)
 
-  * O que se espera do profissional (postura, padrão Domus, supervisão, conduta clínica online)
+  * O que se espera do profissional (postura, padrão YNA, supervisão, conduta clínica online)
 
   * Política de plantão (ver 7.10)
 
@@ -1096,17 +1125,19 @@ RF-PR-04.4 — Ativação automática do perfil ao concluir a trilha \+ cadastro
 
 RN-PR-04.1 — **Sem trilha concluída, sem perfil ativo.**
 
-### **7.6 Etapa — Perfil clínico ativo (Ativação — fast-track 48h)**
+### **7.6 Etapa — Ativação da conta e Perfil profissional ativo (Ativação — fast-track 48h)**
 
-**Objetivo:** Perfil pronto para receber matches em até 48h do início do onboarding.
+**Objetivo:** Após a aprovação do cadastro pela YNA, o profissional **ativa a conta** e fica pronto para receber matches em até 48h.
 
 **Requisitos funcionais** 
 
-RF-PR-05.1 — Perfil público (visível aos beneficiários nos matches) com: foto, vídeo de apresentação, nome profissional, formação, CRP, especialidades, abordagem, breve “como trabalha”, disponibilidade. 
+RF-PR-05.1 — **Fluxo de ativação da conta em 4 passos** (após aprovação): (1) **Revisar o perfil** — resumo por blocos do cadastro, com **edição por bloco** (modal); (2) **Confirmar a disponibilidade** (reaproveita a configuração de agenda — atendimento e plantão); (3) **Gravar o vídeo de apresentação** — com **orientações** (enquadramento, iluminação, orientação, cenário, duração) e **roteiro do que dizer**; (4) **Vídeos de onboarding** — assistir a todos (playlist, com **conclusão sequencial**: cada vídeo libera o próximo, e a ativação só conclui após assistir a todos). Ao concluir, exibe **tela de sucesso** e o profissional passa a **acessar a plataforma**. 
 
-RF-PR-05.2 — Configuração de agenda (slots disponíveis, recorrência, bloqueios). 
+RF-PR-05.2 — Perfil público (visível aos beneficiários nos matches) com: foto, vídeo de apresentação, nome profissional, formação, CRP, especialidades, abordagem, breve “como trabalha”, disponibilidade. 
 
-RF-PR-05.3 — Visualização do perfil na “perspectiva do beneficiário” (preview).
+RF-PR-05.3 — Configuração de agenda (slots disponíveis, recorrência, bloqueios). 
+
+RF-PR-05.4 — Visualização do perfil na “perspectiva do beneficiário” (preview).
 
 ### **7.7 Etapa — Atendimentos: agenda e sala (Operação)**
 
@@ -1118,7 +1149,9 @@ RF-PR-06.2 — Detalhes de cada beneficiário visíveis ao profissional: nome, r
 
 RF-PR-06.3 — Acesso à sala de vídeo a partir da agenda (1 clique). 
 
-RF-PR-06.4 — Funcionalidades da sala iguais à do beneficiário (mute, câmera, chat, log de presença).
+RF-PR-06.4 — Funcionalidades da sala iguais à do beneficiário (mute, câmera, chat, log de presença). 
+
+RF-PR-06.5 — **Aviso de próxima sessão aguardando:** quando o beneficiário da **próxima** sessão entra na sala enquanto o profissional finaliza a atual, o profissional recebe um **aviso discreto** (não intrusivo, sem prejudicar a chamada) informando que a próxima pessoa já entrou. O aviso oferece as ações: **avisar atraso** com tempos pré-definidos (**5 / 10 / 15 min**) ou **cancelar a consulta**. A escolha do profissional **atualiza o aviso exibido ao beneficiário** (ver 6.10).
 
 **Regras de negócio** 
 
@@ -1218,36 +1251,52 @@ RN-PR-09.1 — Remuneração do plantão: diferenciada (a definir taxa).
 
 RN-PR-09.2 — Plantonista de turno precisa estar **prontamente disponível**.
 
-### **7.11 Etapa — Supervisão Domus (Operação)**
+### **7.11 Etapa — Supervisão YNA (Operação)**
 
 **Definições confirmadas**
 
-* Supervisão Domus **ocorre dentro do sistema** (não fora).   
+* Supervisão YNA **ocorre dentro do sistema** (não fora).   
 * Lives na plataforma com rounds técnicos para discussão de casos
 
 **Requisitos funcionais** 
 
-RF-PR-10.1 — Calendário de sessões de supervisão Domus (definidas pelo backoffice YNA / Domus). 
+RF-PR-10.1 — Calendário de sessões de supervisão YNA (definidas pelo backoffice YNA). 
 
 RF-PR-10.2 — Inscrição/confirmação do profissional na sessão. 
 
 RF-PR-10.3 — Sala de supervisão (vídeo em grupo \+ chat). 
 
-RF-PR-10.4 — Histórico de supervisão (para o próprio profissional e Domus).
+RF-PR-10.4 — Histórico de supervisão (para o próprio profissional e YNA).
 
 **Pendência:** formato da supervisão (frequência, duração, obrigatoriedade, conteúdo).
 
 ### **7.12 Etapa — Gestão financeira do profissional (Operação)**
 
+**Definições confirmadas (ajuste recente)**
+
+* O **profissional é quem emite a nota fiscal** (PJ). O recebimento — tanto no fechamento do período quanto na antecipação — **depende do envio da nota correspondente**, que é analisada e aprovada pelo backoffice YNA (ver Fluxo 4, 8.12).
+
 **Requisitos funcionais** 
 
-RF-PR-11.1 — Dashboard financeiro: sessões realizadas, valor a receber, antecipações disponíveis e taxas. 
+RF-PR-11.1 — **Financeiro no modelo “fatura de cartão”:** dois big numbers no topo — **Total a resgatar** e **Total resgatado** — e **navegação por período (mês/ano)**, em que cada período acumula as **sessões realizadas** do mês. O **detalhe do período** exibe **valor a receber**, **status do período (aberto / fechado)**, **data prevista de pagamento** e a **lista de sessões** (data, horário, beneficiário, valor). Conforme o status: **período aberto** habilita a **antecipação** (RF-PR-11.2); **período fechado** exibe o **bloco da nota fiscal** (enviar / editar / baixar) e o **status do pagamento** (data prevista ou realizada); **períodos passados pagos** disponibilizam **download da nota, data do pagamento e comprovante**. 
 
-RF-PR-11.2 — Solicitação de antecipação (de acordo com a categoria/cadência configurada). 
+RF-PR-11.2 — Solicitação de antecipação (de acordo com a categoria/cadência configurada), com escolha da data de recebimento e taxa por prazo, resumo (valor solicitado, desconto da taxa, valor líquido) e feedback com opção de cancelar. 
 
-RF-PR-11.3 — Histórico de recebimentos e notas fiscais (PJ). 
+RF-PR-11.3 — **Ciclo da nota fiscal (dois gatilhos): (a) fechamento automático do período e (b) antecipação.** Em ambos, o sistema **informa o que deve constar na nota** — valor, **dados da YNA (tomador: razão social, CNPJ, endereço)**, **data de vencimento** e **descrição dos serviços** — e o profissional **emite e anexa a nota** (número + arquivo). 
 
-RF-PR-11.4 — Integração com fintech de antecipação.
+RF-PR-11.4 — **Status da nota visível ao profissional:** *a emitir* (pendente) → *em análise* → *requer ajuste* (retificação solicitada pelo backoffice, com o motivo e reenvio) → *paga* (com **data de pagamento** e **comprovante** disponíveis para download). 
+
+RF-PR-11.5 — **Notificação ao profissional** quando o backoffice solicita retificação de uma nota. 
+
+RF-PR-11.6 — Histórico de notas fiscais (por origem e status) e de recebimentos (PJ). 
+
+RF-PR-11.7 — Integração com fintech de antecipação.
+
+**Regras de negócio** 
+
+RN-PR-11.1 — Pagamento (fechamento ou antecipação) **só é liberado após o envio e a aprovação da nota fiscal** pelo backoffice. 
+
+RN-PR-11.2 — Uma nota em *requer ajuste* volta ao profissional para reemissão; o histórico do envio anterior é mantido para auditoria.
 
 ### **7.13 Etapa — Troca de profissional pelo beneficiário (Operação)**
 
@@ -1269,15 +1318,15 @@ RF-PR-12.4 — Notificação ao profissional anterior sobre a troca (sem detalhe
 
 RN-PR-12.1 — Compartilhamento é por opt-in explícito do beneficiário.
 
-### **7.14 Etapa — Universidade YNA: trilhas e lives (Crescimento)**
+### **7.14 Etapa — Academia YNA: cursos, lives e artigos (Crescimento)**
 
 **Definições confirmadas (ajuste recente)**
 
-* **Plataforma de cursos é proprietária YNA** (“Universidade YNA”). Não usar a da Domus.
+* **Plataforma de conteúdos é proprietária YNA** (“Academia YNA”).
 
 * **Trilhas de conteúdo:** vídeos \+ textos, dentro da plataforma.
 
-* **Lives Domus:** rounds técnicos abertos a profissionais cadastrados, sobre casos enfrentados pelos profissionais. Realizados em **canal fechado no YouTube da YNA (a criar)**, com link na plataforma \+ replay disponível para acesso posterior.
+* **Lives YNA:** rounds técnicos abertos a profissionais cadastrados, sobre casos enfrentados pelos profissionais. Realizados em **canal fechado no YouTube da YNA (a criar)**, com link na plataforma \+ replay disponível para acesso posterior.
 
 * Workshops e estudos de caso também disponíveis na plataforma.
 
@@ -1285,17 +1334,17 @@ RN-PR-12.1 — Compartilhamento é por opt-in explícito do beneficiário.
 
 *Como profissional, quero acessar trilhas avançadas no meu tempo, para me desenvolver continuamente.* 
 
-*Como profissional, quero participar das lives da Domus para discutir casos complexos com pares e supervisores.*
+*Como profissional, quero participar das lives da YNA para discutir casos complexos com pares e supervisores.*
 
 **Requisitos funcionais** 
 
-RF-PR-13.1 — Catálogo de trilhas (categorias, níveis, duração estimada). 
+RF-PR-13.1 — Catálogo com **listagens separadas de cursos, lives e artigos** (categorias, níveis, duração / tempo de leitura). 
 
-RF-PR-13.2 — Player de vídeo \+ leitor de textos integrado. 
+RF-PR-13.2 — Player de vídeo (cursos e lives) \+ leitor de artigos integrado. 
 
-RF-PR-13.3 — Progresso individual em cada trilha (módulo / quiz / certificado). 
+RF-PR-13.3 — Progresso individual: **curso** (aulas / conclusão), **live** (inscrição / replay), **artigo** (leitura). 
 
-RF-PR-13.4 — Agenda de lives Domus (próximas \+ replays). 
+RF-PR-13.4 — Agenda de lives YNA (próximas \+ replays). 
 
 RF-PR-13.5 — Inscrição em lives (capacidade, lembretes). 
 
@@ -1323,7 +1372,7 @@ RF-PR-13.7 — Estudos de caso e workshops disponíveis sob demanda.
 
   * Notas dos beneficiários (avaliações pós-sessão)
 
-* **No MVP, o Ranking é OCULTO para os beneficiários e para os profissionais**  (uso interno YNA/Domus). Notas dos pacientes consumidas internamente.
+* **No MVP, o Ranking é OCULTO para os beneficiários e para os profissionais**  (uso interno YNA). Notas dos pacientes consumidas internamente.
 
 * **Profissionais mal ranqueados** serão notificados e podem sair da plataforma — mas **no MVP NÃO haverá exclusão automática**.
 
@@ -1337,11 +1386,25 @@ RF-PR-14.3 — Cálculo automático do ranking com os critérios definidos.
 
 **Pendência:** fórmula final do ranking (pesos de cada critério).
 
+### **7.16 Etapa — Modelos de documentos (Operação)**
+
+**Objetivo:** Dar ao profissional **modelos prontos de documentos** para uso no dia a dia (atestado, encaminhamento médico, declaração de comparecimento, relatório, recibo, laudo, etc.), disponibilizados e mantidos pelo backoffice YNA.
+
+**Requisitos funcionais** 
+
+RF-PR-15.1 — Feature **Modelos de documentos** que lista os modelos **disponíveis para o tipo do profissional** (público-alvo definido no CMS — ver 8.14), com **busca** e ações de **baixar** e **imprimir**. 
+
+RF-PR-15.2 — Cada modelo exibe nome, descrição e **formato (PDF/DOCX)**.
+
+**Regra de negócio** 
+
+RN-PR-15.1 — O profissional só vê os modelos cujo **público-alvo** inclui o seu tipo (ou marcados para *todos os tipos*).
+
 ---
 
 ## **8\. FLUXO 4 — GESTORES YNA (BACKOFFICE / OPERAÇÃO)**
 
-**Macro-jornada:** Configurar → Operar → Acompanhar → Atender **Premissa:** É o “motor interno” da plataforma. Os Gestores YNA são responsáveis por habilitar empresas e profissionais, gerenciar conteúdos, plantão, suporte e supervisão clínica (com Domus).
+**Macro-jornada:** Configurar → Operar → Acompanhar → Atender **Premissa:** É o “motor interno” da plataforma. Os Gestores YNA são responsáveis por habilitar empresas e profissionais, gerenciar conteúdos, plantão, suporte e supervisão clínica.
 
 ### **8.1 Perfis de gestores YNA**
 
@@ -1352,8 +1415,8 @@ Reflexo do comitê definido no kickoff \+ necessidades operacionais detectadas:
 | **Super-Admin YNA** | Gestão completa do backoffice. Cria outros gestores. Acessos plenos. | Liderança YNA |
 | **Gestor Comercial / CSM** | Cadastro de empresas, gestão de contratos B2B, ponto focal RH. | Fernanda |
 | **Gestor de Profissionais** | Aprovação de cadastros, escalas, comunicação com profissionais, ranking, plantão. | Adriana |
-| **Gestor Clínico (Domus)** | Curadoria de matches, supervisão, definição de triagem/check-in, palavras-chave de crise. | Virgínia \+ Andrea |
-| **Gestor de Conteúdo** | Curadoria da Universidade YNA, agenda de lives, materiais. | A definir |
+| **Gestor Clínico (YNA)** | Curadoria de matches, supervisão, definição de triagem/check-in, palavras-chave de crise. | Virgínia \+ Andrea |
+| **Gestor de Conteúdo** | Curadoria da Academia YNA, agenda de lives, materiais. | A definir |
 | **Atendente / Suporte** | Atendimento à central de suporte (casos complexos vindos da Nyna), tickets de prontuário, dúvidas operacionais. | A definir |
 | **Gestor de Branding / Comunicação** | Tom de voz, microcopy, validação de templates. | Maria Teresa |
 
@@ -1361,24 +1424,32 @@ Reflexo do comitê definido no kickoff \+ necessidades operacionais detectadas:
 
 | Fase | Etapas |
 | ----- | ----- |
-| Configurar | Cadastro de gestores YNA — Cadastro de empresas — Aprovação de profissionais — Configuração da Universidade YNA |
-| Operar | Gestão de empresas — Gestão de profissionais — Curadoria de matches — Escala de plantão — Conteúdo |
-| Acompanhar | Dashboard interno YNA — Ranking — Auditorias LGPD — Indicadores macro |
+| Configurar | Login/acesso ao Manager — Gestão de **Usuários** (gestores YNA) — Tipos de profissional (triagem + campos) — Cadastro de empresas — Aprovação de profissionais — Academia YNA — Modelos de documentos |
+| Operar | Gestão de empresas (contratos) — Gestão de profissionais — Curadoria informativa de matches — Escala de plantão — Conteúdo — Financeiro (notas de profissionais + parcelas de empresas) |
+| Acompanhar | Dashboard interno YNA — **Cockpit do gestor** (Foto atual + Por período) — **Suas pendências** — **Notificações** — Painel de sessões — Ranking — Auditorias LGPD |
 | Atender | Tickets de suporte — Solicitações de prontuário — Casos de crise |
 
-### **8.3 Etapa — Cadastro e gestão de gestores YNA (Configurar)**
+### **8.3 Etapa — Acesso e gestão de Usuários do backoffice (Configurar)**
 
-**Objetivo:** Estruturar o backoffice com perfis e permissões granulares.
+**Objetivo:** Permitir o acesso seguro ao Manager e estruturar o backoffice com perfis e permissões granulares. No frontend, a feature chama-se **Usuários** (gestores YNA).
 
 **Requisitos funcionais** 
 
-RF-YN-01.1 — Cadastro de gestor YNA com perfil pré-definido (ver tabela acima) e permissões granulares. 
+RF-YN-01.1 — **Login no Manager** por e-mail corporativo + senha, com sessão autenticada e bloqueio temporário após tentativas sucessivas inválidas. 
 
-RF-YN-01.2 — Apenas Super-Admin pode criar outros Super-Admins. 
+RF-YN-01.2 — **Recuperação de senha (“Esqueci minha senha”):** envio de link seguro por e-mail, com expiração, para redefinição de senha. 
 
-RF-YN-01.3 — Log completo de auditoria de ações dos gestores (LGPD). 
+RF-YN-01.3 — **Cadastro de usuário (gestor YNA) por convite:** o Super-Admin informa **nome, e-mail e perfil**, e uma marcação de **Super-Admin** (acesso total, independente do perfil funcional). Ao concluir, o sistema **dispara um convite por e-mail** para a pessoa criar a conta; o usuário entra como *convidado* até ativar. 
 
-RF-YN-01.4 — MFA obrigatório para gestores YNA.
+RF-YN-01.4 — Apenas Super-Admin pode criar outros usuários e conceder a marcação de Super-Admin. 
+
+RF-YN-01.5 — **Listagem de usuários** com **filtros por nome, por perfil (em ordem alfabética) e por status (ativo / convidado / inativo)**. Cada item mostra perfil, status, MFA e o selo *Super-Admin* quando aplicável. 
+
+RF-YN-01.6 — **Detalhe do usuário** (modal) com dados completos e ação de **inativar** o usuário (revoga o acesso ao backoffice). 
+
+RF-YN-01.7 — Log completo de auditoria de ações dos usuários (LGPD). 
+
+RF-YN-01.8 — MFA obrigatório para usuários do backoffice (aplicado no login).
 
 ### **8.4 Etapa — Cadastro de empresas clientes (Configurar)**
 
@@ -1392,91 +1463,137 @@ RF-YN-02.1 — Tela de criação de conta corporativa: razão social, nome fanta
 
 RF-YN-02.2 — Cadastro do **usuário Master (RH)** da empresa: nome, e-mail corporativo, telefone. Sistema envia e-mail de boas-vindas com link de primeiro acesso. 
 
-RF-YN-02.3 — Visualização da lista de empresas com filtros (ativa, em onboarding, em portabilidade, encerrada). 
+RF-YN-02.3 — Visualização da lista de empresas com **filtro por status (ativo, bloqueado, inativo)**, busca por razão social e CNPJ, e filtros de vencimento do contrato (cards ≤ 180 / ≤ 90 dias e por mês/ano). 
 
-RF-YN-02.4 — Edição da empresa (correções, mudança de contato RH, alteração de número de licenças com aditivo). 
+RF-YN-02.4 — Edição da empresa (dados cadastrais — razão social, nome fantasia, CNPJ, segmento — e **status: ativo / bloqueado / inativo**; mudança de contato, alteração de número de licenças com aditivo). 
 
-RF-YN-02.5 — Encerramento da empresa: gatilha portabilidade (D-30 antes do fim, ver fluxo Beneficiário 6.17). 
+RF-YN-02.5 — **Inativação** da empresa (status *inativo*): gatilha portabilidade dos beneficiários (D-30 antes do fim do contrato, ver fluxo Beneficiário 6.17). 
 
 RF-YN-02.6 — Anexo de contrato (PDF) ao registro da empresa.
 
-**Regras de negócio** 
+**Controle de contratos**
 
-RN-YN-02.1 — Empresa só passa a “ativa” após o usuário Master fazer primeiro acesso e configurar departamentos. 
+O cadastro da empresa mantém um **histórico de contratos**: a cada renovação, um **novo registro de contrato** é criado, preservando os anteriores para consulta e auditoria.
 
-RN-YN-02.2 — Aumento de licenças exige registro de aditivo contratual.
+RF-YN-02.7 — **Registro de contrato** com: valor mensal, valor total do contrato, número de licenças, data de início, data de fim, **arquivo do contrato assinado (PDF)** e status (*vigente*, *encerrado*, *cancelado*). 
 
-### **8.5 Etapa — Aprovação e gestão de profissionais (Configurar / Operar)**
+RF-YN-02.8 — **% de execução do contrato** calculado pelos meses decorridos sobre o período de vigência, exibido no registro (acompanhamento de consumo do contrato ao longo dos meses). 
 
-**Objetivo:** Receber profissionais pré-selecionados pela Domus, aprovar cadastros e gerenciar o ciclo de vida na plataforma.
+RF-YN-02.9 — **Linha do tempo de contratos** da empresa: contrato vigente em destaque \+ contratos anteriores (renovações), cada um com seus valores, licenças, vigência, status e arquivo assinado. 
 
-**Atores:** Gestor de Profissionais, Gestor Clínico (Domus).
-
-**Requisitos funcionais** 
-
-RF-YN-03.1 — Pré-cadastro do profissional (vindo da Domus) pelo Gestor de Profissionais: nome, e-mail, CRP, indicação Domus. 
-
-RF-YN-03.2 — Envio de e-mail de onboarding ao profissional para completar cadastro (ver Fluxo 3.3). 
-
-RF-YN-03.3 — Painel “profissionais a aprovar”: ver o que o profissional cadastrou (CRP, PJ, certificados, vídeo). **Aprovar / Solicitar ajustes / Rejeitar.** 
-
-RF-YN-03.4 — Validação manual de certificados e CRP (futuro: integração com base do CFP). 
-
-RF-YN-03.5 — Aprovação de **atualizações de certificados/formação** ao longo do tempo (workflow contínuo). 
-
-RF-YN-03.6 — Categorização do profissional (define cadência de antecipação): a definir critérios. 
-
-RF-YN-03.7 — Inativação de profissional (saída da plataforma) com regras de transição dos beneficiários ativos.
-
- RF-YN-03.8 — Painel “férias e ausências dos profissionais” — visão consolidada.
+RF-YN-02.10 — **Renovação de contrato:** cria um novo registro (com nova vigência/valores/licenças) e **encerra automaticamente o contrato vigente anterior**.
 
 **Regras de negócio** 
 
-RN-YN-03.1 — Profissional só ativa após: cadastro completo \+ trilha de integração concluída \+ aprovação pelo Gestor.
+RN-YN-02.1 — A empresa é criada como **ativa**; seu status (ativo / bloqueado / inativo) é gerenciado pelo backoffice YNA. *Bloqueado* suspende o acesso (ex.: inadimplência) preservando os dados; *inativo* encerra a operação. 
+
+RN-YN-02.2 — Aumento de licenças exige registro de aditivo contratual. 
+
+RN-YN-02.3 — **Apenas um contrato ativo (vigente) por empresa.** A renovação encerra o vigente e ativa o novo registro.
+
+### **8.5 Etapa — Tipos, aprovação e gestão de profissionais (Configurar / Operar)**
+
+**Objetivo:** Gerenciar os **tipos de profissional**, receber profissionais pré-selecionados, aprovar cadastros e gerenciar o ciclo de vida na plataforma.
+
+**Atores:** Gestor de Profissionais, Gestor Clínico (YNA).
+
+**Tipos de profissional (extensibilidade da plataforma)**
+
+Conceito estruturante do produto: cada **tipo de profissional** define uma **experiência própria na plataforma** e o **conjunto de campos exigidos no cadastro**. No MVP existe **apenas o tipo Psicólogo**; a plataforma, porém, evoluirá para outros tipos (nutricionista, fisioterapeuta, psiquiatra, etc.). Por ser uma decisão de **alto impacto no sistema**, o conceito precisa existir **desde já** — modelagem de dados e telas parametrizadas por tipo, sem reescrita ao adicionar novos tipos.
+
+RF-YN-03.1 — **Gerenciador de tipos de profissional** (feature própria no menu do Manager; criar / editar / ativar / desativar). A listagem mostra, por tipo, o conselho, o status, o nº de profissionais, o nº de perguntas de triagem e o nº de campos de cadastro. Cada tipo define: nome, **conselho de classe**, as **perguntas da triagem** e o **conjunto de campos do cadastro** daquele tipo. No MVP, apenas **Psicólogo** ativo. 
+
+RF-YN-03.2 — **Campos de cadastro flexíveis por tipo:** o administrador define os campos exigidos no cadastro do profissional daquele tipo, cada um com **rótulo, tipo de campo (texto curto, texto longo, seleção única, múltipla seleção, número, data), obrigatoriedade, texto de ajuda e opções** (quando select/multiselect). Ex.: Psicólogo → número do CRP, UF do CRP, linhas teóricas, áreas de atuação, apresentação, como trabalha. Os campos são **reordenáveis**. 
+
+RF-YN-03.3 — **Perguntas da triagem por tipo:** o administrador cadastra as perguntas que compõem a **triagem do beneficiário** para indicar profissionais daquele tipo. Cada pergunta tem **texto, tipo (resposta aberta, escala, escolha única, múltipla escolha), obrigatoriedade e opções**. As perguntas são **reordenáveis**. 
+
+RF-YN-03.4 — **O tipo dirige os formulários da plataforma:** os *campos* definidos no tipo passam a **gerar dinamicamente o passo "Perfil profissional" do cadastro do profissional** (e a sua revisão na ativação e na avaliação do backoffice); as *perguntas de triagem* passam a **gerar a triagem apresentada ao beneficiário**. Alterar o tipo no CMS altera esses formulários, sem reescrita. 
+
+RF-YN-03.5 — **Visibilidade de conteúdo e documentos por tipo:** cursos, artigos, lives da **Academia YNA** e **modelos de documentos** podem ser destinados a **todos os tipos** ou a **tipos específicos** (ver 8.7 e 8.14).
+
+**Pré-cadastro e aprovação**
+
+RF-YN-03.6 — Pré-cadastro do profissional pelo Gestor de Profissionais: **tipo de profissional** (no MVP, Psicólogo), nome e e-mail. Dispara e-mail de onboarding para o profissional completar o cadastro (ver Fluxo 3.3). 
+
+RF-YN-03.7 — **Tela de avaliação do cadastro** (profissionais com status *para análise* / *em análise* / *reprovado*): apresenta o cadastro **organizado nos mesmos blocos/etapas do fluxo de cadastro do profissional** — 1) Dados pessoais (inclui conselho: CRP/UF), 2) Dados da empresa (PJ) com contrato social, 3) **Perfil profissional** (campos definidos pelo tipo), 4) Formação (formações, cursos/certificados e idiomas) e 5) Disponibilidade — exibindo **exatamente os campos que o profissional preencheu**. Ações: **Aprovar / Solicitar ajustes / Rejeitar**. Nessa visão **não** aparecem as abas de Sessões e Financeiro. 
+
+RF-YN-03.8 — O botão **“Ver perfil”** (prévia de como o beneficiário vê o profissional) fica disponível **apenas para profissionais ativos** — não na avaliação de cadastro. 
+
+RF-YN-03.9 — Validação manual dos certificados e do conselho (Psicólogo: CRP; futuro: integração com a base do CFP). 
+
+RF-YN-03.10 — Aprovação de **atualizações de certificados/formação** ao longo do tempo (workflow contínuo).
+
+**Listagem, categorização, ciclo de vida e ausências**
+
+RF-YN-03.11 — **Listagem de profissionais por tipo** (abas por tipo, com contador). No tipo selecionado: **big numbers clicáveis por status** (ativos, para análise, em análise, reprovados) que **filtram a lista**, além de filtros por **nome/conselho, estado (UF) e linha teórica**. Botão **“Gerenciar tipos”** leva à feature de tipos de profissional. 
+
+RF-YN-03.12 — Categorização do profissional (define cadência e taxas de antecipação — ver 8.13): critérios a definir. 
+
+RF-YN-03.13 — Inativação de profissional (saída da plataforma) com regras de transição dos beneficiários ativos. 
+
+RF-YN-03.14 — Painel “férias e ausências dos profissionais” — visão consolidada.
+
+**Detalhe do profissional**
+
+RF-YN-03.15 — **Tela de detalhe do profissional** (para ativos/inativos), com abas **Dados / Sessões / Financeiro**:
+
+* **Dados completos:** tipo, conselho (CRP), PJ e dados bancários, formação/certificados, vídeo, disponibilidade e fuso horário. 
+
+* **Histórico de sessões:** data, horário, **status (realizada / não realizada / cancelada)**, horário de entrada, horário de término, **duração da consulta** e **tempo de atraso** (quando houver), com detalhe do cancelamento quando aplicável. 
+
+* **Indicadores de qualidade** (assiduidade, pontualidade e demais critérios do Ranking interno). 
+
+* **Financeiro:** extrato de conta-corrente, saldo, pagamentos realizados e notas fiscais (com **download das notas enviadas/pagas**).
+
+**Regras de negócio** 
+
+RN-YN-03.1 — Profissional só ativa após: cadastro completo (conforme os campos do tipo) \+ trilha de integração concluída \+ aprovação pelo Gestor. 
+
+RN-YN-03.2 — No MVP, **apenas o tipo Psicólogo está ativo**; dados e telas são parametrizados por tipo para admitir novos tipos sem reescrita.
 
 ### **8.6 Etapa — Curadoria de matches (Operar)**
 
-**Objetivo:** A Domus revisa o output do algoritmo de matching para garantir qualidade (especialmente no piloto, validando o algoritmo).
+**Objetivo:** A curadoria é **informativa**: a YNA **acompanha** o output do algoritmo de matching para avaliar se os profissionais indicados têm o **perfil correto** (especialmente no piloto, validando o algoritmo). **Não há ação de aprovação** — os 3 matches seguem automaticamente para o beneficiário.
 
 **Atores:** Gestor Clínico (Virgínia / Andrea).
 
 **Requisitos funcionais** 
 
-RF-YN-04.1 — Painel de matches pendentes de revisão: respostas da triagem do beneficiário \+ os 3 perfis sugeridos pelo algoritmo. 
+RF-YN-04.1 — Painel de matches (**informativo**): para cada beneficiário, as respostas da triagem \+ os 3 perfis sugeridos pelo algoritmo, com os critérios que motivaram a indicação. 
 
-RF-YN-04.2 — **Aprovar** os 3 perfis ou **substituir** algum por outro do pool. 
+RF-YN-04.2 — **Registro de observações/telemetria** pela curadoria (ex.: “indicação adequada?”) para aprendizado do algoritmo — **sem alterar** o resultado entregue ao beneficiário. 
 
-RF-YN-04.3 — Registro do motivo da substituição (telemetria de aprendizado do algoritmo). 
-
-RF-YN-04.4 — SLA da curadoria: matches deveriam ser entregues ao beneficiário em até X horas (sugestão: 24h — a validar).
+RF-YN-04.3 — Indicadores do matching: aderência percebida, distribuição por especialidade, tempo triagem → 1ª sessão.
 
 **Regras de negócio** 
 
-RN-YN-04.1 — No piloto, **toda match é revisada pela Domus**. Em produção, revisão pode ser amostral. 
+RN-YN-04.1 — No MVP, a curadoria é **somente informativa** (não bloqueia nem aprova matches). A evolução para curadoria ativa (aprovar/substituir) fica no roadmap. 
 
-RN-YN-04.2 — Critérios e pesos do matching definidos com a Virgínia (Domus).
+RN-YN-04.2 — Critérios e pesos do matching definidos com a Virgínia (YNA).
 
-### **8.7 Etapa — Gestão da Universidade YNA (Configurar / Operar)**
+### **8.7 Etapa — Gestão da Academia YNA (Configurar / Operar)**
 
-**Objetivo:** Curar trilhas, lives e estudos de caso disponibilizados aos profissionais.
+**Objetivo:** Curar os conteúdos disponibilizados aos profissionais. A feature (antes “Universidade YNA”) chama-se **Academia YNA** e é um **CMS com três tipos de conteúdo — cursos, lives e artigos** — com **cadastro específico por tipo** e **listagens separadas** (abas por tipo, com contador).
 
-**Atores:** Gestor de Conteúdo, Gestor Clínico (Domus).
+**Atores:** Gestor de Conteúdo, Gestor Clínico (YNA).
 
 **Requisitos funcionais** 
 
-RF-YN-05.1 — CMS de trilhas: criar/editar/publicar/arquivar trilhas. Atributos: título, descrição, categoria, nível, duração estimada, capa. 
+RF-YN-05.1 — **CMS por tipo de conteúdo** (criar/editar/publicar/arquivar), com **listagens separadas** de cursos, lives e artigos. Campos compartilhados: título, status (*rascunho / publicado / arquivado*) e **público-alvo (tipos de profissional)**. 
 
-RF-YN-05.2 — Estrutura modular: trilha → módulos → aulas (vídeo, texto, quiz). 
+RF-YN-05.2 — **Cadastro de Curso:** título, autor, nível, tema, trilha, descrição, **capa (imagem enviada ou, na ausência, uma cor)** e **aulas** — cada aula com **vídeo, título, duração, autor, descrição e materiais complementares (arquivos)**, sendo as aulas **reordenáveis**. Também é possível anexar **materiais complementares do curso** (conteúdos eletivos). 
 
-RF-YN-05.3 — Upload de vídeos (próprios ou link YouTube), textos (markdown), PDFs. 
+RF-YN-05.3 — **Cadastro de Live:** título, palestrante, **categoria (conteúdo / supervisão)**, data, horário, duração, tipo de transmissão (agendada / replay) e descrição. Vinculação ao **canal fechado do YouTube YNA** (roadmap). 
 
-RF-YN-05.4 — Agenda de lives Domus: criar, agendar, vincular ao **canal fechado do YouTube YNA**, gerenciar inscrições e replays. 
+RF-YN-05.4 — **Cadastro de Artigo:** título, subtítulo, autor, tema, tempo de leitura, **capa (imagem ou cor)** e **corpo em editor de blocos** — parágrafo, subtítulo, citação, lista, **imagem** e **vídeo** —, permitindo intercalar **fotos e vídeos ao longo do texto**; blocos **reordenáveis**. 
 
-RF-YN-05.5 — Catálogo de estudos de caso e workshops gravados. 
+RF-YN-05.5 — **Métricas de performance** exibidas na edição de cada conteúdo: **visualizações**, alcance (matrículas / inscritos / leitores), **% de conclusão** (conclusão / comparecimento / leitura completa), **avaliação** ou **pico de espectadores** (lives) e **engajamento geral**. 
 
-RF-YN-05.6 — Indicadores: engajamento por trilha, taxa de conclusão, profissionais por trilha.
+RF-YN-05.6 — **Público-alvo por tipo de profissional:** ao cadastrar qualquer conteúdo (curso, live ou artigo), o gestor **seleciona quais tipos de profissional** irão visualizá-lo — **todos os tipos** ou **tipos específicos** (ver 8.5). No MVP, todos os conteúdos atendem ao tipo Psicólogo. 
 
-**Pendência:** estrutura inicial de trilhas (matriz de conteúdos), criação do canal YouTube YNA.
+RF-YN-05.7 — Upload de vídeos (próprios ou link YouTube), imagens e PDFs.
+
+**Pendência:** estrutura inicial de trilhas (matriz de conteúdos), criação do canal YouTube YNA, editor de blocos do artigo com mídia real.
 
 ### **8.8 Etapa — Escala de plantão e gestão de emergências (Operar)**
 
@@ -1494,7 +1611,7 @@ RF-YN-06.4 — Histórico de emergências com SLA de atendimento, profissional a
 
 RF-YN-06.5 — **Lista de palavras-chave** de crise (gerenciada pelo Gestor Clínico).
 
-**Pendência:** lista exata das palavras-chave \+ protocolo de escalonamento (Domus).
+**Pendência:** lista exata das palavras-chave \+ protocolo de escalonamento (YNA).
 
 ### **8.9 Etapa — Suporte e tickets (Atender)**
 
@@ -1514,7 +1631,13 @@ RF-YN-07.4 — Atribuição de tickets a atendentes / áreas.
 
 RF-YN-07.5 — Status, histórico e auditoria de cada ticket. 
 
-RF-YN-07.6 — Indicadores de suporte: tempo médio de resposta, satisfação do atendimento.
+RF-YN-07.6 — Indicadores de suporte: tempo médio de resposta, satisfação do atendimento. 
+
+RF-YN-07.7 — **Listagem com filtros** por **empresa** (busca), por **protocolo** e por **período de abertura**, e **big numbers clicáveis por status (Abertos, Em andamento, Resolvidos)** que filtram a lista. 
+
+RF-YN-07.8 — Cada ticket exibe **protocolo, tipo, empresa, solicitante, SLA** e um **destaque de prazo** — *no prazo* (até a data) ou *atrasada* (vencida e não resolvida), com **realce visual das atrasadas**. 
+
+RF-YN-07.9 — **Atendimento do ticket:** ao abrir, mostra as **informações completas** (protocolo, tipo, empresa, solicitante, origem, aberto em, prazo/SLA, descrição e histórico de respostas) e um botão **Responder** → **campo de texto**, **anexos** e opção de **concluir o atendimento** (marca como *resolvido*; sem isso, fica *em andamento*).
 
 **Regras de negócio** 
 
@@ -1528,31 +1651,55 @@ RN-YN-07.1 — Solicitação de prontuário **sempre passa por validação adici
 
 **Requisitos funcionais** 
 
-RF-YN-08.1 — Painel **macro YNA**: 
+RF-YN-08.1 — **Cockpit do gestor** na visão geral, organizado por **temporalidade** em dois blocos, com os indicadores agrupados por dimensão (Empresas, Profissionais, Sessões, Financeiro). A separação evita misturar indicadores de **estoque** (o estado de hoje) com indicadores de **fluxo** (acumulados num período):
 
-* **Empresas:** ativas, em onboarding, em portabilidade, encerradas. NPS médio das empresas. Adesão média. 
+* **Bloco “Foto atual” (estoque — estado de hoje, independe de período):**  
+  * **Empresas:** total com contrato ativo; empresas bloqueadas; **inadimplência** (soma dos valores a receber em atraso); **% médio de utilização dos planos**, apresentado como **gráfico** com a barra de utilização por empresa (beneficiários ativos ÷ licenças).  
+  * **Profissionais:** **ativos por tipo** (lista por tipo \+ total); **disponibilidade semanal média** (horas); **disponibilidade média para plantão** (horas).  
+  * **Financeiro:** saldo a pagar aos profissionais.  
 
-* **Beneficiários:** total ativos, novos no mês, em jornada (com profissional), em pausa, em portabilidade B2C. Distribuição por empresa. 
+* **Bloco “Por período” (fluxo — acumulado no período selecionado):**  
+  * **Empresas:** receita recebida no período.  
+  * **Sessões:** total de sessões realizadas; **% de no-show do beneficiário**; **% de no-show do profissional**; atraso médio; duração média.  
+  * **Financeiro:** valor pago; valor pago por antecipação; valor médio pago por sessão; **receita de antecipação** (soma do valor das taxas).  
 
-* **Profissionais:** ativos, em férias, plantonistas disponíveis, distribuição por especialidade, ranking interno. 
+RF-YN-08.2 — **Controle de período** posicionado no cabeçalho do bloco “Por período” e que **governa apenas os indicadores de fluxo** (o bloco “Foto atual” não é afetado): alternância **Mês / Ano** e, no modo Mês, um **navegador de mês** que abre no **mês corrente por padrão** e permite **recuar para meses anteriores**, sem avançar além do mês atual. O modo **Ano** apresenta o **consolidado do ano corrente**. O período vigente é rotulado por extenso (ex.: “Acumulado · Junho de 2026” / “Acumulado · 2026”).
 
-* **Operação:** sessões realizadas, no-shows, sessões em curso (real-time), tempo médio de match (triagem → 1ª sessão). 
+RF-YN-08.3 — Drilldown por dimensão: cada grupo do cockpit tem um atalho **“Ver tudo”** que leva à tela detalhada correspondente já contextualizada (Empresas, Profissionais, Sessões, Financeiro › Profissionais/Empresas).
 
-* **Financeiro:** receita corrente (B2B \+ B2C), antecipações concedidas, taxa de antecipação faturada. 
+RF-YN-08.4 — Exportação em PDF/XLSX. 
 
-* **Saúde clínica do produto:** NPS macro YNA, satisfação com profissionais (Ranking agregado), índice médio de bem-estar dos beneficiários (agregado), alertas NR-1 disparados. 
+RF-YN-08.5 — **Bloco “Suas pendências”** na coluna lateral da visão geral, listando os itens acionáveis com contagem e **link direto para a tela de detalhe já filtrada**: **profissionais para análise** → Profissionais (filtro *em análise*); **notas fiscais para conferência** → Financeiro › Profissionais (*Para conferência*); **notas a emitir para empresas** → Financeiro › Empresas (*Pendentes de emissão*); **chamados abertos no suporte** → Suporte (*Abertos*).
 
-RF-YN-08.2 — Filtros: período, segmento, empresa, especialidade. 
-
-RF-YN-08.3 — Drilldown em cada KPI (ex.: clicar em “empresas ativas” → lista das empresas). 
-
-RF-YN-08.4 — Exportação em PDF/XLSX.
+RF-YN-08.6 — Indicadores macro complementares que compõem a visão 360° (previstos, evolução do cockpit): NPS médio das empresas e NPS macro YNA; distribuição de beneficiários por empresa e por estágio da jornada (em jornada, em pausa, em portabilidade B2C); ranking interno de profissionais e satisfação agregada; índice médio de bem-estar dos beneficiários (agregado) e alertas NR-1 disparados; tempo médio de match (triagem → 1ª sessão); sessões em curso em tempo real.
 
 **Regras de negócio** 
 
 RN-YN-08.1 — Mesmo no dashboard interno, **não há exposição de dados clínicos individuais identificáveis** a quem não tem necessidade clínica/legal (princípio do menor privilégio).
 
-### **8.11 Etapa — Auditorias LGPD e Compliance (Acompanhar)**
+RN-YN-08.2 — **Foto atual × período:** indicadores de **estoque** refletem o estado no momento da consulta e não respondem ao controle de período; indicadores de **fluxo** são recalculados conforme o mês/ano selecionado. O **consolidado do ano** é obtido pela **soma** dos campos aditivos (valores e contagens) e pela **média** dos campos de taxa/média (no-shows, atraso médio, duração média, valor médio por sessão).
+
+### **8.11 Etapa — Painel de controle de sessões (Acompanhar)**
+
+**Objetivo:** Monitorar a operação de atendimentos em toda a plataforma, com visão agregada e detalhada das sessões.
+
+**Atores:** Gestor de Profissionais, Super-Admin.
+
+**Requisitos funcionais** 
+
+RF-YN-11.1 — **Big numbers clicáveis** (que **filtram a lista** por status): sessões **agendadas**, **realizadas**, **canceladas** e **não realizadas** (agendadas que não ocorreram / no-show). 
+
+RF-YN-11.2 — **Lista de sessões (em cards)** com **data em destaque**, dados do profissional (avatar, nome, tipo, empresa), horário de início e fim, **tempo de atraso** (quando houver), **duração da consulta** e status; nas canceladas, link para o detalhe do cancelamento. 
+
+RF-YN-11.3 — **Filtros:** por profissional, por **empresa**, por período (data de início e fim) e por **com atraso / sem atraso**. Os filtros são aplicados de forma **global**, impactando **também os big numbers** — não apenas a lista. 
+
+RF-YN-11.4 — Drilldown da sessão para o **detalhe do profissional** (ver 8.5) e, quando aplicável, para o registro do atendimento.
+
+**Regras de negócio** 
+
+RN-YN-11.1 — “**Não realizada**” = sessão agendada que não ocorreu (falta / no-show), distinta de “**cancelada**” (desmarcada com antecedência).
+
+### **8.12 Etapa — Auditorias LGPD e Compliance (Acompanhar)**
 
 **Atores:** Super-Admin, DPO (papel a designar).
 
@@ -1566,7 +1713,7 @@ RF-YN-09.3 — Workflow de exclusão de dados pessoais com manutenção de hist�
 
 RF-YN-09.4 — Painel de aceites de Termos/Política (versões aceitas, datas).
 
-### **8.12 Etapa — Gestão financeira (Operar)**
+### **8.13 Etapa — Gestão financeira (Operar)**
 
 **Atores:** Gestor Comercial, Super-Admin.
 
@@ -1580,20 +1727,94 @@ RF-YN-10.3 — Integração com fintech para automatizar antecipações.
 
 RF-YN-10.4 — Emissão de relatórios financeiros (mensal, anual).
 
-### **8.13 Resumo do Fluxo dos Gestores YNA**
+A feature **Financeiro** do Manager tem **duas visões**, alternadas por um controle no topo: **Profissionais** (notas fiscais dos repasses) e **Empresas** (parcelas dos contratos B2B).
+
+**Visão Profissionais — notas fiscais dos repasses**
+
+O profissional é quem emite a nota fiscal; o backoffice YNA gera a solicitação, controla o recebimento das notas e efetua o pagamento. Dois gatilhos originam uma nota: **fechamento automático do período** e **antecipação**.
+
+RF-YN-10.5 — **Geração da solicitação de nota** ao profissional (em ambos os gatilhos), com as **instruções de emissão**: valor, **dados da YNA (tomador)**, **data de vencimento** e **descrição dos serviços**. 
+
+RF-YN-10.6 — **Painel de notas** com **filtros por profissional (busca) e período de recebimento**, e **big numbers clicáveis por status** que filtram a lista: **Para conferência** (em análise), **Requer ajuste**, **Para pagamento** e **Pagas**. 
+
+RF-YN-10.7 — **Conferência da nota:** ao abrir uma nota *Para conferência*, o gestor vê os dados e a **lista de sessões realizadas** que a compõem, e decide entre **Aprovar** (a nota passa a *Para pagamento*) ou **Gerar pendência de retificação** (informando o motivo → *Requer ajuste*). 
+
+RF-YN-10.8 — **Destaque de antecipação:** notas cuja origem é **antecipação de recebíveis** são **destacadas** na lista e na conferência, exibindo, além do valor, o **valor da taxa** aplicada (e o percentual). 
+
+RF-YN-10.9 — **Registro do pagamento:** notas *Para pagamento* têm a ação **Registrar pagamento** → **anexar comprovante** e **informar a data**; a nota passa a *Paga* e o pagamento fica disponível ao profissional. 
+
+RF-YN-10.10 — **Ciclo de retificação:** a nota em *Requer ajuste* mostra o motivo (observação do backoffice) e aguarda o **reenvio** da nota corrigida pelo profissional, que a devolve para *Para conferência*. 
+
+RF-YN-10.11 — Trilha de auditoria por nota (emissão, retificações, aprovação, comprovante).
+
+**Visão Empresas — parcelas dos contratos**
+
+RF-YN-10.12 — **Painel de parcelas dos contratos das empresas**, ordenadas por vencimento, com **filtros por razão social (busca), CNPJ e período de vencimento** e **big numbers clicáveis por status**: **Pendentes de emissão**, **Emitidas**, **Pagas** e **Atrasadas**. 
+
+RF-YN-10.13 — Cada parcela mostra empresa (razão social/CNPJ), contrato, **nº da parcela/total**, valor e vencimento, com ações conforme o status: 
+
+* **Pendente de emissão** → **enviar NF + boleto** (a parcela passa a *Emitida*). 
+* **Emitida / Atrasada** → **editar/reenviar** os arquivos e **dar baixa** (informando **data e valor pagos** → *Paga*). 
+* **Paga** → **ver detalhes** (download da NF, data e valor pagos).
+
+**Regras de negócio** 
+
+RN-YN-10.1 — O pagamento ao profissional (fechamento ou antecipação) **só é liberado após a aprovação da nota fiscal** correspondente. 
+
+RN-YN-10.2 — A retificação preserva o histórico do envio anterior (auditoria); a nota reemitida entra novamente em análise. 
+
+RN-YN-10.3 — Na visão Empresas, uma parcela **atrasada** mantém o status de atraso ao ter os arquivos reenviados, até que a **baixa do pagamento** seja registrada.
+
+### **8.14 Etapa — Modelos de documentos (Configurar / Operar)**
+
+**Objetivo:** Disponibilizar aos profissionais **modelos de documentos** para uso no dia a dia (atestado, encaminhamento, declaração, relatório, recibo, laudo etc.), geridos pelo backoffice.
+
+**Atores:** Gestor de Conteúdo, Gestor Clínico (YNA).
+
+**Requisitos funcionais** 
+
+RF-YN-12.1 — **CRUD de modelos de documentos** (adicionar / editar / excluir). Cada modelo tem: **nome, descrição, ícone, formato (PDF/DOCX), arquivo do modelo** e **público-alvo por tipo de profissional** (todos ou tipos específicos). 
+
+RF-YN-12.2 — **Disponibilização ao profissional:** na área do profissional, a feature **Modelos de documentos** lista os modelos disponíveis para o **tipo daquele profissional**, com **busca** e ações de **baixar** e **imprimir**. 
+
+**Regra de negócio** 
+
+RN-YN-12.1 — Um profissional só enxerga os modelos cujo **público-alvo** inclui o seu tipo (ou que estejam marcados para *todos os tipos*).
+
+### **8.15 Etapa — Central de notificações (Acompanhar)**
+
+**Objetivo:** Concentrar os eventos do backoffice e levar o gestor direto à ação.
+
+**Requisitos funcionais** 
+
+RF-YN-13.1 — **Central de notificações** acionada pelo sino (com contador de não lidas). Eventos previstos: **nota enviada por profissional para conferência**, **solicitação de antecipação de recebíveis**, **confirmação de pagamento de empresa**, **novo profissional para análise**, **profissional ativou a conta**, **profissional não entrou em uma sessão** e **novo ticket aberto no suporte**. 
+
+RF-YN-13.2 — Ao **clicar** numa notificação, o sistema **direciona direto para a tela de detalhe correspondente já filtrada** (ex.: nota para conferência → Financeiro › Profissionais *Para conferência*; não realizada → Sessões *Não realizada*; novo ticket → Suporte *Abertos*) e **marca a notificação como lida** (atualizando o contador do sino).
+
+### **8.16 Resumo do Fluxo dos Gestores YNA**
 
 | Funcionalidade | Perfil principal | Prioridade MVP |
 | ----- | ----- | :---: |
+| Login \+ recuperação de senha (MFA) | Todos os usuários | P0 |
+| Gestão de **Usuários** (convite, Super-Admin, inativação, filtros) | Super-Admin | P0 |
+| **Tipos de profissional** (triagem \+ campos flexíveis por tipo) | Gestor Profissionais / Clínico | P0 |
 | Cadastro de empresas \+ Master RH | Comercial / CSM | P0 |
-| Cadastro/aprovação de profissionais | Gestor Profissionais | P0 |
-| Curadoria de matches | Gestor Clínico | P0 |
-| CMS da Universidade YNA | Gestor Conteúdo | P0 (mínimo) |
-| Lives Domus \+ canal YouTube | Gestor Conteúdo \+ Domus | P1 |
+| Controle de contratos (histórico/renovação) | Comercial / CSM | P0 |
+| Cadastro/aprovação de profissionais (avaliação por blocos) | Gestor Profissionais | P0 |
+| Detalhe do profissional (sessões, qualidade, financeiro) | Gestor Profissionais | P0 |
+| Curadoria informativa de matches | Gestor Clínico | P0 |
+| **Academia YNA** — CMS de cursos/lives/artigos (público-alvo por tipo, métricas) | Gestor Conteúdo | P0 (mínimo) |
+| Lives YNA \+ canal YouTube | Gestor de Conteúdo | P1 |
+| **Modelos de documentos** (público-alvo por tipo) | Gestor Conteúdo / Clínico | P0 |
 | Escala de plantão | Gestor Profissionais | P0 |
-| Sistema de tickets/suporte | Atendente | P0 |
+| Painel de controle de sessões (big numbers clicáveis, filtros) | Gestor Profissionais | P0 |
+| Sistema de tickets/suporte (filtros, prazo/atraso, atendimento) | Atendente | P0 |
 | Solicitação de prontuário | Atendente | P0 |
-| Dashboard interno macro | Comitê / Super-Admin | P0 |
+| Dashboard interno macro (**Suas pendências**) | Comitê / Super-Admin | P0 |
+| **Central de notificações** (deep-link \+ marcar como lida) | Todos os usuários | P0 |
 | Auditorias LGPD | Super-Admin / DPO | P0 |
+| Financeiro › Profissionais — notas fiscais (conferência, antecipação, pagamento) | Comercial / Financeiro | P0 |
+| Financeiro › Empresas — parcelas dos contratos (NF/boleto, baixa) | Comercial / Financeiro | P0 |
 | Financeiro consolidado | Super-Admin / Comercial | P1 |
 
 ---
@@ -1620,23 +1841,27 @@ Esta seção cruza as funcionalidades técnicas com os atores que as consomem e 
 |  | Completar perfil pelo beneficiário (privacy-by-design) | Beneficiário | P0 |
 |  | Integração agenda pessoal (iCal/Google) | Beneficiário | P0 |
 |  | Gestão de ciclo de vida (Convidado/Ativo/Inativo) | RH, Gestor YNA | P0 |
-| **People & Profiles — Profissional** | Cadastro completo (CRP, CPF, PJ, linha teórica) | Profissional | P0 |
+| **People & Profiles — Profissional** | Tipos de profissional (campos de cadastro flexíveis \+ triagem, por tipo) | Gestor YNA | P0 |
+|  | Criação de conta \+ cadastro do perfil (empresa, **perfil profissional** por tipo, formação, disponibilidade) | Profissional | P0 |
+|  | **Ativação da conta** (revisar perfil, disponibilidade, vídeo, vídeos de onboarding) | Profissional | P0 |
+|  | Detalhe do profissional (sessões, qualidade, financeiro) | Gestor YNA | P0 |
 |  | Vídeo de apresentação | Profissional | P0 |
 |  | Trilha de integração obrigatória | Profissional | P0 |
 |  | Setup financeiro (PJ, antecipação, cadência) | Profissional | P0 |
 |  | Atualizações de certificados/formação | Profissional | P0 |
 |  | Cadastro de férias e ausências | Profissional | P0 |
 |  | Disponibilidade para plantão | Profissional | P0 |
-| **Matching** | Triagem (5 perguntas fechadas \+ abertas) | Beneficiário | P0 |
+| **Matching** | Triagem (perguntas definidas no **tipo de profissional**) | Beneficiário | P0 |
 |  | Roda da Vida (integração à triagem) | Beneficiário | Fora do MVP |
 |  | Algoritmo de matching | Sistema | P0 |
-|  | Curadoria Domus dos 3 matches | Gestor Clínico | P0 |
+|  | Curadoria informativa dos 3 matches (telemetria, sem aprovação) | Gestor Clínico | P0 |
 |  | Apresentação dos 3 perfis ao beneficiário | Beneficiário | P0 |
 |  | Re-match (troca de profissional) | Beneficiário | P0 |
 |  | Compartilhamento opt-in de prontuário no re-match | Beneficiário | P0 |
 | **Sessions** | Calendário/agenda integrado | Beneficiário, Profissional | P0 |
 |  | Lembretes push \+ e-mail \+ agenda externa | Beneficiário | P0 |
 |  | Sala de vídeo integrada (com logs de presença) | Beneficiário, Profissional | P0 |
+|  | Aviso de **próxima sessão / atraso** na sala (profissional avisa 5/10/15 min ou cancela; beneficiário aguarda) | Profissional, Beneficiário | P0 |
 |  | Prontuário pós-sessão obrigatório (textarea) | Profissional | P0 |
 |  | Troca de profissional sem perder histórico | Beneficiário | P0 |
 | **Engagement & Nyna** | Assistente IA Nyna (chat 24/7) | Beneficiário | P0 |
@@ -1662,19 +1887,32 @@ Esta seção cruza as funcionalidades técnicas com os atores que as consomem e 
 |  | WhatsApp | — | Fora do MVP |
 | **Billing & Payments** | Contratos SaaS B2B | Gestor YNA | P0 |
 |  | Antecipação de recebíveis (fintech) | Profissional, Sistema | P0 |
+|  | Emissão de nota fiscal pelo profissional (fechamento + antecipação) | Profissional | P0 |
+|  | Financeiro do profissional — **fatura por período** (a resgatar/resgatado, NF, pagamento) | Profissional | P0 |
+|  | Financeiro do RH — **parcelas do contrato** (NF/boleto, informar pagamento) | RH | P0 |
+|  | Financeiro › Profissionais: conferência de notas, antecipação (+ taxa), registro de pagamento | Gestor YNA | P0 |
+|  | Financeiro › Empresas: parcelas dos contratos (NF/boleto, baixa de pagamento) | Gestor YNA | P0 |
 |  | Pagamento B2C (cartão) | Beneficiário | P1 |
 | **Audit & Compliance** | Logs de auditoria de ações sensíveis | Sistema | P0 |
 |  | Workflow de direitos LGPD do titular | DPO, Atendente | P0 |
 |  | Solicitação de prontuário do beneficiário (ticket) | Beneficiário → Gestor YNA | P0 |
 |  | Aceites de Termos/Política (versionamento) | Sistema | P0 |
-| **Backoffice YNA** | Cadastro/gestão de empresas | Gestor Comercial | P0 |
-|  | Aprovação de profissionais | Gestor Profissionais | P0 |
-|  | Curadoria de matches | Gestor Clínico | P0 |
-|  | CMS da Universidade YNA (trilhas) | Gestor Conteúdo | P0 |
-|  | Agenda de lives \+ canal YouTube fechado | Gestor Conteúdo \+ Domus | P1 |
+| **Backoffice YNA** | Login \+ recuperação de senha (MFA) | Usuários YNA | P0 |
+|  | Gestão de **Usuários** (convite, Super-Admin, inativação, filtros) | Super-Admin | P0 |
+|  | Gestão de **tipos de profissional** (triagem \+ campos flexíveis) | Gestor Profissionais / Clínico | P0 |
+|  | Cadastro/gestão de empresas | Gestor Comercial | P0 |
+|  | Controle de contratos (histórico/renovação) | Gestor Comercial | P0 |
+|  | Aprovação de profissionais (avaliação por blocos) | Gestor Profissionais | P0 |
+|  | Detalhe do profissional (sessões, qualidade, financeiro) | Gestor Profissionais | P0 |
+|  | Curadoria informativa de matches | Gestor Clínico | P0 |
+|  | CMS da **Academia YNA** (cursos/lives/artigos, público-alvo por tipo, métricas) | Gestor Conteúdo | P0 |
+|  | Agenda de lives \+ canal YouTube fechado | Gestor de Conteúdo | P1 |
+|  | **Modelos de documentos** (público-alvo por tipo) | Gestor Conteúdo / Clínico | P0 |
 |  | Escala de plantão | Gestor Profissionais | P0 |
+|  | Painel de controle de sessões (big numbers clicáveis, filtros) | Gestor Profissionais | P0 |
 |  | Painel de emergências em curso | Gestor Profissionais, Atendente | P0 |
-|  | Sistema de tickets/suporte | Atendente | P0 |
+|  | Sistema de tickets/suporte (filtros, prazo/atraso, atendimento) | Atendente | P0 |
+|  | **Cockpit do gestor** — indicadores por temporalidade (Foto atual + Por período, navegação mês/ano) \+ **Suas pendências** \+ **central de notificações** (deep-link) | Usuários YNA | P0 |
 | **Portabilidade** | B2B → B2C (migração) | Beneficiário | P1 |
 |  | B2C → B2B | Beneficiário | P2 |
 |  | B2B → outro B2B | Beneficiário | P2 |
@@ -1687,7 +1925,7 @@ Esta seção cruza as funcionalidades técnicas com os atores que as consomem e 
 
 3. **People & Profiles** — beneficiários, profissionais (perfil, agenda, PJ), gestores YNA.
 
-4. **Matching** — triagem, algoritmo, curadoria Domus, re-match.
+4. **Matching** — triagem, algoritmo, curadoria YNA, re-match.
 
 5. **Sessions** — agenda, sala de vídeo, prontuário pós-sessão obrigatório.
 
@@ -1703,7 +1941,7 @@ Esta seção cruza as funcionalidades técnicas com os atores que as consomem e 
 
 11. **Audit & Compliance** — logs, retenção/exclusão LGPD, solicitações de prontuário, palavras-chave de crise.
 
-12. **Backoffice YNA** — gestão de empresas, profissionais, conteúdo (Universidade YNA), plantão, tickets, escala.
+12. **Backoffice YNA** — gestão de usuários, empresas, profissionais e tipos, conteúdo (Academia YNA), modelos de documentos, financeiro (notas de profissionais + parcelas de empresas), plantão, tickets, escala, notificações.
 
 ---
 
@@ -1723,7 +1961,7 @@ Esta seção consolida o que **foi definido no kickoff (26/05)** e o que **ainda
   * Política de incentivo/remuneração para plantonistas.
 
 * **Funcionalidades — Beneficiário**  
-  * Texto exato e tipo (fechada/aberta) das 5 perguntas de triagem (responsável Virgínia / Domus).  
+  * Texto exato e tipo (fechada/aberta) das 5 perguntas de triagem (responsável Virgínia / YNA).  
   * Cadência específica das avaliações do profissional e da YNA.  
   * Inclusão do chat assíncrono Beneficiário↔Profissional no MVP.  
   * Política de no-show e janela de remarcação.
@@ -1733,14 +1971,14 @@ Esta seção consolida o que **foi definido no kickoff (26/05)** e o que **ainda
   * Template orientativo do prontuário pós-sessão (placeholder do textarea).  
   * Antecedência mínima exata para férias (sugestão: 7 dias).  
   * SLA de atendimento do plantonista (sugestão: 5 min comercial / 15 min madrugada).  
-  * Formato da supervisão Domus (síncrona em grupo? fórum? frequência? obrigatoriedade?).  
+  * Formato da supervisão YNA (síncrona em grupo? fórum? frequência? obrigatoriedade?).  
   * Fórmula final do Ranking (pesos de cada critério).  
-  * Estrutura inicial das trilhas avançadas da Universidade YNA.  
+  * Estrutura inicial dos cursos avançados da Academia YNA.  
   * Criação do canal fechado YouTube YNA.
 
 * **Funcionalidades — Gestores YNA**  
   * Critérios de categorização de profissionais (define cadências de antecipação).  
-  * SLA para curadoria de matches pela Domus.  
+  * SLA para curadoria de matches pela YNA.  
   * SLA para entrega de prontuário sob solicitação (sugestão: 7 dias úteis).  
   * Workflow detalhado para tickets de queixa sobre profissional.
 

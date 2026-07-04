@@ -14,6 +14,7 @@ const rhSidebarItems: NavItem[] = [
   { icon: 'ph:users-three-bold', label: 'Beneficiários', to: '/rh/beneficiarios' },
   { icon: 'ph:paper-plane-tilt-bold', label: 'Convites', to: '/rh/convites' },
   { icon: 'ph:chart-bar-bold', label: 'Indicadores', to: '/rh/indicadores' },
+  { icon: 'ph:receipt-bold', label: 'Financeiro', to: '/rh/financeiro' },
   { icon: 'ph:tree-structure-bold', label: 'Departamentos', to: '/rh/departamentos' },
   { icon: 'ph:user-gear-bold', label: 'Equipe RH', to: '/rh/equipe' },
 ]

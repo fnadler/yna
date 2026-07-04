@@ -6,7 +6,7 @@ import { Select } from '../../components/Select'
 import { EntrarSessaoButton } from '../../components/EntrarSessaoButton'
 import type { Curso, Artigo, ProLive } from '../../types'
 
-/* Componentes de apoio da Universidade YNA (cards de curso/artigo, carrossel,
+/* Componentes de apoio da Academia YNA (cards de curso/artigo, carrossel,
    lista explorável com busca/filtro/paginação, cards da sidebar). */
 
 export const nivelLabel: Record<string, string> = { iniciante: 'Iniciante', intermediario: 'Intermediário', avancado: 'Avançado' }

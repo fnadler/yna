@@ -148,7 +148,7 @@ export function Pro12Home() {
               </div>
             </section>
 
-            {/* Destaques da Universidade YNA */}
+            {/* Destaques da Academia YNA */}
             <UniversidadeHighlights />
           </div>
 
@@ -194,7 +194,7 @@ export function Pro12Home() {
                     role="tooltip"
                     className="pointer-events-none absolute right-0 top-[calc(100%+6px)] z-20 w-64 rounded-lg border border-border bg-surface p-3 text-left text-[12px] leading-relaxed text-ink-secondary opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
                   >
-                    Cada indicador é uma nota de 0 a 100 calculada pela YNA a partir do seu histórico na plataforma — assiduidade, pontualidade, volume de atendimentos, disponibilidade aberta e participação na Universidade YNA. Atualizado periodicamente.
+                    Cada indicador é uma nota de 0 a 100 calculada pela YNA a partir do seu histórico na plataforma — assiduidade, pontualidade, volume de atendimentos, disponibilidade aberta e participação na Academia YNA. Atualizado periodicamente.
                   </span>
                 </span>
               </div>

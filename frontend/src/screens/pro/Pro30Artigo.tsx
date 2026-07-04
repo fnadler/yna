@@ -8,7 +8,7 @@ import { proUniversidadeService } from '../../services/pro'
 import { coverClass, fmtDataBR } from './universidadeParts'
 import type { ArtigoBloco } from '../../types'
 
-/* Detalhe do artigo da Universidade YNA — em modal. */
+/* Detalhe do artigo da Academia YNA — em modal. */
 export function ArtigoModal({ artigoId, onClose }: { artigoId: string | null; onClose: () => void }) {
   return (
     <Sheet open={artigoId !== null} onClose={onClose} title="Artigo" icon="ph:article-bold" size="lg">

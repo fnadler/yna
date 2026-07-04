@@ -38,7 +38,7 @@ export function Pro22Lives() {
             <Icon icon="ph:arrow-left-bold" width={18} aria-hidden />
           </button>
           <div>
-            <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-primary dark:text-primary-300">Universidade YNA</p>
+            <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-primary dark:text-primary-300">Academia YNA</p>
             <h1 className="font-heading text-lg font-semibold text-ink">Lives YNA</h1>
           </div>
         </header>

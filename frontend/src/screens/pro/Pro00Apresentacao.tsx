@@ -20,14 +20,14 @@ const slides = [
     eyebrow: 'Como você cresce',
     title: 'Cada vez mais perto de quem precisa',
     highlight: 'quem precisa',
-    body: 'Match curado, vídeo de apresentação e a Universidade YNA para você atender melhor e ampliar o seu alcance.',
+    body: 'Match curado, vídeo de apresentação e a Academia YNA para você atender melhor e ampliar o seu alcance.',
   },
   {
     image: '/images/slide3.png',
     eyebrow: 'Como começa',
     title: 'Seu perfil pronto em poucos passos',
     highlight: 'poucos passos',
-    body: 'Crie sua conta, monte seu perfil clínico e comece a atender — com ativação fast-track em até 48h.',
+    body: 'Crie sua conta, monte seu perfil profissional e comece a atender — com ativação fast-track em até 48h.',
   },
 ]
 

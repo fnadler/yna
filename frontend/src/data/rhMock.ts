@@ -9,6 +9,7 @@ import type {
   RhAlerta,
   RhNotificacao,
   RhBeneficiarioStatus,
+  RhParcela,
 } from '../types'
 
 /* Dados mockados do fluxo RH / Empresa B2B. Isolados do beneficiário e do
@@ -283,4 +284,20 @@ export const rhNotificacoes: RhNotificacao[] = [
     quando: 'há 3 dias',
     lida: false,
   },
+]
+
+/* Financeiro do RH — parcelas dos contratos da empresa. RH_TODAY = 2026-06-25.
+   Parcelas de julho+ são "futuras" (NF/boleto só no mês do vencimento). */
+export const rhParcelas: RhParcela[] = [
+  // Contrato CT-2026-0142 · Plano Care · Corporativo (12x R$ 9.000)
+  { id: 'rp-1', contrato: 'CT-2026-0142', numero: 1, totalParcelas: 12, valor: 9000, vencimento: '2026-04-05', status: 'pago', notaFiscal: 'nf-0142-01.pdf', dataPagamento: '2026-04-04', valorPago: 9000, comprovante: 'comprovante-0142-01.pdf' },
+  { id: 'rp-2', contrato: 'CT-2026-0142', numero: 2, totalParcelas: 12, valor: 9000, vencimento: '2026-05-05', status: 'pago', notaFiscal: 'nf-0142-02.pdf', dataPagamento: '2026-05-05', valorPago: 9000, comprovante: 'comprovante-0142-02.pdf' },
+  { id: 'rp-3', contrato: 'CT-2026-0142', numero: 3, totalParcelas: 12, valor: 9000, vencimento: '2026-06-10', status: 'em-atraso', notaFiscal: 'nf-0142-03.pdf', boleto: 'boleto-0142-03.pdf' },
+  { id: 'rp-4', contrato: 'CT-2026-0142', numero: 4, totalParcelas: 12, valor: 9000, vencimento: '2026-06-30', status: 'a-vencer', notaFiscal: 'nf-0142-04.pdf', boleto: 'boleto-0142-04.pdf' },
+  { id: 'rp-5', contrato: 'CT-2026-0142', numero: 5, totalParcelas: 12, valor: 9000, vencimento: '2026-07-05', status: 'futura' },
+  { id: 'rp-6', contrato: 'CT-2026-0142', numero: 6, totalParcelas: 12, valor: 9000, vencimento: '2026-08-05', status: 'futura' },
+  // Contrato CT-2026-0155 · Plano Care · Pro (6x R$ 4.000)
+  { id: 'rp-7', contrato: 'CT-2026-0155', numero: 1, totalParcelas: 6, valor: 4000, vencimento: '2026-05-20', status: 'pago', notaFiscal: 'nf-0155-01.pdf', dataPagamento: '2026-05-19', valorPago: 4000, comprovante: 'comprovante-0155-01.pdf' },
+  { id: 'rp-8', contrato: 'CT-2026-0155', numero: 2, totalParcelas: 6, valor: 4000, vencimento: '2026-06-20', status: 'em-atraso', notaFiscal: 'nf-0155-02.pdf', boleto: 'boleto-0155-02.pdf' },
+  { id: 'rp-9', contrato: 'CT-2026-0155', numero: 3, totalParcelas: 6, valor: 4000, vencimento: '2026-07-20', status: 'futura' },
 ]

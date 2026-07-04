@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { Modal } from '../components/Modal'
 import { Sheet } from '../components/Sheet'
 import { SessionRoom } from '../components/SessionRoom'
+import { emitirEvento, inscreverEvento, type AvisoProfissional } from '../lib/proximaSessao'
 import { Ben14Agendamento } from './Ben14Agendamento'
 import { Ben15Confirmacao } from './Ben15Confirmacao'
 import { Ben18Feedback } from './Ben18Feedback'
@@ -23,6 +24,15 @@ export function Ben17VideoRoom() {
   const navigate = useNavigate()
   const [helpOpen, setHelpOpen] = useState(false)
   const [postSheet, setPostSheet] = useState<PostSheet>(null)
+
+  // Simulação: ao entrar, o profissional ainda está finalizando outra sessão.
+  // O aviso atualiza quando o profissional informa atraso/cancelamento (via a
+  // aba da jornada do profissional, se aberta).
+  const [aviso, setAviso] = useState<AvisoProfissional>({ tipo: 'aguardando' })
+  useEffect(() => {
+    emitirEvento({ origem: 'beneficiario', acao: 'entrou', apelido: 'Beija-flor' })
+    return inscreverEvento((e) => { if (e.origem === 'profissional') setAviso(e.aviso) })
+  }, [])
 
   const postSheetTitle =
     postSheet?.type === 'feedback' ? 'Como foi a sessão?'
@@ -46,6 +56,7 @@ export function Ben17VideoRoom() {
         role="beneficiario"
         peer={{ name: 'Dra. Ana Beltrão', initials: 'AB', palette: 'lavender', status: 'Conectada · áudio e vídeo estáveis' }}
         self={{ initials: 'M', palette: 'pink' }}
+        avisoProfissional={aviso}
         onEnd={() => setPostSheet({ type: 'feedback' })}
         onEmergency={() => setHelpOpen(true)}
       />

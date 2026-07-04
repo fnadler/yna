@@ -77,7 +77,7 @@ function DiaGrid({ state, onToggleDia, onToggleTime, isDisabled }: {
 
 /* PRO-11 — configuração de agenda/disponibilidade (Atendimento · Plantão · Bloqueios).
    Renderizado dentro de um Sheet a partir do PRO-09. */
-export function Pro11AgendaContent({ onClose }: { onClose: () => void }) {
+export function Pro11AgendaContent({ onClose, hideBloqueios = false, hideSave = false }: { onClose: () => void; hideBloqueios?: boolean; hideSave?: boolean }) {
   const { disponibilidade, setDisponibilidade } = usePro()
   const [aba, setAba] = useState<'atendimento' | 'plantao' | 'bloqueios'>('atendimento')
   const [dias, setDias] = useState<Record<string, DiaState>>(disponibilidade.atendimento)
@@ -151,7 +151,9 @@ export function Pro11AgendaContent({ onClose }: { onClose: () => void }) {
     <div className="px-5 py-6 lg:px-6">
       {/* Controle de seção */}
       <div className="mb-5 flex gap-1 rounded-lg bg-surface-2 p-1">
-        {([['atendimento', 'Atendimento'], ['plantao', 'Plantão'], ['bloqueios', 'Bloqueios']] as const).map(([key, label]) => (
+        {([['atendimento', 'Atendimento'], ['plantao', 'Plantão'], ['bloqueios', 'Bloqueios']] as const)
+          .filter(([key]) => !hideBloqueios || key !== 'bloqueios')
+          .map(([key, label]) => (
           <button
             key={key}
             onClick={() => setAba(key)}
@@ -294,11 +296,13 @@ export function Pro11AgendaContent({ onClose }: { onClose: () => void }) {
         </section>
       )}
 
-      <div className="mt-8">
-        <Button size="lg" fullWidth iconLeft={saved ? 'ph:check-bold' : undefined} onClick={salvar}>
-          {saved ? 'Disponibilidade salva' : 'Salvar disponibilidade'}
-        </Button>
-      </div>
+      {!hideSave && (
+        <div className="mt-8">
+          <Button size="lg" fullWidth iconLeft={saved ? 'ph:check-bold' : undefined} onClick={salvar}>
+            {saved ? 'Disponibilidade salva' : 'Salvar disponibilidade'}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

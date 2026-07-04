@@ -16,8 +16,11 @@ import type {
   ProRecebimento,
   ExtratoItem,
   NotaFiscal,
+  ProFatura,
+  DadosNotaYna,
   ProNotificacao,
   ProDisponibilidade,
+  ProCadastro,
 } from '../types'
 
 /* Dados mockados do fluxo do Profissional. Isolados do beneficiário.
@@ -533,9 +536,37 @@ export const proExtratoRaw: Omit<ExtratoItem, 'saldo'>[] = [
   { id: 'ex-20', data: '2026-06-22', tipo: 'sessao', valor: 150 },
 ]
 
+/* Dados da YNA (tomador) que devem constar em toda nota fiscal emitida pelo profissional. */
+export const ynaDadosNota: DadosNotaYna = {
+  razaoSocial: 'YNA Care Hub Tecnologia Ltda.',
+  cnpj: '48.221.045/0001-70',
+  endereco: 'Av. Paulista, 1000 · Bela Vista · São Paulo/SP · CEP 01310-100',
+}
+
+/* Notas fiscais do repasse, emitidas pelo profissional e controladas pelo backoffice.
+   Cobre os quatro estágios do ciclo: pendente, em análise, requer ajuste e aprovada;
+   e as duas origens: fechamento de período e antecipação. Mais recente primeiro. */
 export const proNotasFiscais: NotaFiscal[] = [
   {
-    id: 'nf-2026-050', numero: '2026/050', data: '2026-06-16', valorTotal: 600,
+    id: 'nf-pend', origem: 'fechamento', status: 'pendente',
+    referencia: '16–22 jun', valorTotal: 1050, vencimento: '2026-06-30',
+    descricaoServico: 'Prestação de serviços de psicologia clínica — 7 sessões realizadas entre 16 e 22/06/2026 via plataforma YNA.',
+    sessoes: [
+      { id: 's-pa', data: '2026-06-16', beneficiario: 'Bruno', valor: 150 },
+      { id: 's-pb', data: '2026-06-17', beneficiario: 'Lia', valor: 150 },
+      { id: 's-pc', data: '2026-06-18', beneficiario: 'Rafa', valor: 150 },
+      { id: 's-pd', data: '2026-06-19', beneficiario: 'Marcos', valor: 150 },
+      { id: 's-pe', data: '2026-06-20', beneficiario: 'Sofia', valor: 150 },
+      { id: 's-pf', data: '2026-06-21', beneficiario: 'Davi', valor: 150 },
+      { id: 's-pg', data: '2026-06-22', beneficiario: 'Bruno', valor: 150 },
+    ],
+  },
+  {
+    id: 'nf-2026-050', origem: 'fechamento', status: 'requer-ajuste',
+    referencia: '09–15 jun', valorTotal: 600, vencimento: '2026-06-23',
+    descricaoServico: 'Prestação de serviços de psicologia clínica — 4 sessões realizadas entre 09 e 15/06/2026 via plataforma YNA.',
+    numero: '2026/050', emitidaEm: '2026-06-16', arquivoNome: 'nf-2026-050.pdf',
+    motivoRetificacao: 'O CNPJ do tomador está divergente. Reemita a nota com o CNPJ 48.221.045/0001-70 e reenvie.',
     sessoes: [
       { id: 's-50a', data: '2026-06-10', beneficiario: 'Bruno', valor: 150 },
       { id: 's-50b', data: '2026-06-12', beneficiario: 'Lia', valor: 150 },
@@ -544,7 +575,10 @@ export const proNotasFiscais: NotaFiscal[] = [
     ],
   },
   {
-    id: 'nf-2026-044', numero: '2026/044', data: '2026-06-01', valorTotal: 600,
+    id: 'nf-2026-044', origem: 'fechamento', status: 'em-analise',
+    referencia: '02–08 jun', valorTotal: 600, vencimento: '2026-06-16',
+    descricaoServico: 'Prestação de serviços de psicologia clínica — 4 sessões realizadas entre 02 e 08/06/2026 via plataforma YNA.',
+    numero: '2026/044', emitidaEm: '2026-06-09', arquivoNome: 'nf-2026-044.pdf',
     sessoes: [
       { id: 's-44a', data: '2026-05-26', beneficiario: 'Bruno', valor: 150 },
       { id: 's-44b', data: '2026-05-29', beneficiario: 'Sofia', valor: 150 },
@@ -553,7 +587,11 @@ export const proNotasFiscais: NotaFiscal[] = [
     ],
   },
   {
-    id: 'nf-2026-039', numero: '2026/039', data: '2026-05-16', valorTotal: 600,
+    id: 'nf-2026-039', origem: 'fechamento', status: 'aprovada',
+    referencia: '26 mai–01 jun', valorTotal: 600, vencimento: '2026-06-09',
+    descricaoServico: 'Prestação de serviços de psicologia clínica — 4 sessões realizadas entre 26/05 e 01/06/2026 via plataforma YNA.',
+    numero: '2026/039', emitidaEm: '2026-06-02', arquivoNome: 'nf-2026-039.pdf',
+    dataPagamento: '2026-06-06', comprovanteNome: 'comprovante-2026-039.pdf',
     sessoes: [
       { id: 's-39a', data: '2026-05-05', beneficiario: 'Rafa', valor: 150 },
       { id: 's-39b', data: '2026-05-08', beneficiario: 'Marcos', valor: 150 },
@@ -562,7 +600,19 @@ export const proNotasFiscais: NotaFiscal[] = [
     ],
   },
   {
-    id: 'nf-2026-031', numero: '2026/031', data: '2026-05-01', valorTotal: 300,
+    id: 'nf-2026-021', origem: 'antecipacao', status: 'aprovada',
+    referencia: 'Antecipação · 20 mai', valorTotal: 600, vencimento: '2026-05-21',
+    descricaoServico: 'Antecipação de recebíveis — prestação de serviços de psicologia clínica via plataforma YNA.',
+    numero: '2026/021', emitidaEm: '2026-05-19', arquivoNome: 'nf-2026-021.pdf',
+    dataPagamento: '2026-05-21', comprovanteNome: 'comprovante-2026-021.pdf',
+    sessoes: [],
+  },
+  {
+    id: 'nf-2026-031', origem: 'fechamento', status: 'aprovada',
+    referencia: '24–28 abr', valorTotal: 300, vencimento: '2026-05-08',
+    descricaoServico: 'Prestação de serviços de psicologia clínica — 2 sessões realizadas entre 24 e 28/04/2026 via plataforma YNA.',
+    numero: '2026/031', emitidaEm: '2026-05-01', arquivoNome: 'nf-2026-031.pdf',
+    dataPagamento: '2026-05-05', comprovanteNome: 'comprovante-2026-031.pdf',
     sessoes: [
       { id: 's-31a', data: '2026-04-24', beneficiario: 'Sofia', valor: 150 },
       { id: 's-31b', data: '2026-04-28', beneficiario: 'Rafa', valor: 150 },
@@ -570,7 +620,97 @@ export const proNotasFiscais: NotaFiscal[] = [
   },
 ]
 
+/* Faturas mensais (modelo "fatura de cartão"). PRO_TODAY = 2026-06-22, então
+   Junho está aberto; Mar/Abr/Mai fechados. Descrição-padrão da nota: */
+const descNota = (ref: string, n: number) => `Prestação de serviços de psicologia clínica — ${n} sessões (${ref}) via plataforma YNA.`
+
+export const proFaturas: ProFatura[] = [
+  {
+    mes: '2026-03', label: 'Março 2026', status: 'fechado', total: 600, dataPrevistaPagamento: '2026-04-05',
+    sessoes: [
+      { id: 'fs-3a', data: '2026-03-05', hora: '09:00', beneficiario: 'Bruno', valor: 150 },
+      { id: 'fs-3b', data: '2026-03-12', hora: '14:00', beneficiario: 'Lia', valor: 150 },
+      { id: 'fs-3c', data: '2026-03-19', hora: '10:00', beneficiario: 'Sofia', valor: 150 },
+      { id: 'fs-3d', data: '2026-03-26', hora: '17:00', beneficiario: 'Rafa', valor: 150 },
+    ],
+    nota: {
+      id: 'nf-2026-031', origem: 'fechamento', status: 'aprovada', referencia: 'Março 2026', valorTotal: 600,
+      vencimento: '2026-04-05', descricaoServico: descNota('Março 2026', 4), numero: '2026/031', emitidaEm: '2026-04-01',
+      arquivoNome: 'nf-2026-031.pdf', dataPagamento: '2026-04-04', comprovanteNome: 'comprovante-2026-031.pdf',
+      sessoes: [
+        { id: 'fs-3a', data: '2026-03-05', beneficiario: 'Bruno', valor: 150 },
+        { id: 'fs-3b', data: '2026-03-12', beneficiario: 'Lia', valor: 150 },
+        { id: 'fs-3c', data: '2026-03-19', beneficiario: 'Sofia', valor: 150 },
+        { id: 'fs-3d', data: '2026-03-26', beneficiario: 'Rafa', valor: 150 },
+      ],
+    },
+  },
+  {
+    mes: '2026-04', label: 'Abril 2026', status: 'fechado', total: 900, dataPrevistaPagamento: '2026-05-05',
+    sessoes: [
+      { id: 'fs-4a', data: '2026-04-02', hora: '09:00', beneficiario: 'Bruno', valor: 150 },
+      { id: 'fs-4b', data: '2026-04-09', hora: '11:00', beneficiario: 'Marcos', valor: 150 },
+      { id: 'fs-4c', data: '2026-04-15', hora: '15:00', beneficiario: 'Lia', valor: 150 },
+      { id: 'fs-4d', data: '2026-04-20', hora: '10:00', beneficiario: 'Davi', valor: 150 },
+      { id: 'fs-4e', data: '2026-04-24', hora: '14:00', beneficiario: 'Sofia', valor: 150 },
+      { id: 'fs-4f', data: '2026-04-29', hora: '17:00', beneficiario: 'Rafa', valor: 150 },
+    ],
+    nota: {
+      id: 'nf-2026-037', origem: 'fechamento', status: 'aprovada', referencia: 'Abril 2026', valorTotal: 900,
+      vencimento: '2026-05-05', descricaoServico: descNota('Abril 2026', 6), numero: '2026/037', emitidaEm: '2026-05-01',
+      arquivoNome: 'nf-2026-037.pdf', dataPagamento: '2026-05-05', comprovanteNome: 'comprovante-2026-037.pdf',
+      sessoes: [
+        { id: 'fs-4a', data: '2026-04-02', beneficiario: 'Bruno', valor: 150 },
+        { id: 'fs-4b', data: '2026-04-09', beneficiario: 'Marcos', valor: 150 },
+        { id: 'fs-4c', data: '2026-04-15', beneficiario: 'Lia', valor: 150 },
+        { id: 'fs-4d', data: '2026-04-20', beneficiario: 'Davi', valor: 150 },
+        { id: 'fs-4e', data: '2026-04-24', beneficiario: 'Sofia', valor: 150 },
+        { id: 'fs-4f', data: '2026-04-29', beneficiario: 'Rafa', valor: 150 },
+      ],
+    },
+  },
+  {
+    mes: '2026-05', label: 'Maio 2026', status: 'fechado', total: 900, dataPrevistaPagamento: '2026-06-10',
+    sessoes: [
+      { id: 'fs-5a', data: '2026-05-05', hora: '09:00', beneficiario: 'Bruno', valor: 150 },
+      { id: 'fs-5b', data: '2026-05-08', hora: '14:00', beneficiario: 'Lia', valor: 150 },
+      { id: 'fs-5c', data: '2026-05-12', hora: '10:00', beneficiario: 'Marcos', valor: 150 },
+      { id: 'fs-5d', data: '2026-05-15', hora: '16:00', beneficiario: 'Sofia', valor: 150 },
+      { id: 'fs-5e', data: '2026-05-20', hora: '11:00', beneficiario: 'Davi', valor: 150 },
+      { id: 'fs-5f', data: '2026-05-26', hora: '17:00', beneficiario: 'Rafa', valor: 150 },
+    ],
+    nota: {
+      id: 'nf-2026-044', origem: 'fechamento', status: 'requer-ajuste', referencia: 'Maio 2026', valorTotal: 900,
+      vencimento: '2026-06-05', descricaoServico: descNota('Maio 2026', 6), numero: '2026/044', emitidaEm: '2026-06-01',
+      arquivoNome: 'nf-2026-044.pdf',
+      motivoRetificacao: 'O CNPJ do tomador está divergente. Reemita a nota com o CNPJ 48.221.045/0001-70 e reenvie.',
+      sessoes: [
+        { id: 'fs-5a', data: '2026-05-05', beneficiario: 'Bruno', valor: 150 },
+        { id: 'fs-5b', data: '2026-05-08', beneficiario: 'Lia', valor: 150 },
+        { id: 'fs-5c', data: '2026-05-12', beneficiario: 'Marcos', valor: 150 },
+        { id: 'fs-5d', data: '2026-05-15', beneficiario: 'Sofia', valor: 150 },
+        { id: 'fs-5e', data: '2026-05-20', beneficiario: 'Davi', valor: 150 },
+        { id: 'fs-5f', data: '2026-05-26', beneficiario: 'Rafa', valor: 150 },
+      ],
+    },
+  },
+  {
+    mes: '2026-06', label: 'Junho 2026', status: 'aberto', total: 1200, dataPrevistaPagamento: '2026-07-05', antecipacaoDisponivel: 1080,
+    sessoes: [
+      { id: 'fs-6a', data: '2026-06-02', hora: '09:00', beneficiario: 'Bruno', valor: 150 },
+      { id: 'fs-6b', data: '2026-06-05', hora: '14:00', beneficiario: 'Lia', valor: 150 },
+      { id: 'fs-6c', data: '2026-06-10', hora: '10:00', beneficiario: 'Marcos', valor: 150 },
+      { id: 'fs-6d', data: '2026-06-12', hora: '16:00', beneficiario: 'Sofia', valor: 150 },
+      { id: 'fs-6e', data: '2026-06-15', hora: '11:00', beneficiario: 'Davi', valor: 150 },
+      { id: 'fs-6f', data: '2026-06-17', hora: '09:00', beneficiario: 'Rafa', valor: 150 },
+      { id: 'fs-6g', data: '2026-06-19', hora: '15:00', beneficiario: 'Bruno', valor: 150 },
+      { id: 'fs-6h', data: '2026-06-22', hora: '10:00', beneficiario: 'Lia', valor: 150 },
+    ],
+  },
+]
+
 export const proNotificacoes: ProNotificacao[] = [
+  { id: 'n-0', tipo: 'financeiro', icon: 'ph:receipt-bold', titulo: 'Nota fiscal requer ajuste', descricao: 'A nota 2026/050 (09–15 jun) precisa de retificação: CNPJ do tomador divergente. Reemita e reenvie.', quando: 'há 1 dia', lida: false },
   { id: 'n-1', tipo: 'troca', icon: 'ph:shuffle-bold', titulo: 'Um beneficiário seguiu com outro profissional', descricao: 'Faz parte do cuidado. Nenhum dado pessoal é compartilhado nessa transição.', quando: 'há 2 dias', lida: false },
   { id: 'n-2', tipo: 'supervisao', icon: 'ph:users-three-bold', titulo: 'Nova supervisão YNA agendada', descricao: '01/07 às 19:00 — Manejo de risco e encaminhamentos.', quando: 'há 3 dias', lida: true },
   { id: 'n-3', tipo: 'plataforma', icon: 'ph:sparkle-bold', titulo: 'Complete seu vídeo de apresentação', descricao: 'Perfis completos aparecem para mais beneficiários.', quando: 'há 5 dias', lida: true },
@@ -594,7 +734,7 @@ export const proLives: ProLive[] = [
   { id: 'sup-1', categoria: 'supervisao', titulo: 'Casos de ansiedade no trabalho', data: '27/06', horario: '19:00', status: 'agendada', inscrito: false, palestrante: 'Virgínia (YNA)', descricao: 'Discussão de casos clínicos de ansiedade laboral, com troca entre pares.' },
   { id: 'sup-2', categoria: 'supervisao', titulo: 'Manejo de risco e encaminhamentos', data: '01/07', horario: '19:00', status: 'agendada', inscrito: true, palestrante: 'Andrea (YNA)', descricao: 'Condutas em situações de risco e a rede de encaminhamento.' },
   { id: 'live-2', categoria: 'conteudo', titulo: 'Estudos de caso: luto e perdas', data: '03/07', horario: '20:00', status: 'agendada', inscrito: true, palestrante: 'Virgínia Toledo (YNA)', descricao: 'Casos reais (anonimizados) sobre acompanhamento do luto.' },
-  { id: 'live-0', categoria: 'conteudo', titulo: 'Abertura da Universidade YNA', data: '01/06', horario: '20:00', status: 'replay', inscrito: false, palestrante: 'Equipe YNA', descricao: 'A aula inaugural da Universidade YNA.' },
+  { id: 'live-0', categoria: 'conteudo', titulo: 'Abertura da Academia YNA', data: '01/06', horario: '20:00', status: 'replay', inscrito: false, palestrante: 'Equipe YNA', descricao: 'A aula inaugural da Academia YNA.' },
 ]
 
 export const proUniversidadeStats: UniversidadeStats = {
@@ -731,5 +871,59 @@ export const proQualityScores: QualityScore[] = [
   { criterio: 'Pontualidade', descricao: 'Início das sessões no horário combinado.', score: 92 },
   { criterio: 'Horas de atendimento', descricao: 'Volume de sessões realizadas no período.', score: 80 },
   { criterio: 'Disponibilidade', descricao: 'Slots abertos e participação em plantão.', score: 70 },
-  { criterio: 'Desenvolvimento', descricao: 'Participação em trilhas e lives da Universidade YNA.', score: 60 },
+  { criterio: 'Desenvolvimento', descricao: 'Participação em trilhas e lives da Academia YNA.', score: 60 },
+]
+
+/* ── Cadastro do profissional (5 steps) — exemplo pré-preenchido ── */
+export const proCadastroInicial: ProCadastro = {
+  nomeCompleto: '', cpf: '', email: '', telefone: '', instagram: '',
+  cnpj: '', razaoSocial: '', banco: '', agencia: '', conta: '', pixChave: '',
+  perfil: {},
+  formacoes: [], cursos: [], idiomas: [],
+  disponibilidade: { dias: [], horaInicio: '09:00', horaFim: '18:00', plantao: false },
+}
+
+export const proCadastroDemo: ProCadastro = {
+  nomeCompleto: 'Mariana Lopes', cpf: '123.456.789-00', email: 'mariana@ex.com', telefone: '(11) 98812-4431', instagram: '@marilopes.psi',
+  cnpj: '48.902.115/0001-20', razaoSocial: 'ML Psicologia Ltda.', contratoSocial: 'contrato-social.pdf',
+  banco: 'Nubank (260)', agencia: '0001', conta: '88213-4', pixChave: 'contato@mlpsicologia.com.br',
+  perfil: {
+    c1: '06/128443',
+    c2: 'SP',
+    c3: ['TCC', 'ACT'],
+    c4: ['Ansiedade', 'Estresse', 'Transição de carreira'],
+    c5: 'Psicóloga clínica com foco em ansiedade e processos de transição de carreira. Abordagem integrativa e baseada em evidências.',
+    c6: 'Sessões estruturadas com definição de metas, tarefas entre encontros e revisão contínua do plano terapêutico.',
+  },
+  formacoes: [
+    { id: 'f1', nivel: 'Graduação', curso: 'Psicologia', instituicao: 'USP', inicio: '2011-02', fim: '2015-12', emAndamento: false },
+    { id: 'f2', nivel: 'Especialização', curso: 'Terapia Cognitivo-Comportamental', instituicao: 'PUC-SP', inicio: '2016-03', fim: '2018-06', emAndamento: false },
+  ],
+  cursos: [
+    { id: 'c1', nome: 'Terapia do Esquema', instituicao: 'Instituto Beck', inicio: '2020-01', fim: '2021-06', emAndamento: false },
+    { id: 'c2', nome: 'Manejo de crises e risco', instituicao: 'YNA', inicio: '2023-02', fim: '', emAndamento: true },
+  ],
+  idiomas: [
+    { id: 'i1', idioma: 'Português', nivel: 'Nativo' },
+    { id: 'i2', idioma: 'Inglês', nivel: 'Avançado' },
+  ],
+  disponibilidade: { dias: ['Seg', 'Ter', 'Qua', 'Qui'], horaInicio: '09:00', horaFim: '18:00', plantao: true },
+}
+
+/* Opções de selects do cadastro. */
+export const PRO_LINHAS_TEORICAS = ['TCC', 'ACT', 'Psicanálise', 'Gestalt', 'Sistêmica', 'Integrativa', 'Humanista', 'Comportamental', 'Junguiana']
+export const PRO_AREAS_ATUACAO = ['Ansiedade', 'Depressão', 'Estresse', 'Luto', 'Relacionamentos', 'Transição de carreira', 'Autoestima', 'Burnout', 'TDAH']
+export const PRO_NIVEIS_FORMACAO = ['Graduação', 'Pós-graduação', 'Especialização', 'Mestrado', 'Doutorado']
+export const PRO_IDIOMAS = ['Português', 'Inglês', 'Espanhol', 'Francês', 'Italiano', 'Alemão', 'Libras']
+export const PRO_NIVEIS_IDIOMA = ['Básico', 'Intermediário', 'Avançado', 'Fluente', 'Nativo']
+export const PRO_DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+
+/* Vídeos de onboarding (ativação da conta) — playlist da Academia YNA. */
+export interface ProOnboardingVideo { id: string; titulo: string; duracao: string; descricao: string; cover: 'lavender' | 'pink' | 'yellow' | 'teal' | 'blue' }
+export const proOnboardingVideos: ProOnboardingVideo[] = [
+  { id: 'ov1', titulo: 'Bem-vindo à YNA', duracao: '3:20', descricao: 'Missão, posicionamento e o que esperar da plataforma.', cover: 'lavender' },
+  { id: 'ov2', titulo: 'Agenda, disponibilidade e sala de vídeo', duracao: '5:10', descricao: 'Como abrir horários e conduzir a sessão online.', cover: 'pink' },
+  { id: 'ov3', titulo: 'Prontuário e conduta clínica online', duracao: '6:40', descricao: 'Boas práticas e o padrão YNA de registro.', cover: 'blue' },
+  { id: 'ov4', titulo: 'Financeiro: repasses, NF e antecipação', duracao: '4:05', descricao: 'Como você recebe e emite suas notas fiscais.', cover: 'yellow' },
+  { id: 'ov5', titulo: 'Emergências e plantão', duracao: '3:50', descricao: 'Protocolo de crise e acionamento do plantão.', cover: 'teal' },
 ]

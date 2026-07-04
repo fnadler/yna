@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { SessionRoom } from '../../components/SessionRoom'
@@ -9,6 +9,7 @@ import { proSessionService } from '../../services/pro'
 import { ProntuarioFinalizar } from './ProntuarioFinalizar'
 import { SessionHistoryPanel } from './SessionHistoryPanel'
 import { emptyProntuarioDraft } from '../../lib/prontuario'
+import { emitirEvento, inscreverEvento } from '../../lib/proximaSessao'
 import type { ProntuarioDraft } from '../../lib/prontuario'
 
 export function Pro15Sessao() {
@@ -21,6 +22,16 @@ export function Pro15Sessao() {
   // modal de encerramento (finalizar / salvar rascunho).
   const [draft, setDraft] = useState<ProntuarioDraft>(emptyProntuarioDraft())
   const patchDraft = (patch: Partial<ProntuarioDraft>) => setDraft((d) => ({ ...d, ...patch }))
+
+  // Simulação: o beneficiário da próxima sessão já entrou na sala enquanto o
+  // profissional finaliza a atual. Aparece após alguns segundos (ou ao vivo, se
+  // a jornada do beneficiário estiver aberta em outra aba).
+  const [proxima, setProxima] = useState<{ apelido: string } | null>(null)
+  useEffect(() => {
+    const t = setTimeout(() => setProxima((p) => p ?? { apelido: 'Beija-flor' }), 3500)
+    const off = inscreverEvento((e) => { if (e.origem === 'beneficiario' && e.acao === 'entrou') setProxima({ apelido: e.apelido }) })
+    return () => { clearTimeout(t); off() }
+  }, [])
 
   if (session.status === 'loading' || session.status === 'idle') {
     return (
@@ -54,6 +65,9 @@ export function Pro15Sessao() {
         historyContent={
           <SessionHistoryPanel beneficiarioId={s.beneficiarioId} draft={draft} onDraftChange={patchDraft} />
         }
+        proximaSessao={proxima}
+        onAvisarAtraso={(minutos) => emitirEvento({ origem: 'profissional', aviso: { tipo: 'atraso', minutos } })}
+        onCancelarProxima={() => emitirEvento({ origem: 'profissional', aviso: { tipo: 'cancelado' } })}
       />
 
       {/* Finalização do prontuário em modal, logo após a sessão */}

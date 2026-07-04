@@ -9,6 +9,25 @@ import { ProProvider } from './contexts/ProContext'
 import { ProAppLayout } from './components/ProAppLayout'
 import { RhProvider } from './contexts/RhContext'
 import { RhAppLayout } from './components/RhAppLayout'
+import { MngProvider } from './contexts/MngContext'
+import { MngAppLayout } from './components/MngAppLayout'
+import { Mng00Login } from './screens/mng/Mng00Login'
+import { Mng10Home } from './screens/mng/Mng10Home'
+import { Mng11Empresas } from './screens/mng/Mng11Empresas'
+import { Mng11EmpresaDetalhe } from './screens/mng/Mng11EmpresaDetalhe'
+import { Mng12Profissionais } from './screens/mng/Mng12Profissionais'
+import { Mng20TiposProfissional } from './screens/mng/Mng20TiposProfissional'
+import { Mng23Planos } from './screens/mng/Mng23Planos'
+import { Mng21Documentos } from './screens/mng/Mng21Documentos'
+import { Mng22Notificacoes } from './screens/mng/Mng22Notificacoes'
+import { Mng12ProfissionalDetalhe } from './screens/mng/Mng12ProfissionalDetalhe'
+import { Mng13Sessoes } from './screens/mng/Mng13Sessoes'
+import { Mng14Matches } from './screens/mng/Mng14Matches'
+import { Mng15Universidade } from './screens/mng/Mng15Universidade'
+import { Mng16Financeiro } from './screens/mng/Mng16Financeiro'
+import { Mng17Suporte } from './screens/mng/Mng17Suporte'
+import { Mng18Gestores } from './screens/mng/Mng18Gestores'
+import { Mng19Mais } from './screens/mng/Mng19Mais'
 import { RH00BemVindo } from './screens/rh/RH00BemVindo'
 import { RH00Apresentacao } from './screens/rh/RH00Apresentacao'
 import { RH01Convite } from './screens/rh/RH01Convite'
@@ -20,6 +39,7 @@ import { RH10Home } from './screens/rh/RH10Home'
 import { RH11Beneficiarios } from './screens/rh/RH11Beneficiarios'
 import { RH12Convites } from './screens/rh/RH12Convites'
 import { RH13Indicadores } from './screens/rh/RH13Indicadores'
+import { RH18Financeiro } from './screens/rh/RH18Financeiro'
 import { RH14Departamentos } from './screens/rh/RH14Departamentos'
 import { RH15Equipe } from './screens/rh/RH15Equipe'
 import { RH16Conta } from './screens/rh/RH16Conta'
@@ -30,7 +50,6 @@ import { Pro01Convite } from './screens/pro/Pro01Convite'
 import { Pro02LinkInvalido } from './screens/pro/Pro02LinkInvalido'
 import { Pro03CadastroConta } from './screens/pro/Pro03CadastroConta'
 import { Pro03bContaCriada } from './screens/pro/Pro03bContaCriada'
-import { Pro04OnboardingPerfil } from './screens/pro/Pro04OnboardingPerfil'
 import { Pro05FinanceiroSetup } from './screens/pro/Pro05FinanceiroSetup'
 import { Pro06Integracao } from './screens/pro/Pro06Integracao'
 import { Pro07Status } from './screens/pro/Pro07Status'
@@ -53,6 +72,11 @@ import { Pro26Notificacoes } from './screens/pro/Pro26Notificacoes'
 import { Pro27Clientes } from './screens/pro/Pro27Clientes'
 import { Pro28Mais } from './screens/pro/Pro28Mais'
 import { Pro31LiveRoom } from './screens/pro/Pro31LiveRoom'
+import { Pro32Documentos } from './screens/pro/Pro32Documentos'
+import { ProCad00Intro } from './screens/pro/ProCad00Intro'
+import { ProCad01Wizard } from './screens/pro/ProCad01Wizard'
+import { ProCad02Processo } from './screens/pro/ProCad02Processo'
+import { ProAtivacao } from './screens/pro/ProAtivacao'
 
 import { Ben00BemVindo } from './screens/Ben00BemVindo'
 import { Ben00Apresentacao } from './screens/Ben00Apresentacao'
@@ -107,6 +131,15 @@ function RhRoot() {
     <RhProvider>
       <Outlet />
     </RhProvider>
+  )
+}
+
+/* Raiz do Manager/Backoffice YNA: provê o MngContext (isolado dos demais perfis). */
+function MngRoot() {
+  return (
+    <MngProvider>
+      <Outlet />
+    </MngProvider>
   )
 }
 
@@ -199,6 +232,16 @@ export function App() {
               {/* Transição "Conta criada" — full-screen */}
               <Route path="/pro/conta-criada" element={<Pro03bContaCriada />} />
 
+              {/* Cadastro do profissional (intro → etapas → processo) —
+                  mesmo layout de foco do onboarding (header/footer). */}
+              <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" exitTo="/pro/home" />}>
+                <Route path="/pro/cadastro/intro" element={<ProCad00Intro />} />
+                <Route path="/pro/cadastro/etapas" element={<ProCad01Wizard />} />
+              </Route>
+              {/* Confirmação do cadastro — full-screen (mesmo modelo do "conta criada") */}
+              <Route path="/pro/cadastro/processo" element={<ProCad02Processo />} />
+              <Route path="/pro/ativacao" element={<ProAtivacao />} />
+
               {/* Entrada (convite) + Etapas 2 e 3 (Cadastro da conta e Onboarding
                   do perfil) + setup financeiro/integração/ativação existentes —
                   layout de foco com barra inferior fixa. */}
@@ -206,7 +249,6 @@ export function App() {
                 <Route path="/pro/convite/invalido" element={<Pro02LinkInvalido />} />
                 <Route path="/pro/convite/:token" element={<Pro01Convite />} />
                 <Route path="/pro/cadastro" element={<Pro03CadastroConta />} />
-                <Route path="/pro/onboarding" element={<Pro04OnboardingPerfil />} />
                 <Route path="/pro/financeiro/setup" element={<Pro05FinanceiroSetup />} />
                 <Route path="/pro/integracao" element={<Pro06Integracao />} />
                 <Route path="/pro/status" element={<Pro07Status />} />
@@ -225,6 +267,7 @@ export function App() {
                 <Route path="/pro/home" element={<Pro12Home />} />
                 <Route path="/pro/agenda" element={<Pro13Agenda />} />
                 <Route path="/pro/clientes" element={<Pro27Clientes />} />
+                <Route path="/pro/documentos" element={<Pro32Documentos />} />
                 <Route path="/pro/mais" element={<Pro28Mais />} />
                 <Route path="/pro/beneficiario/:id" element={<Pro14Beneficiario />} />
                 <Route path="/pro/perfil" element={<Pro09Perfil />} />
@@ -272,6 +315,7 @@ export function App() {
                 <Route path="/rh/beneficiarios" element={<RH11Beneficiarios />} />
                 <Route path="/rh/convites" element={<RH12Convites />} />
                 <Route path="/rh/indicadores" element={<RH13Indicadores />} />
+                <Route path="/rh/financeiro" element={<RH18Financeiro />} />
                 <Route path="/rh/departamentos" element={<RH14Departamentos />} />
                 <Route path="/rh/equipe" element={<RH15Equipe />} />
                 <Route path="/rh/conta" element={<RH16Conta />} />
@@ -279,6 +323,39 @@ export function App() {
               </Route>
 
               <Route path="/rh" element={<Navigate to="/rh/home" replace />} />
+            </Route>
+
+            {/* ====================================================
+                FLUXO 4 — MANAGER / BACKOFFICE YNA (namespace /mng)
+                MngContext isolado; reusa o design system dos demais perfis.
+                Motor interno da operação (empresas, profissionais, conteúdo,
+                sessões, finanças, suporte).
+                ==================================================== */}
+            <Route element={<MngRoot />}>
+              {/* Acesso ao Manager — login + recuperação de senha (full-screen) */}
+              <Route path="/mng/login" element={<Mng00Login />} />
+
+              {/* Área logada do Manager — sidebar/bottom-nav próprios */}
+              <Route element={<MngAppLayout />}>
+                <Route path="/mng/home" element={<Mng10Home />} />
+                <Route path="/mng/empresas" element={<Mng11Empresas />} />
+                <Route path="/mng/empresas/:id" element={<Mng11EmpresaDetalhe />} />
+                <Route path="/mng/profissionais" element={<Mng12Profissionais />} />
+                <Route path="/mng/profissionais/:id" element={<Mng12ProfissionalDetalhe />} />
+                <Route path="/mng/tipos-profissional" element={<Mng20TiposProfissional />} />
+                <Route path="/mng/planos" element={<Mng23Planos />} />
+                <Route path="/mng/sessoes" element={<Mng13Sessoes />} />
+                <Route path="/mng/matches" element={<Mng14Matches />} />
+                <Route path="/mng/universidade" element={<Mng15Universidade />} />
+                <Route path="/mng/documentos" element={<Mng21Documentos />} />
+                <Route path="/mng/financeiro" element={<Mng16Financeiro />} />
+                <Route path="/mng/suporte" element={<Mng17Suporte />} />
+                <Route path="/mng/gestores" element={<Mng18Gestores />} />
+                <Route path="/mng/notificacoes" element={<Mng22Notificacoes />} />
+                <Route path="/mng/mais" element={<Mng19Mais />} />
+              </Route>
+
+              <Route path="/mng" element={<Navigate to="/mng/home" replace />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/rh/bem-vindo" replace />} />

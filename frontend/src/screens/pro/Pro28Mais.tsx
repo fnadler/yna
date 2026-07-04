@@ -46,6 +46,7 @@ export function Pro28Mais() {
       titulo: 'Recursos',
       items: [
         { icon: 'ph:wallet-bold', label: 'Financeiro', to: '/pro/financeiro' },
+        { icon: 'ph:files-bold', label: 'Modelos de documentos', to: '/pro/documentos' },
         { icon: 'ph:chats-circle-bold', label: 'Supervisão', to: '/pro/supervisao' },
       ],
     },

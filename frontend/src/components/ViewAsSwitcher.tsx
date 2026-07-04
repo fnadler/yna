@@ -2,23 +2,26 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 
-/* Seletor "Visualizando como" — alterna entre as visões de Administrador (RH)
-   e Beneficiário. Ao escolher Beneficiário, direciona para o fluxo do
-   beneficiário (área logada). Usado na nav do RH (sidebar desktop + "Mais"). */
+/* Seletor "Visualizando como" — alterna entre as visões dos perfis da
+   plataforma (RH, Beneficiário, Profissional e Manager/Backoffice). Ao
+   escolher uma visão diferente da atual, direciona para a respectiva área
+   logada. Usado nas navs (sidebar desktop + "Mais"). */
 
-type Visao = 'admin' | 'beneficiario'
+type Visao = 'admin' | 'beneficiario' | 'profissional' | 'manager'
 
 interface Opcao {
   id: Visao
   label: string
   desc: string
   icon: string
-  to: string | null
+  to: string
 }
 
 const OPCOES: Opcao[] = [
-  { id: 'admin', label: 'Administrador', desc: 'Painel do RH', icon: 'ph:buildings-bold', to: null },
+  { id: 'admin', label: 'RH / Empresa', desc: 'Painel do RH', icon: 'ph:buildings-bold', to: '/rh/home' },
   { id: 'beneficiario', label: 'Beneficiário', desc: 'Jornada de cuidado', icon: 'ph:user-bold', to: '/home' },
+  { id: 'profissional', label: 'Profissional', desc: 'Atendimentos e agenda', icon: 'ph:stethoscope-bold', to: '/pro/home' },
+  { id: 'manager', label: 'Manager YNA', desc: 'Backoffice / operação', icon: 'ph:shield-star-bold', to: '/mng/home' },
 ]
 
 export function ViewAsSwitcher({
@@ -46,7 +49,7 @@ export function ViewAsSwitcher({
 
   const escolher = (o: Opcao) => {
     setOpen(false)
-    if (o.to) navigate(o.to)
+    if (o.id !== atual.id) navigate(o.to)
   }
 
   return (

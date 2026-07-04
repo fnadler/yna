@@ -39,7 +39,7 @@ function PlayerContent({ cursoId, onClose }: { cursoId: string; onClose: () => v
       {/* Top bar */}
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3 lg:px-6">
         <div className="flex min-w-0 items-center gap-2 text-[13px] text-ink-secondary">
-          <span className="hidden font-medium text-ink-muted sm:inline">Universidade YNA</span>
+          <span className="hidden font-medium text-ink-muted sm:inline">Academia YNA</span>
           <Icon icon="ph:caret-right-bold" width={11} className="hidden shrink-0 text-ink-muted sm:inline" aria-hidden />
           <span className="truncate font-heading font-semibold text-ink">
             {q.status === 'success' && q.data ? q.data.titulo : 'Curso'}

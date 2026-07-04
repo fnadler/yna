@@ -41,13 +41,13 @@ export function Pro03bContaCriada() {
                 <span className="font-extrabold text-primary">pronta.</span>
               </h1>
               <p className="text-[15px] leading-relaxed text-ink-secondary">
-                Agora vamos montar o seu perfil clínico. É ele que aproxima você de quem procura
+                Agora vamos montar o seu perfil profissional. É ele que aproxima você de quem procura
                 cuidado — beneficiários conhecem seu jeito antes de escolher. Leva poucos minutos.
               </p>
             </div>
 
             <div className="w-full animate-yna-slide-up animate-yna-delay-250">
-              <Button variant="gradient" size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/pro/onboarding')}>
+              <Button variant="gradient" size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/pro/cadastro/intro')}>
                 Montar meu perfil
               </Button>
             </div>

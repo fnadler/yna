@@ -7,6 +7,7 @@ import type {
   NinaMessage,
   Achievement,
 } from '../types'
+import { tipoProfissionalAtivo as tipoTriagemAtivo } from './tiposProfissional'
 
 export const mockUser: UserProfile = {
   id: 'user-1',
@@ -99,74 +100,16 @@ export const wheelOfLife: WheelOfLife = {
   updatedAt: 'hoje',
 }
 
-export const triagemQuestions: TriagemQuestion[] = [
-  {
-    number: 1,
-    total: 5,
-    kind: 'closed',
-    intro: 'Sem pressa. Não existe resposta certa aqui.',
-    question: 'Pra começar: como tem sido a vida nos últimos tempos?',
-    highlight: 'como tem sido a vida',
-    options: [
-      'Estou atravessando um momento difícil',
-      'Sinto que algo não vai bem, mas ainda não sei nomear',
-      'Estou bem, mas quero cuidar de mim',
-      'Já faço terapia e quero continuar por aqui',
-    ],
-  },
-  {
-    number: 2,
-    total: 5,
-    kind: 'closed',
-    intro: 'Só pra entender melhor o que pesa mais.',
-    question: 'Tem alguma área da vida que está pedindo mais atenção agora?',
-    highlight: 'pedindo mais atenção',
-    options: [
-      'Trabalho — pressão, esgotamento ou conflitos',
-      'Relações — família, amizades, parceiro/a',
-      'Corpo e saúde — sono, energia, sintomas',
-      'Sentido e propósito — quem sou, o que quero',
-    ],
-  },
-  {
-    number: 3,
-    total: 5,
-    kind: 'closed',
-    intro: 'Isso ajuda a encontrar alguém com o jeito certo pra você.',
-    question: 'Como você prefere que a terapia funcione?',
-    highlight: 'a terapia',
-    options: [
-      'Ferramentas práticas — quero soluções e exercícios',
-      'Espaço de escuta — quero ser ouvido/a sem julgamento',
-      'Entender os padrões — quero descobrir de onde vêm as coisas',
-      'Não sei ainda — quero explorar junto com o profissional',
-    ],
-  },
-  {
-    number: 4,
-    total: 5,
-    kind: 'open',
-    intro: 'Essa é só sua. Use as palavras que vierem.',
-    question: 'Se você pudesse contar uma coisa pra quem vai te acompanhar, o que seria?',
-    highlight: 'te acompanhar',
-    placeholder: 'Escreva do seu jeito. Não precisa estar organizado — a gente entende.',
-    helper: 'O que você escrever aqui só é lido pelo profissional que você escolher. Nunca pela sua empresa.',
-  },
-  {
-    number: 5,
-    total: 5,
-    kind: 'closed',
-    intro: 'Último item — promessa.',
-    question: 'Tem alguma restrição de horário que a gente precisa saber?',
-    highlight: 'restrição de horário',
-    options: [
-      'Manhã funciona bem (até 12h)',
-      'Almoço ou início de tarde (12h–15h)',
-      'Final de tarde (15h–18h)',
-      'Noite (após 18h)',
-    ],
-  },
-]
+/* A triagem do beneficiário é dirigida pelas perguntas definidas no tipo de
+   profissional (CMS do Manager). Mapeamos cada pergunta para o formato da tela
+   de triagem (aberta → texto livre; única/múltipla/escala → opções). */
+const ESCALA_OPCOES = ['Muito baixo', 'Baixo', 'Moderado', 'Alto', 'Muito alto']
+export const triagemQuestions: TriagemQuestion[] = tipoTriagemAtivo.triagem.map((q, i): TriagemQuestion => {
+  const base = { number: i + 1, total: tipoTriagemAtivo.triagem.length, question: q.pergunta }
+  if (q.tipo === 'aberta') return { ...base, kind: 'open', placeholder: 'Escreva com suas palavras…', helper: 'O que você escrever aqui só é lido pelo profissional que você escolher. Nunca pela sua empresa.' }
+  if (q.tipo === 'escala') return { ...base, kind: 'closed', options: ESCALA_OPCOES }
+  return { ...base, kind: 'closed', options: q.opcoes ?? [] }
+})
 
 export const ninaMessages: NinaMessage[] = [
   {

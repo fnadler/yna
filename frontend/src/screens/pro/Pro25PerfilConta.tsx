@@ -65,14 +65,14 @@ export function Pro25PerfilConta() {
           </div>
         </ProfileRow>
 
-        {/* Editar perfil clínico (outra tela) */}
+        {/* Editar perfil profissional (outra tela) */}
         <button
           onClick={() => navigate('/pro/perfil')}
           className="mb-4 flex w-full items-center gap-3 rounded-lg border border-border bg-surface px-4 py-4 text-left transition-colors hover:bg-surface-hover"
         >
           <Icon icon="ph:user-circle-bold" width={20} className="shrink-0 text-primary dark:text-primary-300" aria-hidden />
           <div className="flex-1">
-            <p className="font-heading text-sm font-semibold text-ink">Editar perfil clínico</p>
+            <p className="font-heading text-sm font-semibold text-ink">Editar perfil profissional</p>
             <p className="text-[13px] text-ink-secondary">Bio, abordagem, vídeo, agenda — o que os beneficiários veem</p>
           </div>
           <Icon icon="ph:caret-right-bold" width={14} className="shrink-0 text-ink-secondary" aria-hidden />

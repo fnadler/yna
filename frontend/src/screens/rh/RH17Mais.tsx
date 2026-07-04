@@ -37,6 +37,7 @@ export function RH17Mais() {
     {
       titulo: 'Gestão',
       items: [
+        { icon: 'ph:receipt-bold', label: 'Financeiro', to: '/rh/financeiro' },
         { icon: 'ph:tree-structure-bold', label: 'Departamentos', to: '/rh/departamentos' },
         { icon: 'ph:user-gear-bold', label: 'Equipe RH', to: '/rh/equipe' },
       ],

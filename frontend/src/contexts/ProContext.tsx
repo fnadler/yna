@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
-import type { ProProfile, ProfileStrength, ProDisponibilidade } from '../types'
-import { proProfile, proNotificacoes, disponibilidadeInicial } from '../data/proMock'
+import type { ProProfile, ProfileStrength, ProDisponibilidade, ProCadastro } from '../types'
+import { proProfile, proNotificacoes, disponibilidadeInicial, proCadastroDemo } from '../data/proMock'
 import { computeProfileStrength } from '../services/pro'
 
 /* Estado do fluxo do Profissional. Isolado do AppContext (beneficiário).
@@ -17,6 +17,9 @@ interface ProContextValue {
   /** Disponibilidade (atendimento, plantão, bloqueios) — editada no PRO-11, resumida no PRO-09. */
   disponibilidade: ProDisponibilidade
   setDisponibilidade: (d: ProDisponibilidade) => void
+  /** Cadastro do profissional (5 steps) — compartilhado entre cadastro e ativação. */
+  cadastro: ProCadastro
+  updateCadastro: (patch: Partial<ProCadastro>) => void
 }
 
 const ProContext = createContext<ProContextValue | null>(null)
@@ -31,9 +34,11 @@ export function ProProvider({ children }: { children: ReactNode }) {
   const strength = useMemo(() => computeProfileStrength(profile), [profile])
   const unreadNotifs = useMemo(() => proNotificacoes.filter((n) => !n.lida).length, [])
   const [disponibilidade, setDisponibilidade] = useState<ProDisponibilidade>(disponibilidadeInicial)
+  const [cadastro, setCadastro] = useState<ProCadastro>(proCadastroDemo)
+  const updateCadastro = (patch: Partial<ProCadastro>) => setCadastro((prev) => ({ ...prev, ...patch }))
 
   return (
-    <ProContext.Provider value={{ profile, setProfile, updateProfile, strength, unreadNotifs, disponibilidade, setDisponibilidade }}>
+    <ProContext.Provider value={{ profile, setProfile, updateProfile, strength, unreadNotifs, disponibilidade, setDisponibilidade, cadastro, updateCadastro }}>
       {children}
     </ProContext.Provider>
   )

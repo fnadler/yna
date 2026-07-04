@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Icon } from '@iconify/react'
 import { Avatar } from './Avatar'
+import type { AvisoProfissional } from '../lib/proximaSessao'
 
 const WARN_AT = 5
 
@@ -28,22 +29,38 @@ export interface SessionRoomProps {
   onEmergency?: () => void
   /** Profissional: conteúdo do histórico do beneficiário (abre em painel lateral, como o chat). */
   historyContent?: ReactNode
+  /** Profissional: beneficiário da próxima sessão que já entrou na sala (aviso). */
+  proximaSessao?: { apelido: string } | null
+  onAvisarAtraso?: (minutos: number) => void
+  onCancelarProxima?: () => void
+  /** Beneficiário: estado do profissional (que está finalizando outra sessão). */
+  avisoProfissional?: AvisoProfissional | null
 }
 
 /* Sala de sessão online — compartilhada entre Beneficiário e Profissional.
    A aparência é idêntica nos dois fluxos; variam o participante, o self-view,
    o botão de ajuda (só beneficiário) e o que acontece ao encerrar (onEnd). */
-export function SessionRoom({ role, peer, self, minutesLeft = 32, onEnd, onEmergency, historyContent }: SessionRoomProps) {
+export function SessionRoom({ role, peer, self, minutesLeft = 32, onEnd, onEmergency, historyContent, proximaSessao, onAvisarAtraso, onCancelarProxima, avisoProfissional }: SessionRoomProps) {
   const [muted, setMuted] = useState(false)
   const [cameraOff, setCameraOff] = useState(false)
   const [panel, setPanel] = useState<'chat' | 'historico' | null>(null)
   const [showWarning, setShowWarning] = useState(false)
   const [sessionEnded, setSessionEnded] = useState(false)
+  // Aviso da próxima sessão (profissional) / do profissional (beneficiário).
+  const [decisao, setDecisao] = useState<AvisoProfissional | null>(null)
+  const [avisoAberto, setAvisoAberto] = useState(true)
+  const avisoKey = role === 'profissional' ? proximaSessao?.apelido : JSON.stringify(avisoProfissional)
 
   useEffect(() => {
     const t = setTimeout(() => setShowWarning(true), 3000)
     return () => clearTimeout(t)
   }, [])
+
+  // Reabre o aviso quando ele muda (ex.: profissional informou atraso/cancelamento).
+  useEffect(() => { if (avisoKey) setAvisoAberto(true) }, [avisoKey])
+
+  const escolherAtraso = (min: number) => { setDecisao({ tipo: 'atraso', minutos: min }); onAvisarAtraso?.(min) }
+  const escolherCancelar = () => { setDecisao({ tipo: 'cancelado' }); onCancelarProxima?.() }
 
   const handleEnd = () => {
     setSessionEnded(true)
@@ -101,6 +118,63 @@ export function SessionRoom({ role, peer, self, minutesLeft = 32, onEnd, onEmerg
       {showWarning && minutesLeft <= WARN_AT && (
         <div className="absolute inset-x-4 top-24 z-20 rounded-lg bg-warning-bg px-4 py-3 text-center text-sm font-medium text-warning-ink">
           Faltam {minutesLeft} minutos para encerrar. Combine o que precisa agora.
+        </div>
+      )}
+
+      {/* Beneficiário — aviso de que o profissional está finalizando outra sessão */}
+      {role === 'beneficiario' && avisoProfissional && avisoAberto && (
+        <div className="absolute inset-x-4 top-[104px] z-20 lg:inset-x-auto lg:left-1/2 lg:w-[26rem] lg:-translate-x-1/2">
+          {(() => {
+            const av = avisoProfissional
+            const cfg = av.tipo === 'cancelado'
+              ? { cls: 'bg-danger-bg text-danger-ink', icon: 'ph:x-circle-bold', txt: 'A sessão foi cancelada pelo profissional. Você pode reagendar pela sua agenda.' }
+              : av.tipo === 'atraso'
+                ? { cls: 'bg-warning-bg text-warning-ink', icon: 'ph:timer-bold', txt: `O profissional avisou que vai atrasar cerca de ${av.minutos} min. Obrigado por aguardar.` }
+                : { cls: 'bg-[rgba(20,18,42,0.92)] text-[#DCD4F0] border border-[rgba(255,255,255,0.12)]', icon: 'ph:hourglass-medium-bold', txt: 'O profissional está finalizando outra sessão. Ele já entra — obrigado por aguardar.' }
+            return (
+              <div className={`flex items-start gap-2.5 rounded-lg px-4 py-3 shadow-lg backdrop-blur-sm ${cfg.cls}`}>
+                <Icon icon={cfg.icon} width={18} className={`mt-px shrink-0 ${av.tipo === 'aguardando' ? 'animate-pulse' : ''}`} aria-hidden />
+                <p className="flex-1 text-[13px] font-medium leading-snug">{cfg.txt}</p>
+                <button onClick={() => setAvisoAberto(false)} className="shrink-0 opacity-70 transition-opacity hover:opacity-100" aria-label="Dispensar aviso"><Icon icon="ph:x-bold" width={14} aria-hidden /></button>
+              </div>
+            )
+          })()}
+        </div>
+      )}
+
+      {/* Profissional — aviso de que o beneficiário da próxima sessão já entrou */}
+      {role === 'profissional' && proximaSessao && avisoAberto && (
+        <div className="absolute bottom-[150px] left-4 z-20 w-[min(20rem,calc(100vw-2rem))] lg:bottom-24">
+          <div className="rounded-lg border border-warning/40 bg-[rgba(20,18,42,0.92)] p-3 shadow-lg backdrop-blur-sm">
+            <div className="flex items-start gap-2.5">
+              <span className="relative mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-warning/25 text-warning-ink">
+                {!decisao && <span className="absolute inset-0 animate-ping rounded-full bg-warning/30" aria-hidden />}
+                <Icon icon="ph:bell-ringing-bold" width={14} className="relative" aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                {!decisao ? (
+                  <>
+                    <p className="text-[12.5px] font-semibold text-[#F2EFF8]">Próxima sessão aguardando</p>
+                    <p className="mt-0.5 text-[12px] text-[#B4AEC9]"><span className="font-medium text-[#DCD4F0]">{proximaSessao.apelido}</span> já entrou na sala.</p>
+                    <p className="mt-2 font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-[#807A99]">Avisar atraso</p>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {[5, 10, 15].map((min) => (
+                        <button key={min} onClick={() => escolherAtraso(min)} className="rounded-pill bg-[rgba(242,239,248,0.14)] px-2.5 py-1 text-[12px] font-semibold text-[#F2EFF8] transition-colors hover:bg-[rgba(242,239,248,0.26)]">{min} min</button>
+                      ))}
+                    </div>
+                    <button onClick={escolherCancelar} className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium text-[#E98BA0] transition-colors hover:text-[#F0A6B6]"><Icon icon="ph:x-circle-bold" width={13} aria-hidden /> Cancelar consulta</button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[12.5px] font-semibold text-[#F2EFF8]">{decisao.tipo === 'atraso' ? `Aviso enviado · ~${decisao.minutos} min` : 'Consulta cancelada'}</p>
+                    <p className="mt-0.5 text-[12px] text-[#B4AEC9]">{decisao.tipo === 'atraso' ? `${proximaSessao.apelido} foi avisado(a) do atraso.` : `${proximaSessao.apelido} foi avisado(a) do cancelamento.`}</p>
+                    {decisao.tipo === 'atraso' && <button onClick={() => setDecisao(null)} className="mt-1.5 text-[12px] font-medium text-[#B9B2E6] transition-colors hover:text-[#F2EFF8]">Alterar aviso</button>}
+                  </>
+                )}
+              </div>
+              <button onClick={() => setAvisoAberto(false)} className="shrink-0 text-[#807A99] transition-colors hover:text-[#F2EFF8]" aria-label="Dispensar aviso"><Icon icon="ph:x-bold" width={14} aria-hidden /></button>
+            </div>
+          </div>
         </div>
       )}
 
