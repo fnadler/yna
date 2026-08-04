@@ -42,6 +42,8 @@ export function Mng19Mais() {
     { titulo: 'Configuração & compliance', items: [
       { icon: 'ph:users-three-bold', label: 'Usuários', to: '/mng/gestores' },
       { icon: 'ph:identification-card-bold', label: 'Tipos de profissional', to: '/mng/tipos-profissional' },
+      { icon: 'ph:shield-check-bold', label: 'Modelos de avaliação NR-1', to: '/mng/nr1/modelos' },
+      { icon: 'ph:lock-key-bold', label: 'Núcleo obrigatório', to: '/mng/nr1/nucleo' },
     ] },
   ]
 

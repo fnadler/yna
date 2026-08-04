@@ -28,6 +28,10 @@ import { Mng16Financeiro } from './screens/mng/Mng16Financeiro'
 import { Mng17Suporte } from './screens/mng/Mng17Suporte'
 import { Mng18Gestores } from './screens/mng/Mng18Gestores'
 import { Mng19Mais } from './screens/mng/Mng19Mais'
+import { NR1MngModelos } from './screens/mng/NR1MngModelos'
+import { NR1MngModeloEditor } from './screens/mng/NR1MngModeloEditor'
+import { NR1MngVersoes } from './screens/mng/NR1MngVersoes'
+import { NR1MngNucleo } from './screens/mng/NR1MngNucleo'
 import { RH00BemVindo } from './screens/rh/RH00BemVindo'
 import { RH00Apresentacao } from './screens/rh/RH00Apresentacao'
 import { RH01Convite } from './screens/rh/RH01Convite'
@@ -44,6 +48,15 @@ import { RH14Departamentos } from './screens/rh/RH14Departamentos'
 import { RH15Equipe } from './screens/rh/RH15Equipe'
 import { RH16Conta } from './screens/rh/RH16Conta'
 import { RH17Mais } from './screens/rh/RH17Mais'
+import { NR1RhCockpit } from './screens/rh/NR1RhCockpit'
+import { NR1RhCampanha } from './screens/rh/NR1RhCampanha'
+import { NR1RhMapaCalor } from './screens/rh/NR1RhMapaCalor'
+import { NR1RhInventario } from './screens/rh/NR1RhInventario'
+import { NR1RhPlanoAcao } from './screens/rh/NR1RhPlanoAcao'
+import { NR1RhRelatorio } from './screens/rh/NR1RhRelatorio'
+import { NR1RhCiclos } from './screens/rh/NR1RhCiclos'
+import { NR1RhCanal } from './screens/rh/NR1RhCanal'
+import { NR1RhKit } from './screens/rh/NR1RhKit'
 import { Pro00BemVindo } from './screens/pro/Pro00BemVindo'
 import { Pro00Apresentacao } from './screens/pro/Pro00Apresentacao'
 import { Pro01Convite } from './screens/pro/Pro01Convite'
@@ -115,6 +128,11 @@ import { Ben30Relatorio } from './screens/Ben30Relatorio'
 import { Ben31MeusDados } from './screens/Ben31MeusDados'
 import { Ben32to35MigracaoStub } from './screens/Ben32to35MigracaoStub'
 import { BenNovosMatches } from './screens/BenNovosMatches'
+import { NR1BenIntro } from './screens/NR1BenIntro'
+import { NR1BenQuestionario } from './screens/NR1BenQuestionario'
+import { NR1BenConclusao } from './screens/NR1BenConclusao'
+import { NR1BenCanalEscuta } from './screens/NR1BenCanalEscuta'
+import { NR1BenEvolucao } from './screens/NR1BenEvolucao'
 
 /* Raiz do fluxo do Profissional: provê o ProContext (isolado do beneficiário). */
 function ProRoot() {
@@ -168,6 +186,16 @@ export function App() {
               <Route path="/triagem/roda" element={<Ben10RodaDaVida />} />
             </Route>
 
+            {/* Avaliação psicossocial NR-1 — layout de foco, como a triagem.
+                O beneficiário nunca vê jargão de conformidade: para ele isto é
+                uma conversa sobre o ambiente de trabalho. */}
+            <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" exitTo="/home" />}>
+              <Route path="/avaliacao" element={<Navigate to="/avaliacao/intro" replace />} />
+              <Route path="/avaliacao/intro" element={<NR1BenIntro />} />
+              <Route path="/avaliacao/conclusao" element={<NR1BenConclusao />} />
+              <Route path="/avaliacao/:passo" element={<NR1BenQuestionario />} />
+            </Route>
+
             {/* Telas de convite e despedida (focus, max-w-xl, sem sidebar) */}
             <Route element={<FocusLayout />}>
               <Route path="/convite/:token" element={<Ben01Convite />} />
@@ -208,6 +236,8 @@ export function App() {
               <Route path="/relatorio" element={<Ben30Relatorio />} />
               <Route path="/meus-dados" element={<Ben31MeusDados />} />
               <Route path="/agenda" element={<BenAgenda />} />
+              <Route path="/canal-escuta" element={<NR1BenCanalEscuta />} />
+              <Route path="/minha-evolucao" element={<NR1BenEvolucao />} />
               <Route path="/profissionais/novos" element={<BenNovosMatches />} />
               <Route path="/mensagens" element={<Ben22Nina />} />
               <Route path="/migracao/*" element={<Ben32to35MigracaoStub />} />
@@ -317,6 +347,19 @@ export function App() {
                 <Route path="/rh/indicadores" element={<RH13Indicadores />} />
                 <Route path="/rh/financeiro" element={<RH18Financeiro />} />
                 <Route path="/rh/departamentos" element={<RH14Departamentos />} />
+
+                {/* Cockpit de conformidade NR-1. O RH seleciona e aplica um
+                    modelo/versão na campanha — nunca edita o questionário. */}
+                <Route path="/rh/nr1" element={<NR1RhCockpit />} />
+                <Route path="/rh/nr1/campanha" element={<NR1RhCampanha />} />
+                <Route path="/rh/nr1/mapa-calor" element={<NR1RhMapaCalor />} />
+                <Route path="/rh/nr1/inventario" element={<NR1RhInventario />} />
+                <Route path="/rh/nr1/plano-acao" element={<NR1RhPlanoAcao />} />
+                <Route path="/rh/nr1/relatorio" element={<NR1RhRelatorio />} />
+                <Route path="/rh/nr1/ciclos" element={<NR1RhCiclos />} />
+                <Route path="/rh/nr1/canal" element={<NR1RhCanal />} />
+                <Route path="/rh/nr1/kit" element={<NR1RhKit />} />
+
                 <Route path="/rh/equipe" element={<RH15Equipe />} />
                 <Route path="/rh/conta" element={<RH16Conta />} />
                 <Route path="/rh/mais" element={<RH17Mais />} />
@@ -343,6 +386,14 @@ export function App() {
                 <Route path="/mng/profissionais" element={<Mng12Profissionais />} />
                 <Route path="/mng/profissionais/:id" element={<Mng12ProfissionalDetalhe />} />
                 <Route path="/mng/tipos-profissional" element={<Mng20TiposProfissional />} />
+
+                {/* Modelos de avaliação psicossocial (NR-1). Toda a
+                    configuração e customização do instrumento vive aqui. */}
+                <Route path="/mng/nr1/modelos" element={<NR1MngModelos />} />
+                <Route path="/mng/nr1/modelos/:id" element={<NR1MngModeloEditor />} />
+                <Route path="/mng/nr1/modelos/:id/versoes" element={<NR1MngVersoes />} />
+                <Route path="/mng/nr1/nucleo" element={<NR1MngNucleo />} />
+
                 <Route path="/mng/planos" element={<Mng23Planos />} />
                 <Route path="/mng/sessoes" element={<Mng13Sessoes />} />
                 <Route path="/mng/matches" element={<Mng14Matches />} />

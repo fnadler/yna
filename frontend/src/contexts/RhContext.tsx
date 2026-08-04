@@ -6,6 +6,18 @@ import { rhEmpresa, rhUsuarioAtual, rhNotificacoes } from '../data/rhMock'
    ProContext (profissional). ThemeContext continua compartilhado.
    O RH nunca acessa dados clínicos/individuais — só agregados (LGPD). */
 
+/** Instrumento aplicado na campanha NR-1 corrente. Fica no contexto porque
+   inventário, relatório e mapa de calor precisam CITAR modelo + versão — a
+   rastreabilidade metodológica é o que torna a conformidade defensável
+   (RF-A04 / RF-F02). O RH seleciona e aplica; nunca edita o questionário. */
+export interface RhInstrumentoNr1 {
+  campanhaId: string
+  protocolo: string
+  modeloId: string
+  modeloNome: string
+  versao: string
+}
+
 interface RhContextValue {
   empresa: RhEmpresa
   setEmpresa: (e: RhEmpresa) => void
@@ -16,6 +28,9 @@ interface RhContextValue {
   isMaster: boolean
   /** Notificações não lidas — usado pelo sino (top-bar mobile + sidebar). */
   unreadNotifs: number
+  /** Modelo + versão aplicados na campanha NR-1 corrente (null até carregar). */
+  instrumentoNr1: RhInstrumentoNr1 | null
+  setInstrumentoNr1: (i: RhInstrumentoNr1) => void
 }
 
 const RhContext = createContext<RhContextValue | null>(null)
@@ -31,8 +46,15 @@ export function RhProvider({ children }: { children: ReactNode }) {
   const unreadNotifs = useMemo(() => rhNotificacoes.filter((n) => !n.lida).length, [])
   const isMaster = usuario.papel === 'master'
 
+  const [instrumentoNr1, setInstrumentoNr1] = useState<RhInstrumentoNr1 | null>(null)
+
   return (
-    <RhContext.Provider value={{ empresa, setEmpresa, updateEmpresa, usuario, isMaster, unreadNotifs }}>
+    <RhContext.Provider
+      value={{
+        empresa, setEmpresa, updateEmpresa, usuario, isMaster, unreadNotifs,
+        instrumentoNr1, setInstrumentoNr1,
+      }}
+    >
       {children}
     </RhContext.Provider>
   )

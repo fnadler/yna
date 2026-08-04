@@ -25,6 +25,7 @@ import { Ben25bCheckInSucesso } from './Ben25bCheckInSucesso'
 import { Ben26CheckInNina } from './Ben26CheckInNina'
 import { Ben27CheckInForm } from './Ben27CheckInForm'
 import { EmergencyModal } from '../components/EmergencyModal'
+import { NR1AvaliacaoCard } from '../components/NR1AvaliacaoCard'
 import type { Session } from '../types'
 
 type HomeSheet =
@@ -274,6 +275,8 @@ export function Ben21Home() {
                 />
               </div>
             )}
+            <NR1AvaliacaoCard />
+
             <nav aria-label="Atalhos rápidos" className="lg:py-5">
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
                 {shortcuts.map((s) => (

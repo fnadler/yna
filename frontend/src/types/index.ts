@@ -1180,3 +1180,308 @@ export interface MngNotificacao {
   /** Rota de destino ao clicar (tela de detalhe + filtro correspondente). */
   to: string
 }
+
+/* ============================================================
+   MÓDULO DE CONFORMIDADE NR-1 — riscos psicossociais
+   Atravessa três jornadas: o Manager mantém os MODELOS de avaliação
+   (versionados, com núcleo obrigatório), o RH aplica a campanha e opera o
+   cockpit, o beneficiário responde de forma anônima.
+
+   Duas travas estruturais que o front respeita em todas as telas:
+   · k-anonimato — nenhum recorte com menos de `kAnonimato` respondentes é
+     exibido ao RH (RF-C05 / RNF-02);
+   · versão publicada é imutável — editar publica uma nova versão rascunho,
+     e a versão aplicada fica registrada na campanha (RF-A04 / RF-F02).
+   ============================================================ */
+
+/** As quatro dimensões de fatores psicossociais do Guia do MTE. */
+export type Nr1DimensaoId = 'organizacao' | 'relacoes' | 'ambiente' | 'contexto'
+
+/** Escala de resposta: A = frequência · B = concordância (§7 do questionário). */
+export type Nr1EscalaId = 'A' | 'B'
+
+/** Direção do item: positivo (concordar = menor risco) ou reverso (invertido
+   antes de somar). */
+export type Nr1Direcao = 'positivo' | 'reverso'
+
+/** Item do questionário. `tipoCampo` reusa os tipos do formulário flexível
+   (MngCampoTipo) já usados em tipos de profissional e triagem. */
+export interface Nr1Item {
+  id: string
+  texto: string
+  tipoCampo: MngCampoTipo
+  escala: Nr1EscalaId
+  direcao: Nr1Direcao
+  /** Item do núcleo obrigatório — não removível em modelos derivados. */
+  obrigatorioNucleo: boolean
+  /** Instrumento-fonte (ex.: "HSE · Demandas"). */
+  referencia: string
+  /** Só aparece a quem se aplica (trabalho remoto, atendimento ao público). */
+  condicional?: boolean
+  /** Item sensível (assédio) — sinalizado para a curadoria clínica. */
+  sensivel?: boolean
+  /** Acrescentado por um modelo de cliente (não faz parte do Modelo YNA). */
+  origemCliente?: boolean
+  /** Opções — quando `tipoCampo` for select/multiselect. */
+  opcoes?: string[]
+}
+
+export interface Nr1Dimensao {
+  id: Nr1DimensaoId
+  nome: string
+  descricao: string
+  itens: Nr1Item[]
+}
+
+export interface Nr1EscalaOpcao { valor: number; rotulo: string }
+export interface Nr1EscalaDef { nome: string; opcoes: Nr1EscalaOpcao[] }
+/** As duas escalas disponíveis para os itens da versão. */
+export type Nr1EscalaConfig = Record<Nr1EscalaId, Nr1EscalaDef>
+
+export type Nr1NivelRisco = 'baixo' | 'atencao' | 'risco' | 'critico'
+
+/** Faixa de corte da média da dimensão → nível de risco (§7 do questionário). */
+export interface Nr1FaixaRisco {
+  min: number
+  max: number
+  nivel: Nr1NivelRisco
+  label: string
+  /** Prioridade de ação NR-1 (ex.: "Ação corretiva prioritária"). */
+  acao: string
+}
+
+export interface Nr1PontuacaoConfig {
+  faixas: Nr1FaixaRisco[]
+  /** Mínimo de respondentes para exibir um recorte (k-anonimato ≥ 4). */
+  kAnonimato: number
+}
+
+/** Ciclo de vida da versão: rascunho → publicada → arquivada.
+   Publicada é imutável — editar gera uma nova versão rascunho. */
+export type Nr1VersaoStatus = 'rascunho' | 'publicada' | 'arquivada'
+
+export interface Nr1QuestionarioVersao {
+  versao: string
+  status: Nr1VersaoStatus
+  dimensoes: Nr1Dimensao[]
+  escala: Nr1EscalaConfig
+  pontuacao: Nr1PontuacaoConfig
+  criadaEm: string
+  publicadaEm?: string
+  /** Perguntas abertas opcionais e anônimas (§5 do questionário). */
+  abertas: string[]
+  /** O que mudou nesta versão — exibido no histórico e no diff. */
+  notas?: string
+}
+
+/** Escopo do modelo: base mantida pela YNA ou derivado de um cliente. */
+export type Nr1Escopo = 'yna' | 'cliente'
+
+export interface Nr1QuestionarioModelo {
+  id: string
+  nome: string
+  escopo: Nr1Escopo
+  descricao: string
+  /** Empresa dona do modelo (apenas escopo 'cliente'). */
+  clienteId?: string
+  clienteNome?: string
+  /** Versão YNA que originou o derivado (apenas escopo 'cliente'). */
+  derivadoDe?: { modeloId: string; versao: string }
+  versoes: Nr1QuestionarioVersao[]
+}
+
+/* --- Campanha e coleta (RF-B01/B03/B04) --- */
+
+export type Nr1CampanhaStatus = 'rascunho' | 'em-campo' | 'encerrada'
+
+/** Participação por área — base do recorte por grupo exposto (RF-B03). */
+export interface Nr1ParticipacaoArea {
+  departamentoId: string
+  departamento: string
+  elegiveis: number
+  respostas: number
+}
+
+export interface Nr1Campanha {
+  id: string
+  nome: string
+  /** Protocolo único do ciclo de avaliação (RF-F02). */
+  protocolo: string
+  status: Nr1CampanhaStatus
+  /** Modelo + versão aplicados — registro imutável da metodologia (RF-A04). */
+  modeloId: string
+  modeloNome: string
+  versao: string
+  inicio: string
+  fim: string
+  elegiveis: number
+  respostas: number
+  participacao: Nr1ParticipacaoArea[]
+  criadaEm: string
+  encerradaEm?: string
+}
+
+/* --- Avaliação e mapa de calor (RF-C01/C02/C05) --- */
+
+/** Célula do mapa: `media`/`nivel` nulos = recorte protegido por k-anonimato. */
+export interface Nr1CelulaRisco {
+  dimensaoId: Nr1DimensaoId
+  media: number | null
+  nivel: Nr1NivelRisco | null
+}
+
+export interface Nr1LinhaMapa {
+  departamentoId: string
+  departamento: string
+  respondentes: number
+  /** true quando respondentes < k → células ocultas. */
+  protegido: boolean
+  celulas: Nr1CelulaRisco[]
+}
+
+/* --- Inventário para o PGR (RF-D01) --- */
+
+/** Severidade no padrão GRO: 1 (leve) a 5 (morte). */
+export type Nr1Severidade = 1 | 2 | 3 | 4 | 5
+
+export interface Nr1RiscoInventario {
+  id: string
+  dimensaoId: Nr1DimensaoId
+  dimensao: string
+  /** Descrição do fator/perigo psicossocial. */
+  fator: string
+  /** Possíveis danos à saúde. */
+  danos: string
+  /** Grupo de trabalhadores exposto (departamento/GHE). */
+  grupoExposto: string
+  departamentoId: string
+  respondentes: number
+  probabilidade: number
+  severidade: Nr1Severidade
+  /** probabilidade × severidade. */
+  nivelNum: number
+  nivel: Nr1NivelRisco
+  controles: string[]
+  /** Campanha que originou o risco — elo da rastreabilidade (RF-F01). */
+  campanhaId: string
+}
+
+/* --- Plano de ação 5W2H (RF-E01/E02) --- */
+
+export type Nr1AcaoStatus = 'planejada' | 'em-andamento' | 'concluida' | 'atrasada'
+
+/** Evidência de execução — o que a fiscalização verifica (RF-E02). */
+export interface Nr1Evidencia {
+  id: string
+  nome: string
+  em: string
+}
+
+export interface Nr1Acao {
+  id: string
+  /** Risco do inventário a que a ação responde. */
+  riscoId: string
+  oQue: string
+  porQue: string
+  quem: string
+  quando: string
+  onde: string
+  como: string
+  quanto: string
+  status: Nr1AcaoStatus
+  evidencias: Nr1Evidencia[]
+  concluidaEm?: string
+}
+
+/* --- Canal de escuta (RF-H01/H02) --- */
+
+export type Nr1RelatoCategoria =
+  | 'assedio-moral' | 'assedio-sexual' | 'conflito' | 'sobrecarga' | 'outro'
+export type Nr1RelatoStatus = 'novo' | 'em-apuracao' | 'concluido'
+
+export interface Nr1RelatoAndamento {
+  id: string
+  em: string
+  texto: string
+  autor: string
+}
+
+export interface Nr1Relato {
+  id: string
+  protocolo: string
+  categoria: Nr1RelatoCategoria
+  descricao: string
+  /** Área informada voluntariamente pelo relator (opcional). */
+  departamento?: string
+  abertoEm: string
+  /** Vencimento do SLA de tratamento. */
+  prazoEm: string
+  status: Nr1RelatoStatus
+  andamentos: Nr1RelatoAndamento[]
+}
+
+/* --- Ciclos e reavaliação (RF-G01) --- */
+
+export interface Nr1Ciclo {
+  campanhaId: string
+  nome: string
+  encerradaEm: string
+  modeloNome: string
+  versao: string
+  participacaoPct: number
+  mediaPorDimensao: { dimensaoId: Nr1DimensaoId; media: number }[]
+}
+
+/* --- Relatório de gestão e rastreabilidade (RF-F01/F03/F04) --- */
+
+/** Responsável técnico do cliente (SST/consultoria). A YNA fornece o insumo;
+   a assinatura do PGR permanece com o profissional do cliente (RF-F04). */
+export interface Nr1ResponsavelTecnico {
+  nome: string
+  registro: string
+  empresa: string
+  assinadoEm?: string
+}
+
+export type Nr1TrilhaEtapaTipo = 'avaliacao' | 'inventario' | 'acao' | 'evidencia'
+
+/** Elo da cadeia risco → avaliação → inventário → ação → evidência. */
+export interface Nr1TrilhaEtapa {
+  tipo: Nr1TrilhaEtapaTipo
+  titulo: string
+  detalhe: string
+  em: string
+}
+
+/** Trilha completa de um risco priorizado (RF-F01). */
+export interface Nr1Trilha {
+  riscoId: string
+  fator: string
+  grupoExposto: string
+  etapas: Nr1TrilhaEtapa[]
+}
+
+/* --- Jornada do beneficiário --- */
+
+/** Uma resposta do beneficiário à avaliação, com a versão aplicada (RF-F02). */
+export interface Nr1MinhaAvaliacao {
+  campanhaId: string
+  nome: string
+  respondidoEm: string
+  modeloNome: string
+  versao: string
+  scores: { dimensaoId: Nr1DimensaoId; nome: string; media: number }[]
+}
+
+/* --- Kit de comunicação da campanha (RF-K01) --- */
+
+export type Nr1MaterialTipo = 'email' | 'cartaz' | 'post' | 'roteiro'
+
+export interface Nr1KitMaterial {
+  id: string
+  tipo: Nr1MaterialTipo
+  titulo: string
+  descricao: string
+  /** Copy pronta, no tom da marca — o RH copia e adapta. */
+  conteudo: string
+}

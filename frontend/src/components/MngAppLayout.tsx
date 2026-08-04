@@ -17,6 +17,7 @@ const mngSidebarItems: NavItem[] = [
   { icon: 'ph:files-bold', label: 'Documentos', to: '/mng/documentos' },
   { icon: 'ph:package-bold', label: 'Planos', to: '/mng/planos' },
   { icon: 'ph:identification-card-bold', label: 'Tipos de profissional', to: '/mng/tipos-profissional' },
+  { icon: 'ph:shield-check-bold', label: 'Modelos NR-1', to: '/mng/nr1/modelos' },
   { icon: 'ph:users-three-bold', label: 'Usuários', to: '/mng/gestores' },
 ]
 

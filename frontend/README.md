@@ -113,6 +113,11 @@ Entrega `{ status, data?, message?, reload }` para qualquer chamada assíncrona.
 | `/relatorio` | BEN-30 | RF-CO-15.1/15.3 |
 | `/meus-dados` | BEN-31 | RF-CO-14.1 |
 | `/migracao/*` | BEN-32–35 | RF-CO-16.x (stub) |
+| `/avaliacao` → `/avaliacao/intro` | NR1-BEN-02 Introdução e anonimato | RF-A02, RNF-01/02 |
+| `/avaliacao/:passo` | NR1-BEN-03 ★ Questionário (render dinâmico) | RF-A01, RF-CO-NR1-01 |
+| `/avaliacao/conclusao` | NR1-BEN-04 Conclusão + ponte opt-in | RF-J01, RF-J04 |
+| `/canal-escuta` | NR1-BEN-05 Canal de escuta confidencial | RF-H01 |
+| `/minha-evolucao` | NR1-BEN-06 Minha evolução (P1) | RF-G01 |
 
 ★ = tela-herói do conceito visual, replicada fielmente.
 
@@ -178,6 +183,76 @@ A **sala de sessão** é o componente `src/components/SessionRoom.tsx`, parametr
 
 ---
 
+## Módulo de Conformidade NR-1 (riscos psicossociais)
+
+Atravessa três jornadas. Tipos em `src/types/index.ts` (prefixo `Nr1`), mocks em
+`src/data/nr1Mock.ts`, serviços em `src/services/nr1.ts`, vocabulário visual
+compartilhado em `src/lib/nr1.ts`.
+
+**O instrumento não é um formulário fixo no código.** É um *modelo* versionado:
+a YNA mantém o Modelo YNA base e deriva modelos por cliente; o RH apenas
+seleciona qual modelo + versão a campanha aplica; o beneficiário responde ao que
+a campanha registrou. Trocar o questionário no backoffice muda a tela do
+beneficiário sem tocar em código.
+
+### Manager / Backoffice — os modelos (`/mng/nr1/*`)
+
+| Rota | Tela | RF |
+|---|---|---|
+| `/mng/nr1/modelos` | NR1-MNG-01 Lista de modelos | RF-YN-NR1-01 |
+| `/mng/nr1/modelos/:id` | NR1-MNG-02 Editor de dimensões e itens | RF-YN-NR1-01/05 |
+| `/mng/nr1/modelos/:id/versoes` | NR1-MNG-03 Versões: publicar, arquivar, comparar | RF-YN-NR1-02 |
+| `/mng/nr1/nucleo` | NR1-MNG-04 Núcleo obrigatório | RF-YN-NR1-03/04 |
+
+### RH / Empresa — o cockpit (`/rh/nr1/*`)
+
+| Rota | Tela | RF |
+|---|---|---|
+| `/rh/nr1` | NR1-RH-06 Painel de conformidade | RF-I01 |
+| `/rh/nr1/campanha` | NR1-RH-01 Campanha + seleção de modelo/versão | RF-B01/B04, RF-RH-NR1-10 |
+| `/rh/nr1/mapa-calor` | NR1-RH-02 Mapa de calor dimensão × área | RF-C01/02/03/05 |
+| `/rh/nr1/inventario` | NR1-RH-03 Inventário para o PGR + exportação | RF-D01/02/03 |
+| `/rh/nr1/plano-acao` | NR1-RH-04 Plano de ação 5W2H + evidências | RF-E01/02 |
+| `/rh/nr1/relatorio` | NR1-RH-05 Relatório de gestão + rastreabilidade | RF-F01/02/03/04 |
+| `/rh/nr1/ciclos` | NR1-RH-07 Ciclos e reavaliação (P1) | RF-G01/02/03 |
+| `/rh/nr1/canal` | NR1-RH-08 Gestão do canal de escuta (P1) | RF-H02 |
+| `/rh/nr1/kit` | NR1-RH-09 Kit de comunicação (P1) | RF-K01 |
+
+As telas do beneficiário estão no mapa principal acima (`/avaliacao/*`,
+`/canal-escuta`, `/minha-evolucao`).
+
+### Regras que a UI e o serviço aplicam juntos
+
+Estas quatro moram na camada de serviço, não só na tela — a API real herda o
+mesmo contrato:
+
+- **Núcleo obrigatório não é removível.** Modelos derivados acrescentam itens,
+  nunca removem os do núcleo. A trava vale inclusive para o operador do
+  backoffice: é proteção contra erro humano, não contra o cliente.
+- **Versão publicada é imutável.** Editar uma versão publicada cria uma nova
+  versão em rascunho (`nr1ModeloService.salvarVersao`); a publicada permanece
+  intacta e as campanhas que a aplicaram não mudam de instrumento no meio do
+  ciclo.
+- **k-anonimato ≥ 4.** Recortes com menos de 4 respondentes chegam ao RH já
+  protegidos (`protegido: true`, células nulas) — a tela não tem como vazar. Os
+  recortes ocultos aparecem rotulados como protegidos, em vez de sumirem da
+  tabela.
+- **Ação só conclui com evidência.** `nr1AcaoService.concluir` recusa ação sem
+  anexo: "evidência de execução registrada" é o que a fiscalização verifica.
+
+### Estado
+
+- `AppContext.nr1` — avaliação em andamento do beneficiário (consentimento e
+  respostas), porque ela atravessa intro → dimensões → conclusão e pode ser
+  retomada.
+- `RhContext.instrumentoNr1` — modelo + versão + protocolo aplicados na campanha
+  corrente, citados pelo inventário e pelo relatório.
+- Os modelos e o núcleo **não** foram duplicados no `MngContext`: vivem em
+  `nr1ModeloService` e cada tela do backoffice os lê via `useService`, para não
+  criar duas fontes de verdade sobre o mesmo dado editável.
+
+---
+
 ## O que está mockado e como trocar
 
 | Mock | Onde | Como trocar |
@@ -192,6 +267,14 @@ A **sala de sessão** é o componente `src/components/SessionRoom.tsx`, parametr
 | Fluxo do Profissional (perfil, sessões, beneficiários, prontuários, plantão, financeiro, trilhas, lives, supervisão, qualidade, notificações) | `data/proMock.ts` via `services/pro.ts` | Endpoints REST do profissional (mesma assinatura) |
 | Validação de CRP | manual no MVP | Integração com base do CFP (backoffice) |
 | Antecipação de recebíveis | `proFinanceService` (mock) | Integração com fintech |
+| Modelos e versões do questionário NR-1 | `nr1Modelos` em `data/nr1Mock.ts` via `nr1ModeloService` | `GET/POST /nr1/modelos`, `/nr1/modelos/:id/versoes` |
+| Campanha NR-1 e participação por área | `nr1Campanhas` via `nr1CampanhaService` | `GET /nr1/campanhas`, `POST /nr1/campanhas/:id/lembretes` |
+| Mapa de calor e médias por dimensão | `nr1MapaCalor()` via `nr1ResultadoService` | `GET /nr1/resultados/mapa-calor` — **o k-anonimato deve ser aplicado no servidor**, não na tela |
+| Inventário para o PGR | `nr1Inventario()` via `nr1ResultadoService` | `GET /nr1/inventario` |
+| Exportações (inventário PDF/planilha, relatório PDF) | retornam só o nome do arquivo | `POST /nr1/exportacoes` com geração server-side |
+| Plano de ação 5W2H e evidências | `nr1Acoes` via `nr1AcaoService` | `GET/POST /nr1/acoes`, upload real de anexo |
+| Canal de escuta (relatos e andamentos) | `nr1Relatos` via `nr1CanalService` | `POST /nr1/relatos` — **sem vincular identidade do relator** |
+| Respostas da avaliação do beneficiário | `nr1BeneficiarioService.enviar` só incrementa o contador | `POST /nr1/campanhas/:id/respostas`, anônimo, registrando modelo+versão |
 
 ---
 
@@ -212,3 +295,14 @@ A **sala de sessão** é o componente `src/components/SessionRoom.tsx`, parametr
 - **Fornecedor de vídeo**: `Ben17VideoRoom` é visual/mock. Estruturado para receber o provider (Daily/Twilio) via prop ou context.
 - **Paleta índigo vs. teal**: o frontend segue o índigo do design system. Conflito com branding Persona/logo a ser resolvido com FDN Design.
 - **Nina (IA)**: respostas roteirizadas em `data/mock.ts`. Integração com LLM real requer endpoint seguro server-side.
+
+### Pendências do módulo NR-1 (sinalizadas, não resolvidas no código)
+
+- **Validação clínica dos itens do Modelo YNA**: os 34 itens em `data/nr1Mock.ts` vêm do rascunho v0.3 do questionário — são adaptações em português do HSE Indicator Tool e do COPSOQ, **ainda sem tradução transcultural validada**. Não usar em produção antes da revisão clínica e da retrotradução.
+- **Núcleo obrigatório a confirmar**: os 10 itens marcados como núcleo são a *proposta* do rascunho. A definição final de quais dimensões e itens são não-removíveis depende da curadoria clínica.
+- **Itens sensíveis (RL10/RL11, assédio)**: decidir com a clínica se permanecem no questionário anônimo, migram para o canal de escuta, ou ambos.
+- **Escala única vs. duas escalas**: o modelo hoje carrega frequência (A) e concordância (B), como no HSE. Unificar numa só simplifica o mobile — falta confirmar o impacto psicométrico.
+- **Fórmula probabilidade × severidade e pontos de corte**: o cálculo em `nr1NivelPorProduto` e as faixas em `NR1_PONTUACAO` são simples e transparentes de propósito, mas precisam de revisão de SST.
+- **Textos legais** (consentimento na intro da avaliação, sigilo do canal de escuta): placeholders no tom Cora, pendentes de jurídico/LGPD.
+- **Itens condicionais (CE04/CE05)**: hoje o respondente marca "não se aplica a mim". A exibição automática por perfil (remoto, atendimento ao público) depende de o cadastro carregar esse dado.
+- **Governança interna da YNA**: quem cria e aprova modelos derivados de cliente — decisão de produto, não de código.

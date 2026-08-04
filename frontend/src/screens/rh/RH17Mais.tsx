@@ -35,6 +35,18 @@ export function RH17Mais() {
 
   const grupos: { titulo: string; items: MaisItem[] }[] = [
     {
+      titulo: 'Conformidade NR-1',
+      items: [
+        { icon: 'ph:shield-check-bold', label: 'Painel de conformidade', to: '/rh/nr1' },
+        { icon: 'ph:megaphone-bold', label: 'Campanha de avaliação', to: '/rh/nr1/campanha' },
+        { icon: 'ph:squares-four-bold', label: 'Mapa de calor', to: '/rh/nr1/mapa-calor' },
+        { icon: 'ph:clipboard-text-bold', label: 'Inventário para o PGR', to: '/rh/nr1/inventario' },
+        { icon: 'ph:list-checks-bold', label: 'Plano de ação', to: '/rh/nr1/plano-acao' },
+        { icon: 'ph:seal-check-bold', label: 'Relatório de gestão', to: '/rh/nr1/relatorio' },
+        { icon: 'ph:megaphone-simple-bold', label: 'Canal de escuta', to: '/rh/nr1/canal' },
+      ],
+    },
+    {
       titulo: 'Gestão',
       items: [
         { icon: 'ph:receipt-bold', label: 'Financeiro', to: '/rh/financeiro' },

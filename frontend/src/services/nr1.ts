@@ -1,0 +1,426 @@
+import type {
+  Nr1QuestionarioModelo, Nr1QuestionarioVersao, Nr1Campanha, Nr1LinhaMapa,
+  Nr1RiscoInventario, Nr1Acao, Nr1Relato, Nr1Ciclo, Nr1ResponsavelTecnico,
+  Nr1MinhaAvaliacao, Nr1KitMaterial, Nr1Trilha, Nr1RelatoCategoria, Nr1Evidencia,
+  Nr1DimensaoId,
+} from '../types'
+import {
+  nr1Modelos, nr1Campanhas, nr1MapaCalor, nr1Inventario, nr1Acoes, nr1Relatos,
+  nr1Ciclos, nr1ResponsavelTecnico, nr1MinhasAvaliacoes, nr1Kit, nr1DimensaoNome,
+  nr1DimensoesBase, NR1_ESCALAS, NR1_PONTUACAO, NR1_TODAY, nr1NivelPorMedia,
+} from '../data/nr1Mock'
+
+/* Camada de serviços do Módulo de Conformidade NR-1 — mockada, com latência
+   simulada. As assinaturas espelham a futura API REST; trocar o corpo por
+   fetch/axios mantendo os tipos.
+
+   Duas regras de negócio moram aqui e não na UI, para que a futura API possa
+   assumi-las sem reescrever tela:
+   · publicar/editar versão respeita a imutabilidade da versão publicada;
+   · o k-anonimato já vem aplicado nos agregados entregues ao RH. */
+
+const delay = (ms: number) => new Promise<void>((res) => setTimeout(res, ms))
+const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min
+
+/** Próximo número de versão a partir do maior existente (1.0 → 1.1 → 2.0…). */
+function proximaVersao(versoes: Nr1QuestionarioVersao[]): string {
+  const nums = versoes.map((v) => v.versao.split('.').map(Number))
+  const maiorMajor = Math.max(...nums.map(([maj]) => maj ?? 0), 0)
+  const maiorMinor = Math.max(...nums.filter(([maj]) => maj === maiorMajor).map(([, min]) => min ?? 0), 0)
+  return `${maiorMajor}.${maiorMinor + 1}`
+}
+
+const clonarVersao = (v: Nr1QuestionarioVersao): Nr1QuestionarioVersao =>
+  JSON.parse(JSON.stringify(v)) as Nr1QuestionarioVersao
+
+export const nr1ModeloService = {
+  /** Modelos de avaliação psicossocial — base YNA + derivados por cliente. */
+  list: async (): Promise<Nr1QuestionarioModelo[]> => {
+    await delay(rand(300, 600))
+    return nr1Modelos
+  },
+
+  get: async (id: string): Promise<Nr1QuestionarioModelo | undefined> => {
+    await delay(rand(250, 500))
+    return nr1Modelos.find((m) => m.id === id)
+  },
+
+  /** Última versão publicada — padrão sugerido ao RH na campanha. */
+  versaoPublicada: (m: Nr1QuestionarioModelo): Nr1QuestionarioVersao | undefined =>
+    m.versoes.find((v) => v.status === 'publicada'),
+
+  /** Salva a versão RASCUNHO. Versão publicada é imutável: se o alvo já estiver
+     publicado, cria uma nova versão rascunho a partir dele (RF-A04). */
+  salvarVersao: async (modeloId: string, versao: string, patch: Partial<Nr1QuestionarioVersao>): Promise<Nr1QuestionarioVersao | undefined> => {
+    await delay(rand(350, 700))
+    const m = nr1Modelos.find((x) => x.id === modeloId)
+    if (!m) return undefined
+    const alvo = m.versoes.find((v) => v.versao === versao)
+    if (!alvo) return undefined
+
+    if (alvo.status !== 'rascunho') {
+      const nova: Nr1QuestionarioVersao = {
+        ...clonarVersao(alvo), ...patch,
+        versao: proximaVersao(m.versoes),
+        status: 'rascunho',
+        criadaEm: NR1_TODAY,
+        publicadaEm: undefined,
+        notas: patch.notas ?? `Rascunho derivado da versão ${alvo.versao}.`,
+      }
+      m.versoes.unshift(nova)
+      return nova
+    }
+
+    Object.assign(alvo, patch)
+    return alvo
+  },
+
+  /** Publica um rascunho. A publicada anterior passa a arquivada — só uma
+     versão publicada por modelo. */
+  publicar: async (modeloId: string, versao: string): Promise<{ ok: boolean; message?: string }> => {
+    await delay(rand(400, 800))
+    const m = nr1Modelos.find((x) => x.id === modeloId)
+    const alvo = m?.versoes.find((v) => v.versao === versao)
+    if (!m || !alvo) return { ok: false, message: 'Versão não encontrada.' }
+    if (alvo.status !== 'rascunho') return { ok: false, message: 'Só é possível publicar uma versão em rascunho.' }
+    m.versoes.forEach((v) => { if (v.status === 'publicada') v.status = 'arquivada' })
+    alvo.status = 'publicada'
+    alvo.publicadaEm = NR1_TODAY
+    return { ok: true }
+  },
+
+  /** Arquiva uma versão publicada (fica indisponível para novas campanhas;
+     campanhas em curso mantêm a versão com que começaram). */
+  arquivar: async (modeloId: string, versao: string): Promise<{ ok: boolean }> => {
+    await delay(rand(300, 600))
+    const v = nr1Modelos.find((x) => x.id === modeloId)?.versoes.find((x) => x.versao === versao)
+    if (v) v.status = 'arquivada'
+    return { ok: true }
+  },
+
+  /** Cria um novo rascunho vazio a partir do conteúdo-semente do Modelo YNA. */
+  novaVersao: async (modeloId: string): Promise<Nr1QuestionarioVersao | undefined> => {
+    await delay(rand(300, 600))
+    const m = nr1Modelos.find((x) => x.id === modeloId)
+    if (!m) return undefined
+    const base = m.versoes.find((v) => v.status === 'publicada') ?? m.versoes[0]
+    const nova: Nr1QuestionarioVersao = base
+      ? { ...clonarVersao(base), versao: proximaVersao(m.versoes), status: 'rascunho', criadaEm: NR1_TODAY, publicadaEm: undefined, notas: `Rascunho derivado da versão ${base.versao}.` }
+      : { versao: '1.0', status: 'rascunho', criadaEm: NR1_TODAY, dimensoes: nr1DimensoesBase(), escala: NR1_ESCALAS, pontuacao: NR1_PONTUACAO, abertas: [], notas: 'Primeiro rascunho.' }
+    m.versoes.unshift(nova)
+    return nova
+  },
+
+  /** Deriva um modelo de cliente a partir de uma versão YNA publicada.
+     O derivado nasce com o núcleo intacto — o cliente só acrescenta itens
+     (governança do §6 do prompt / §1 do questionário). */
+  derivarParaCliente: async (p: { origemModeloId: string; origemVersao: string; clienteId: string; clienteNome: string; nome: string; descricao: string }): Promise<Nr1QuestionarioModelo | undefined> => {
+    await delay(rand(500, 900))
+    const origem = nr1Modelos.find((m) => m.id === p.origemModeloId)
+    const versao = origem?.versoes.find((v) => v.versao === p.origemVersao)
+    if (!origem || !versao) return undefined
+    const modelo: Nr1QuestionarioModelo = {
+      id: `mod-${p.clienteId}-${nr1Modelos.length + 1}`,
+      nome: p.nome,
+      escopo: 'cliente',
+      clienteId: p.clienteId,
+      clienteNome: p.clienteNome,
+      descricao: p.descricao,
+      derivadoDe: { modeloId: origem.id, versao: versao.versao },
+      versoes: [{
+        ...clonarVersao(versao),
+        versao: '1.0',
+        status: 'rascunho',
+        criadaEm: NR1_TODAY,
+        publicadaEm: undefined,
+        notas: `Derivado da versão ${versao.versao} do ${origem.nome}.`,
+      }],
+    }
+    nr1Modelos.push(modelo)
+    return modelo
+  },
+
+  /** Diferença entre duas versões — itens acrescentados e removidos. */
+  comparar: async (modeloId: string, versaoA: string, versaoB: string): Promise<{ adicionados: string[]; removidos: string[] } | undefined> => {
+    await delay(rand(250, 500))
+    const m = nr1Modelos.find((x) => x.id === modeloId)
+    const a = m?.versoes.find((v) => v.versao === versaoA)
+    const b = m?.versoes.find((v) => v.versao === versaoB)
+    if (!a || !b) return undefined
+    const ids = (v: Nr1QuestionarioVersao) => new Set(v.dimensoes.flatMap((d) => d.itens.map((i) => i.id)))
+    const sa = ids(a)
+    const sb = ids(b)
+    return {
+      adicionados: [...sb].filter((i) => !sa.has(i)),
+      removidos: [...sa].filter((i) => !sb.has(i)),
+    }
+  },
+
+  /** Campanhas que aplicaram uma versão — impacto antes de arquivar. */
+  usoDaVersao: async (modeloId: string, versao: string): Promise<Nr1Campanha[]> => {
+    await delay(rand(200, 450))
+    return nr1Campanhas.filter((c) => c.modeloId === modeloId && c.versao === versao)
+  },
+}
+
+export const nr1CampanhaService = {
+  list: async (): Promise<Nr1Campanha[]> => {
+    await delay(rand(300, 600))
+    return nr1Campanhas
+  },
+
+  /** Campanha em campo — a que o beneficiário responde e o RH acompanha. */
+  ativa: async (): Promise<Nr1Campanha | undefined> => {
+    await delay(rand(250, 500))
+    return nr1Campanhas.find((c) => c.status === 'em-campo')
+  },
+
+  get: async (id: string): Promise<Nr1Campanha | undefined> => {
+    await delay(rand(250, 500))
+    return nr1Campanhas.find((c) => c.id === id)
+  },
+
+  /** Troca o modelo/versão aplicados. Só antes de a campanha ir a campo — uma
+     campanha em curso mantém a versão com que começou (RF-A04/F02). */
+  definirInstrumento: async (campanhaId: string, modeloId: string, versao: string): Promise<{ ok: boolean; message?: string }> => {
+    await delay(rand(300, 650))
+    const c = nr1Campanhas.find((x) => x.id === campanhaId)
+    if (!c) return { ok: false, message: 'Campanha não encontrada.' }
+    if (c.status !== 'rascunho') {
+      return { ok: false, message: 'A campanha já está em campo — a versão aplicada não pode mudar no meio do ciclo.' }
+    }
+    const m = nr1Modelos.find((x) => x.id === modeloId)
+    if (!m) return { ok: false, message: 'Modelo não encontrado.' }
+    c.modeloId = modeloId
+    c.modeloNome = m.nome
+    c.versao = versao
+    return { ok: true }
+  },
+
+  /** Dispara lembrete para as áreas com participação abaixo da meta (RF-B04). */
+  lembrar: async (departamentoIds: string[]): Promise<{ enviados: number }> => {
+    await delay(rand(500, 900))
+    return { enviados: departamentoIds.length }
+  },
+
+  /** Encerra a coleta e consolida o ciclo. */
+  encerrar: async (campanhaId: string): Promise<{ ok: boolean }> => {
+    await delay(rand(500, 900))
+    const c = nr1Campanhas.find((x) => x.id === campanhaId)
+    if (c) { c.status = 'encerrada'; c.encerradaEm = NR1_TODAY }
+    return { ok: true }
+  },
+}
+
+export const nr1ResultadoService = {
+  /** Mapa de calor por dimensão × área. Os recortes abaixo do k já chegam
+     com `protegido: true` e células nulas — a UI não tem como vazar. */
+  mapaCalor: async (): Promise<Nr1LinhaMapa[]> => {
+    await delay(rand(350, 700))
+    return nr1MapaCalor()
+  },
+
+  /** Média por dimensão no total da empresa (só áreas acima do k entram). */
+  mediaPorDimensao: async (): Promise<{ dimensaoId: Nr1DimensaoId; nome: string; media: number; nivel: ReturnType<typeof nr1NivelPorMedia> }[]> => {
+    await delay(rand(300, 600))
+    const linhas = nr1MapaCalor().filter((l) => !l.protegido)
+    return linhas[0]?.celulas.map((_, i) => {
+      const vals = linhas.map((l) => l.celulas[i]?.media ?? 0)
+      const media = Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1))
+      const dimensaoId = linhas[0]!.celulas[i]!.dimensaoId
+      return { dimensaoId, nome: nr1DimensaoNome(dimensaoId), media, nivel: nr1NivelPorMedia(media) }
+    }) ?? []
+  },
+
+  inventario: async (): Promise<Nr1RiscoInventario[]> => {
+    await delay(rand(350, 700))
+    return nr1Inventario().sort((a, b) => b.nivelNum - a.nivelNum)
+  },
+
+  /** Exportação do inventário para incorporação ao PGR (RF-D02). Mock: só
+     confirma o "arquivo gerado" — a geração real é do backend. */
+  exportarInventario: async (formato: 'pdf' | 'planilha'): Promise<{ ok: boolean; arquivo: string }> => {
+    await delay(rand(900, 1600))
+    const ext = formato === 'pdf' ? 'pdf' : 'xlsx'
+    return { ok: true, arquivo: `inventario-riscos-psicossociais-${NR1_TODAY}.${ext}` }
+  },
+
+  exportarRelatorio: async (): Promise<{ ok: boolean; arquivo: string }> => {
+    await delay(rand(900, 1600))
+    return { ok: true, arquivo: `relatorio-gestao-riscos-psicossociais-${NR1_TODAY}.pdf` }
+  },
+
+  /** Trilha risco → avaliação → inventário → ação → evidência (RF-F01). */
+  trilha: async (riscoId: string): Promise<Nr1Trilha | undefined> => {
+    await delay(rand(300, 600))
+    const risco = nr1Inventario().find((r) => r.id === riscoId)
+    if (!risco) return undefined
+    const campanha = nr1Campanhas.find((c) => c.id === risco.campanhaId)
+    const acoes = nr1Acoes.filter((a) => a.riscoId === riscoId)
+    return {
+      riscoId,
+      fator: risco.fator,
+      grupoExposto: risco.grupoExposto,
+      etapas: [
+        {
+          tipo: 'avaliacao',
+          titulo: `Avaliação · protocolo ${campanha?.protocolo ?? '—'}`,
+          detalhe: `${campanha?.modeloNome ?? 'Instrumento'} · versão ${campanha?.versao ?? '—'} · ${risco.respondentes} respondentes em ${risco.grupoExposto}.`,
+          em: campanha?.fim ?? NR1_TODAY,
+        },
+        {
+          tipo: 'inventario',
+          titulo: 'Inventário de riscos psicossociais (PGR)',
+          detalhe: `Probabilidade ${risco.probabilidade} × severidade ${risco.severidade} = ${risco.nivelNum}. Classificado como ${risco.nivel}.`,
+          em: campanha?.fim ?? NR1_TODAY,
+        },
+        ...acoes.map((a) => ({
+          tipo: 'acao' as const,
+          titulo: a.oQue,
+          detalhe: `${a.quem} · prazo ${a.quando} · ${a.status}`,
+          em: a.quando,
+        })),
+        ...acoes.flatMap((a) => a.evidencias.map((e) => ({
+          tipo: 'evidencia' as const,
+          titulo: `Evidência: ${e.nome}`,
+          detalhe: `Anexada à ação "${a.oQue}".`,
+          em: e.em,
+        }))),
+      ],
+    }
+  },
+
+  responsavelTecnico: async (): Promise<Nr1ResponsavelTecnico> => {
+    await delay(rand(200, 400))
+    return nr1ResponsavelTecnico
+  },
+
+  /** Registra o responsável técnico do cliente que assina o PGR (RF-F04). */
+  salvarResponsavel: async (r: Nr1ResponsavelTecnico): Promise<{ ok: boolean }> => {
+    await delay(rand(300, 600))
+    Object.assign(nr1ResponsavelTecnico, r, { assinadoEm: NR1_TODAY })
+    return { ok: true }
+  },
+
+  ciclos: async (): Promise<Nr1Ciclo[]> => {
+    await delay(rand(300, 600))
+    return nr1Ciclos
+  },
+}
+
+export const nr1AcaoService = {
+  list: async (): Promise<Nr1Acao[]> => {
+    await delay(rand(300, 600))
+    return nr1Acoes
+  },
+
+  /** Upsert da ação 5W2H. */
+  salvar: async (a: Nr1Acao): Promise<Nr1Acao> => {
+    await delay(rand(350, 700))
+    const saved: Nr1Acao = { ...a, id: a.id || `a-${nr1Acoes.length + 1}` }
+    const i = nr1Acoes.findIndex((x) => x.id === saved.id)
+    if (i >= 0) nr1Acoes[i] = saved
+    else nr1Acoes.push(saved)
+    return saved
+  },
+
+  /** Anexa a evidência de execução — o que a fiscalização verifica (RF-E02). */
+  anexarEvidencia: async (acaoId: string, nome: string): Promise<{ ok: boolean }> => {
+    await delay(rand(300, 600))
+    const a = nr1Acoes.find((x) => x.id === acaoId)
+    if (!a) return { ok: false }
+    const ev: Nr1Evidencia = { id: `ev-${acaoId}-${a.evidencias.length + 1}`, nome, em: NR1_TODAY }
+    a.evidencias.push(ev)
+    return { ok: true }
+  },
+
+  concluir: async (acaoId: string): Promise<{ ok: boolean; message?: string }> => {
+    await delay(rand(300, 600))
+    const a = nr1Acoes.find((x) => x.id === acaoId)
+    if (!a) return { ok: false }
+    if (a.evidencias.length === 0) {
+      return { ok: false, message: 'Anexe ao menos uma evidência de execução antes de concluir a ação.' }
+    }
+    a.status = 'concluida'
+    a.concluidaEm = NR1_TODAY
+    return { ok: true }
+  },
+}
+
+export const nr1CanalService = {
+  /** Abre um relato anônimo e devolve o protocolo de acompanhamento. */
+  registrar: async (p: { categoria: Nr1RelatoCategoria; descricao: string; departamento?: string }): Promise<{ protocolo: string }> => {
+    await delay(rand(600, 1100))
+    const protocolo = `ESC-2026-${String(34 + nr1Relatos.length).padStart(4, '0')}`
+    nr1Relatos.unshift({
+      id: `rel-${nr1Relatos.length + 1}`,
+      protocolo,
+      categoria: p.categoria,
+      descricao: p.descricao,
+      departamento: p.departamento,
+      abertoEm: NR1_TODAY,
+      prazoEm: '2026-07-09',
+      status: 'novo',
+      andamentos: [{ id: `an-${nr1Relatos.length + 1}`, em: NR1_TODAY, texto: 'Relato recebido pelo canal confidencial. Aguardando triagem.', autor: 'Canal de escuta' }],
+    })
+    return { protocolo }
+  },
+
+  /** Casos para a gestão do RH — sem qualquer identificação do relator. */
+  list: async (): Promise<Nr1Relato[]> => {
+    await delay(rand(300, 650))
+    return nr1Relatos
+  },
+
+  /** Registra andamento no tratamento do caso (trilha + SLA — RF-H02). */
+  andamento: async (relatoId: string, texto: string, concluir: boolean): Promise<{ ok: boolean }> => {
+    await delay(rand(350, 700))
+    const r = nr1Relatos.find((x) => x.id === relatoId)
+    if (!r) return { ok: false }
+    r.andamentos.push({ id: `an-${relatoId}-${r.andamentos.length + 1}`, em: NR1_TODAY, texto, autor: 'Camila Risi · DHO' })
+    r.status = concluir ? 'concluido' : 'em-apuracao'
+    return { ok: true }
+  },
+}
+
+export const nr1BeneficiarioService = {
+  /** Instrumento que o beneficiário vai responder: a versão registrada na
+     campanha ativa — nunca um formulário fixo no código (RF-CO-NR1-01). */
+  instrumentoDaCampanha: async (): Promise<{ campanha: Nr1Campanha; versao: Nr1QuestionarioVersao } | undefined> => {
+    await delay(rand(350, 700))
+    const campanha = nr1Campanhas.find((c) => c.status === 'em-campo')
+    if (!campanha) return undefined
+    const modelo = nr1Modelos.find((m) => m.id === campanha.modeloId)
+    const versao = modelo?.versoes.find((v) => v.versao === campanha.versao)
+    if (!versao) return undefined
+    return { campanha, versao }
+  },
+
+  /** Salvamento progressivo — o beneficiário pode parar e voltar. */
+  salvarParcial: async (_campanhaId: string, _respostas: Record<string, number | string>): Promise<{ ok: boolean }> => {
+    await delay(rand(200, 450))
+    return { ok: true }
+  },
+
+  /** Conclui a avaliação. A resposta é anônima: nada aqui liga o conteúdo ao
+     indivíduo — só a versão aplicada é registrada (RF-A02 / RF-F02). */
+  enviar: async (campanhaId: string, _respostas: Record<string, number | string>): Promise<{ ok: boolean; protocolo: string }> => {
+    await delay(rand(700, 1300))
+    const c = nr1Campanhas.find((x) => x.id === campanhaId)
+    if (c) c.respostas += 1
+    return { ok: true, protocolo: c?.protocolo ?? 'NR1-2026-000' }
+  },
+
+  /** Histórico do próprio respondente — nunca visível ao RH (RF-G01). */
+  minhasAvaliacoes: async (): Promise<Nr1MinhaAvaliacao[]> => {
+    await delay(rand(300, 600))
+    return nr1MinhasAvaliacoes
+  },
+}
+
+export const nr1KitService = {
+  list: async (): Promise<Nr1KitMaterial[]> => {
+    await delay(rand(250, 500))
+    return nr1Kit
+  },
+}
