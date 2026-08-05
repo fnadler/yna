@@ -43,8 +43,8 @@ export function NR1MngNucleo() {
         <div className="mb-6 flex gap-3 rounded-lg border border-border bg-surface p-4">
           <Icon icon="ph:lock-key-bold" width={20} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
           <p className="text-[12.5px] leading-relaxed text-ink-secondary">
-            Modelos derivados de cliente podem <strong className="font-semibold text-ink">acrescentar</strong> itens,
-            nunca remover os do núcleo. A trava vale inclusive para o operador do backoffice — é
+            Um modelo de cliente só <strong className="font-semibold text-ink">acrescenta</strong> itens.
+            Os do núcleo ficam travados, e a trava vale inclusive para o operador do backoffice: é
             proteção contra erro humano, não apenas contra o cliente.
           </p>
         </div>
@@ -202,8 +202,8 @@ function NucleoConteudo({ modelos }: { modelos: Nr1QuestionarioModelo[] }) {
         <Icon icon="ph:flask-bold" width={20} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
         <p className="text-[12px] leading-relaxed text-ink-secondary">
           <strong className="font-semibold text-ink">Pendente de validação clínica.</strong> A seleção
-          atual do núcleo é a proposta do rascunho v0.3 do questionário. A definição final —
-          quais dimensões e itens são não-removíveis — depende da curadoria clínica.
+          atual do núcleo é a proposta do rascunho v0.3 do questionário. A definição final de
+          quais dimensões e itens são não-removíveis depende da curadoria clínica.
         </p>
       </div>
     </>

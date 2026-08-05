@@ -168,7 +168,7 @@ const versaoYna = (versao: string, status: Nr1QuestionarioVersao['status'], cria
 
 /** Versão 1.0 — recorte inicial só com o núcleo (usada no piloto). */
 function versaoNucleoApenas(): Nr1QuestionarioVersao {
-  const v = versaoYna('1.0', 'arquivada', '2026-02-10', '2026-02-17', 'Primeira publicação — apenas o núcleo obrigatório (11 itens), usada no piloto.')
+  const v = versaoYna('1.0', 'arquivada', '2026-02-10', '2026-02-17', 'Primeira publicação, só com o núcleo obrigatório (11 itens), usada no piloto.')
   v.dimensoes = v.dimensoes.map((d) => ({ ...d, itens: d.itens.filter((i) => i.obrigatorioNucleo) }))
   return v
 }
@@ -193,7 +193,7 @@ function versaoCliente(): Nr1QuestionarioVersao {
 export const nr1Modelos: Nr1QuestionarioModelo[] = [
   {
     id: 'mod-yna',
-    nome: 'Modelo YNA — Riscos Psicossociais',
+    nome: 'Modelo YNA de Riscos Psicossociais',
     escopo: 'yna',
     descricao: 'Instrumento base da plataforma, mantido e revisado pela YNA. Cobre as 4 dimensões do Guia do MTE a partir do HSE Indicator Tool e do COPSOQ.',
     versoes: [
@@ -204,7 +204,7 @@ export const nr1Modelos: Nr1QuestionarioModelo[] = [
   },
   {
     id: 'mod-bcp',
-    nome: 'BCP Securities — Riscos Psicossociais',
+    nome: 'Modelo BCP Securities de Riscos Psicossociais',
     escopo: 'cliente',
     clienteId: 'e-bcp',
     clienteNome: rhEmpresa.nomeFantasia,
@@ -247,7 +247,7 @@ export const nr1Campanhas: Nr1Campanha[] = [
     protocolo: 'NR1-BCP-2026-001',
     status: 'em-campo',
     modeloId: 'mod-bcp',
-    modeloNome: 'BCP Securities — Riscos Psicossociais',
+    modeloNome: 'Modelo BCP Securities de Riscos Psicossociais',
     versao: '1.0',
     inicio: '2026-06-08',
     fim: '2026-06-30',
@@ -262,7 +262,7 @@ export const nr1Campanhas: Nr1Campanha[] = [
     protocolo: 'NR1-BCP-2025-002',
     status: 'encerrada',
     modeloId: 'mod-yna',
-    modeloNome: 'Modelo YNA — Riscos Psicossociais',
+    modeloNome: 'Modelo YNA de Riscos Psicossociais',
     versao: '1.0',
     inicio: '2025-11-03',
     fim: '2025-11-28',
@@ -419,7 +419,7 @@ export const nr1Acoes: Nr1Acao[] = [
     quem: 'Ricardo Alencar · Head de Trading',
     quando: '2026-07-31', onde: 'Trading & Mercados',
     como: 'Escala de revezamento em dois blocos de 20 minutos, com cobertura cruzada entre duplas.',
-    quanto: 'Sem custo direto — reorganização de escala',
+    quanto: 'Sem custo direto, só reorganização de escala',
     status: 'em-andamento',
     evidencias: [{ id: 'ev-01', nome: 'escala-revezamento-pregao-jul26.pdf', em: '2026-06-19' }],
   },
@@ -538,7 +538,7 @@ export const nr1Ciclos: Nr1Ciclo[] = [
     campanhaId: 'camp-2025-2s',
     nome: '2º semestre 2025',
     encerradaEm: '2025-12-05',
-    modeloNome: 'Modelo YNA — Riscos Psicossociais',
+    modeloNome: 'Modelo YNA de Riscos Psicossociais',
     versao: '1.0',
     participacaoPct: 62,
     mediaPorDimensao: [
@@ -551,8 +551,8 @@ export const nr1Ciclos: Nr1Ciclo[] = [
   {
     campanhaId: 'camp-2026-1s',
     nome: '1º semestre 2026',
-    encerradaEm: '—',
-    modeloNome: 'BCP Securities — Riscos Psicossociais',
+    /* Sem `encerradaEm`: esta campanha ainda está em campo. */
+    modeloNome: 'Modelo BCP Securities de Riscos Psicossociais',
     versao: '1.0',
     participacaoPct: Math.round((totalRespostas / totalElegiveis) * 100),
     mediaPorDimensao: [
@@ -577,7 +577,7 @@ export const nr1MinhasAvaliacoes: Nr1MinhaAvaliacao[] = [
     campanhaId: 'camp-2025-2s',
     nome: '2º semestre 2025',
     respondidoEm: '2025-11-12',
-    modeloNome: 'Modelo YNA — Riscos Psicossociais',
+    modeloNome: 'Modelo YNA de Riscos Psicossociais',
     versao: '1.0',
     scores: [
       { dimensaoId: 'organizacao', nome: 'Organização do trabalho', media: 2.3 },
@@ -596,7 +596,7 @@ export const nr1Kit: Nr1KitMaterial[] = [
       'Assunto: Um espaço seguro para você falar sobre o seu trabalho\n\n' +
       'Oi, tudo bem?\n\n' +
       'Nas próximas semanas você vai receber um convite para responder algumas perguntas sobre o seu dia a dia de trabalho. ' +
-      'São cerca de 8 minutos, e as respostas são anônimas — ninguém aqui vê o que você respondeu individualmente.\n\n' +
+      'São cerca de 8 minutos, e as respostas são anônimas: ninguém aqui vê o que você respondeu individualmente.\n\n' +
       'O que a gente enxerga é o retrato do time: onde o trabalho está pesando e o que precisa mudar. ' +
       'É a partir daí que conseguimos agir.\n\n' +
       'Contamos com você. E se em algum momento quiser conversar com alguém, o cuidado da YNA está disponível para você.',
@@ -607,8 +607,8 @@ export const nr1Kit: Nr1KitMaterial[] = [
     conteudo:
       'Assunto: Ainda dá tempo de contar como tem sido\n\n' +
       'A pesquisa sobre o ambiente de trabalho fica aberta até {{data_fim}}.\n\n' +
-      'Se você já respondeu, obrigado — de verdade. Se ainda não, são 8 minutos e continua tudo anônimo.\n\n' +
-      'Quanto mais gente participa, mais fiel é o retrato — e mais acertadas são as mudanças que vêm depois.',
+      'Se você já respondeu, obrigado de verdade. Se ainda não, são 8 minutos e continua tudo anônimo.\n\n' +
+      'Quanto mais gente participa, mais fiel é o retrato. E mais acertadas são as mudanças que vêm depois.',
   },
   {
     id: 'kit-03', tipo: 'cartaz', titulo: 'Cartaz para áreas comuns',
@@ -641,6 +641,6 @@ export const nr1Kit: Nr1KitMaterial[] = [
     conteudo:
       'A pesquisa sobre riscos psicossociais está no ar 🌱\n\n' +
       '8 minutos, anônima, e o resultado vira plano de ação.\n' +
-      'Responda quando fizer sentido para você — o link fica aberto até {{data_fim}}.',
+      'Responda quando fizer sentido para você. O link fica aberto até {{data_fim}}.',
   },
 ]

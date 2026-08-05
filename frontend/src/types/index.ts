@@ -1425,7 +1425,8 @@ export interface Nr1Relato {
 export interface Nr1Ciclo {
   campanhaId: string
   nome: string
-  encerradaEm: string
+  /** Ausente enquanto a campanha ainda está em campo. */
+  encerradaEm?: string
   modeloNome: string
   versao: string
   participacaoPct: number

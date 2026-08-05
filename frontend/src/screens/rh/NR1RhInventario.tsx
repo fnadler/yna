@@ -147,7 +147,7 @@ export function NR1RhInventario() {
               <p className="text-[12px] leading-relaxed text-ink-secondary">
                 A YNA entrega o inventário no formato do GRO, pronto para ser incorporado ao PGR
                 que a sua empresa já mantém. Não substituímos o seu software de SST, nem
-                assinamos o documento — a responsabilidade técnica é do SESMT ou da consultoria.
+                assinamos o documento. A responsabilidade técnica é do SESMT ou da consultoria.
               </p>
             </div>
           </>
@@ -167,7 +167,7 @@ export function NR1RhInventario() {
           </div>
           <p className="text-[12.5px] leading-relaxed text-ink-secondary">
             O arquivo traz o inventário completo com a versão do instrumento e o protocolo do
-            ciclo — o que o responsável técnico precisa para anexar ao PGR.
+            ciclo, que é o que o responsável técnico precisa para anexar ao PGR.
           </p>
           <Button fullWidth onClick={() => setExportado(null)}>Fechar</Button>
         </div>
@@ -222,8 +222,8 @@ function RiscoDetalhe({ risco, acoes }: { risco: Nr1RiscoInventario; acoes: Nr1A
         </p>
         {acoes.length === 0 ? (
           <p className="rounded-lg bg-surface-2 px-3.5 py-3 text-[12.5px] text-ink-secondary">
-            Nenhuma ação definida ainda. Um risco priorizado sem plano de ação é a lacuna que a
-            fiscalização procura.
+            Nenhuma ação definida ainda. Priorizar um risco e não agir sobre ele deixa a cadeia
+            pela metade.
           </p>
         ) : (
           <ul className="flex flex-col gap-1.5">

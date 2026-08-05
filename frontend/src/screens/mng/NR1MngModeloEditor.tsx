@@ -186,7 +186,7 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso }: {
           <Icon icon="ph:lock-simple-bold" width={20} className="mt-0.5 shrink-0 text-warning-ink" aria-hidden />
           <p className="text-[12.5px] leading-relaxed text-ink-secondary">
             Esta versão está <strong className="font-semibold text-ink">{VERSAO_STATUS[versao.status].label.toLowerCase()}</strong> e não pode ser alterada.
-            Qualquer edição aqui abre automaticamente uma nova versão em rascunho — a publicada
+            Qualquer edição aqui abre automaticamente uma nova versão em rascunho. A publicada
             permanece intacta para as campanhas que a aplicaram.
           </p>
         </div>
@@ -253,7 +253,7 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso }: {
                         onClick={() => !i.obrigatorioNucleo && setRemover({ dimensao: d, item: i })}
                         disabled={i.obrigatorioNucleo}
                         aria-label={i.obrigatorioNucleo ? `${i.id} pertence ao núcleo obrigatório e não pode ser removido` : `Remover item ${i.id}`}
-                        title={i.obrigatorioNucleo ? 'Item do núcleo obrigatório — não removível' : undefined}
+                        title={i.obrigatorioNucleo ? 'Item do núcleo obrigatório, não removível' : undefined}
                         className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:text-danger-ink disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:text-ink-muted"
                       >
                         <Icon icon={i.obrigatorioNucleo ? 'ph:lock-simple-bold' : 'ph:trash-bold'} width={16} aria-hidden />
@@ -485,7 +485,7 @@ function EscalaView({ versao }: { versao: Nr1QuestionarioVersao }) {
     <div className="flex flex-col gap-6 px-5 py-6 lg:px-6">
       {(['A', 'B'] as Nr1EscalaId[]).map((k) => (
         <section key={k}>
-          <h3 className="font-heading text-[14px] font-semibold text-ink">Escala {k} — {versao.escala[k].nome}</h3>
+          <h3 className="font-heading text-[14px] font-semibold text-ink">Escala {k} de {versao.escala[k].nome.toLowerCase()}</h3>
           <ol className="mt-2 flex flex-col gap-1.5">
             {versao.escala[k].opcoes.map((o) => (
               <li key={o.valor} className="flex items-center gap-3 rounded-lg bg-surface-2 px-3.5 py-2">

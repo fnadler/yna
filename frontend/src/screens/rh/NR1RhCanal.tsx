@@ -125,7 +125,7 @@ export function NR1RhCanal() {
           <Icon icon="ph:eye-slash-bold" width={20} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
           <p className="text-[12px] leading-relaxed text-ink-secondary">
             Os relatos chegam sem identificação. Quando o relator informa a área, ela aparece
-            aqui — mas nenhuma informação permite chegar até a pessoa. O retorno é sempre pelo
+            aqui, mas nenhuma informação permite chegar até a pessoa. O retorno é sempre pelo
             protocolo.
           </p>
         </div>

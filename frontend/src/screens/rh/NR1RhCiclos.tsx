@@ -99,7 +99,7 @@ function Comparacao({ ciclos }: { ciclos: Nr1Ciclo[] }) {
         </div>
         {delta0Positivo(atual, anterior) && (
           <p className="mt-2 text-[12px] leading-relaxed text-success-ink">
-            O risco caiu em todas as dimensões desde o ciclo anterior — é essa a evidência de que
+            O risco caiu em todas as dimensões desde o ciclo anterior. É essa a evidência de que
             o plano de ação está funcionando.
           </p>
         )}
@@ -111,8 +111,8 @@ function Comparacao({ ciclos }: { ciclos: Nr1Ciclo[] }) {
           <p className="text-[12px] leading-relaxed text-ink-secondary">
             O instrumento mudou entre os dois ciclos ({anterior!.modeloNome} v{anterior!.versao} →{' '}
             {atual.modeloNome} v{atual.versao}). A comparação continua válida para as dimensões do
-            núcleo, mas itens acrescentados ou removidos afetam a média — considere isso ao ler a
-            variação.
+            núcleo, mas itens acrescentados ou removidos afetam a média, então vale considerar isso
+            ao ler a variação.
           </p>
         </div>
       )}
@@ -130,7 +130,7 @@ function Comparacao({ ciclos }: { ciclos: Nr1Ciclo[] }) {
                     {c.modeloNome} · versão {c.versao}
                   </p>
                   <p className="mt-0.5 font-mono text-[11px] text-ink-muted">
-                    {c.encerradaEm === '—' ? 'em campo' : `encerrada em ${fmtData(c.encerradaEm)}`}
+                    {c.encerradaEm ? `encerrada em ${fmtData(c.encerradaEm)}` : 'em campo'}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
@@ -147,7 +147,7 @@ function Comparacao({ ciclos }: { ciclos: Nr1Ciclo[] }) {
         <Icon icon="ph:arrows-clockwise-bold" width={20} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
         <p className="text-[12px] leading-relaxed text-ink-secondary">
           O PGR é um processo contínuo, não um evento único. Além da cadência regular, vale
-          reavaliar após mudanças relevantes — reestruturação, fusão, novo turno —, porque elas
+          reavaliar após mudanças relevantes como reestruturação, fusão ou novo turno, porque elas
           alteram o risco psicossocial.
         </p>
       </div>

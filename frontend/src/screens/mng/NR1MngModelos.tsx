@@ -136,8 +136,8 @@ export function NR1MngModelos() {
           <Icon icon="ph:info-bold" width={20} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
           <p className="text-[12px] leading-relaxed text-ink-secondary">
             Uma versão publicada é imutável: editá-la cria uma nova versão em rascunho, e a
-            publicada permanece intacta. Campanhas em curso mantêm a versão com que começaram —
-            é isso que sustenta a rastreabilidade em fiscalização.
+            publicada permanece intacta. Campanhas em curso mantêm a versão com que começaram, e
+            é dessa continuidade que a rastreabilidade depende em fiscalização.
           </p>
         </div>
       </div>
@@ -198,14 +198,14 @@ function DerivarForm({ origem, onClose, onSaved }: { origem: Nr1QuestionarioMode
         />
       </div>
 
-      <Input label="Nome do modelo" value={nome} onChange={(e) => setNome(e.target.value)} placeholder={`Ex.: ${cliente?.nomeFantasia ?? 'Cliente'} — Riscos Psicossociais`} />
+      <Input label="Nome do modelo" value={nome} onChange={(e) => setNome(e.target.value)} placeholder={`Ex.: Modelo ${cliente?.nomeFantasia ?? 'Cliente'} de Riscos Psicossociais`} />
       <Input label="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="O que este modelo acrescenta ao instrumento base" />
 
       <div className="flex gap-3 rounded-lg border border-border bg-surface-2 p-3.5">
         <Icon icon="ph:shield-check-bold" width={18} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
         <p className="text-[12px] leading-relaxed text-ink-secondary">
           O núcleo obrigatório vem junto e não pode ser removido no modelo do cliente. A
-          customização acontece só aqui no backoffice — o cliente não edita o questionário.
+          customização acontece só aqui no backoffice. O cliente não edita o questionário.
         </p>
       </div>
 

@@ -91,8 +91,8 @@ export function NR1RhCampanha() {
                 <p className="text-[13.5px] leading-relaxed text-ink-secondary">
                   Enviar um lembrete para {lembrete.areas.length === 1 ? 'a área' : 'as áreas'}{' '}
                   <span className="font-semibold text-ink">{lembrete.areas.join(', ')}</span>?
-                  O lembrete vai para todos os elegíveis da área — nunca só para quem não respondeu,
-                  porque saber quem respondeu quebraria o anonimato.
+                  O lembrete vai para todos os elegíveis da área, nunca só para quem não respondeu.
+                  Saber quem respondeu quebraria o anonimato.
                 </p>
                 <div className="flex gap-2">
                   <Button variant="ghost" onClick={() => setLembrete(null)}>Cancelar</Button>
@@ -193,8 +193,8 @@ function CampanhaDetalhe({ campanha, onTrocar, onLembrar }: {
         {campanha.status !== 'rascunho' && (
           <p className="mt-3 flex items-start gap-2 border-t border-border pt-3 text-[12px] leading-relaxed text-ink-muted">
             <Icon icon="ph:lock-simple-bold" width={13} className="mt-0.5 shrink-0" aria-hidden />
-            A campanha já está em campo. A versão aplicada não muda no meio do ciclo — é isso que
-            mantém as respostas comparáveis e a metodologia defensável.
+            A campanha já está em campo. A versão aplicada não muda no meio do ciclo. É assim que
+            as respostas seguem comparáveis e a metodologia se sustenta.
           </p>
         )}
       </section>
@@ -250,8 +250,8 @@ function CampanhaDetalhe({ campanha, onTrocar, onLembrar }: {
         <div className="mt-4 flex gap-3 rounded-lg border border-border bg-surface-2 p-4">
           <Icon icon="ph:eye-slash-bold" width={20} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
           <p className="text-[12px] leading-relaxed text-ink-secondary">
-            Você vê quantas pessoas responderam por área, nunca quem respondeu. Os lembretes vão
-            para toda a área — não há lista de pendentes, e isso é proposital.
+            Você vê quantas pessoas responderam por área, mas não quem respondeu. Os lembretes vão
+            para toda a área: não existe lista de pendentes, e isso é proposital.
           </p>
         </div>
       </section>
@@ -321,7 +321,7 @@ function SelecionarInstrumento({ campanha, modelos, onClose, onSaved, onErro }: 
         <Icon icon="ph:info-bold" width={18} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
         <p className="text-[12px] leading-relaxed text-ink-secondary">
           O conteúdo do questionário é definido pela YNA. Se a sua empresa precisa de itens
-          específicos, fale com o seu contato — a customização é feita no backoffice, para
+          específicos, fale com o seu contato. A customização é feita no backoffice, para
           preservar a validade do instrumento.
         </p>
       </div>

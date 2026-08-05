@@ -57,8 +57,8 @@ export function NR1BenCanalEscuta() {
               Recebemos o seu relato
             </h1>
             <p className="mt-3 text-[15px] leading-relaxed text-ink-secondary">
-              Guarde este número. É por ele que você acompanha o caso — e é a única forma de
-              ligar você a este relato, porque nem o seu nome nem o seu e-mail foram registrados.
+              Guarde este número. É por ele que você acompanha o caso, e é a única forma de
+              ligar você a este relato: nem o seu nome nem o seu e-mail foram registrados.
             </p>
 
             <div className="mt-5 rounded-lg border border-border bg-surface p-5 text-center">
@@ -69,7 +69,7 @@ export function NR1BenCanalEscuta() {
             <div className="mt-5 flex items-start gap-3 rounded-lg bg-surface-2 p-4">
               <Icon icon="ph:hand-heart-bold" width={19} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
               <p className="text-[12.5px] leading-relaxed text-ink-secondary">
-                O canal cuida da apuração. Mas você também merece cuidado agora — se quiser
+                O canal cuida da apuração. Mas você também merece cuidado agora. Se quiser
                 conversar com alguém, a rede da YNA está disponível para você.
               </p>
             </div>
@@ -100,7 +100,7 @@ export function NR1BenCanalEscuta() {
             Canal de escuta
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed text-ink-secondary">
-            Um espaço confidencial para registrar situações que precisam ser olhadas de perto —
+            Um espaço confidencial para registrar situações que precisam ser olhadas de perto:
             assédio, conflitos, sobrecarga. Você recebe um protocolo e não precisa se
             identificar.
           </p>
@@ -132,7 +132,7 @@ export function NR1BenCanalEscuta() {
               <p className="mt-1.5 text-[11.5px] text-ink-muted">
                 {descricao.trim().length < 20
                   ? 'Escreva um pouco mais para conseguirmos apurar (mínimo de 20 caracteres).'
-                  : 'Evite escrever o seu próprio nome — assim o relato continua anônimo.'}
+                  : 'Evite escrever o seu próprio nome. Assim o relato continua anônimo.'}
               </p>
             </div>
 

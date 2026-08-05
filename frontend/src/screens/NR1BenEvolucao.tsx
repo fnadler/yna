@@ -44,7 +44,7 @@ export function NR1BenEvolucao() {
             <h2 className="text-[18px] font-semibold text-ink">Ainda não há nada para comparar</h2>
             <p className="max-w-sm text-[13.5px] leading-relaxed text-ink-secondary">
               Quando você responder à primeira conversa sobre o ambiente de trabalho, o seu
-              retrato aparece aqui — e só você o vê.
+              resultado aparece aqui, e ninguém além de você vê.
             </p>
           </div>
         )}
@@ -108,15 +108,15 @@ function Evolucao({ avaliacoes }: { avaliacoes: Nr1MinhaAvaliacao[] }) {
       <div className="mt-5 flex gap-3 rounded-lg bg-surface-2 p-4">
         <Icon icon="ph:eye-slash-bold" width={19} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
         <p className="text-[12px] leading-relaxed text-ink-secondary">
-          Estes números são só seus. Ninguém na sua empresa tem acesso a eles — o que a empresa
-          enxerga é o retrato do time inteiro, sem nome.
+          Estes números são só seus. Ninguém na sua empresa tem acesso a eles: a empresa vê
+          apenas médias por área, sem chegar em ninguém.
         </p>
       </div>
 
       <div className="mt-6 flex flex-col gap-2 rounded-lg border border-border bg-surface p-5">
         <p className="font-heading text-[15px] font-semibold text-ink">Quer conversar sobre isso?</p>
         <p className="text-[13px] leading-relaxed text-ink-secondary">
-          Um retrato é um ponto de partida, não um diagnóstico. Se algo aqui te chamou a
+          Isto é um ponto de partida, não um diagnóstico. Se algo aqui te chamou a
           atenção, você não precisa lidar com isso sozinho.
         </p>
         <div className="mt-2">

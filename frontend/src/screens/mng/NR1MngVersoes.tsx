@@ -136,7 +136,7 @@ export function NR1MngVersoes() {
               <Icon icon="ph:seal-check-bold" width={20} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
               <p className="text-[12px] leading-relaxed text-ink-secondary">
                 Publicar congela a versão: ela passa a ser aplicável em campanhas e não pode mais
-                ser alterada. A versão publicada anterior é arquivada automaticamente — só uma fica
+                ser alterada. A versão publicada anterior é arquivada automaticamente: só uma fica
                 publicada por vez. Campanhas em curso não mudam de versão no meio do ciclo.
               </p>
             </div>

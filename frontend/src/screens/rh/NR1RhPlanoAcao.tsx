@@ -79,7 +79,7 @@ export function NR1RhPlanoAcao() {
 
         <PageHeader
           title="Plano de ação"
-          subtitle="O que será feito, por quem, até quando — e a prova de que foi feito."
+          subtitle="O que será feito, por quem, até quando, e a prova de que foi feito."
           action={
             riscos.length > 0 ? (
               <Button variant="secondary" iconLeft="ph:plus-bold" onClick={() => setForm({ riscoId: riscoFiltro ?? riscos[0]!.id })}>
@@ -115,7 +115,7 @@ export function NR1RhPlanoAcao() {
               <div className="rounded-lg border border-border bg-surface px-5 py-14 text-center">
                 <p className="text-[15px] font-semibold text-ink">Nenhuma ação por aqui</p>
                 <p className="mx-auto mt-1 max-w-sm text-[13px] leading-relaxed text-ink-secondary">
-                  Um risco priorizado sem ação registrada é a lacuna mais comum em fiscalização.
+                  Risco priorizado sem ação registrada é o primeiro item que um auditor cobra.
                 </p>
               </div>
             ) : (
@@ -247,7 +247,7 @@ function AcaoDetalhe({ acao, risco, onAnexar, onConcluir }: {
         </p>
         {semEvidencia ? (
           <p className="rounded-lg bg-warning-bg px-3.5 py-3 text-[12.5px] leading-relaxed text-ink-secondary">
-            Nenhuma evidência anexada. Sem ela a ação não pode ser concluída — é o registro que
+            Nenhuma evidência anexada. Sem ela a ação não pode ser concluída: é o registro que
             a fiscalização verifica.
           </p>
         ) : (
@@ -328,7 +328,7 @@ function AcaoForm({ inicial, riscoId, riscos, onClose, onSaved }: {
         />
       </div>
 
-      <Input label="O quê — a medida de controle" value={oQue} onChange={(e) => setOQue(e.target.value)} placeholder="Ex.: Instituir janela de pausa obrigatória" />
+      <Input label="O quê (a medida de controle)" value={oQue} onChange={(e) => setOQue(e.target.value)} placeholder="Ex.: Instituir janela de pausa obrigatória" />
 
       <label className="block">
         <span className="mb-1.5 block text-[13px] font-semibold text-ink">Por quê</span>
@@ -336,9 +336,9 @@ function AcaoForm({ inicial, riscoId, riscos, onClose, onSaved }: {
       </label>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Input label="Quem — responsável" value={quem} onChange={(e) => setQuem(e.target.value)} placeholder="Nome · área" />
+        <Input label="Quem (responsável)" value={quem} onChange={(e) => setQuem(e.target.value)} placeholder="Nome · área" />
         <label className="block">
-          <span className="mb-1.5 block text-[13px] font-semibold text-ink">Quando — prazo</span>
+          <span className="mb-1.5 block text-[13px] font-semibold text-ink">Quando (prazo)</span>
           <input
             type="date"
             value={quando}
@@ -355,7 +355,7 @@ function AcaoForm({ inicial, riscoId, riscos, onClose, onSaved }: {
         <Textarea rows={2} value={como} onChange={(e) => setComo(e.target.value)} placeholder="De que forma a medida será executada" />
       </label>
 
-      <Input label="Quanto — custo estimado" value={quanto} onChange={(e) => setQuanto(e.target.value)} placeholder="Ex.: R$ 18.500 ou sem custo direto" />
+      <Input label="Quanto (custo estimado)" value={quanto} onChange={(e) => setQuanto(e.target.value)} placeholder="Ex.: R$ 18.500 ou sem custo direto" />
 
       <div>
         <p className="mb-1.5 text-[13px] font-semibold text-ink">Status</p>
@@ -366,7 +366,7 @@ function AcaoForm({ inicial, riscoId, riscos, onClose, onSaved }: {
           options={(['planejada', 'em-andamento', 'atrasada'] as Nr1AcaoStatus[]).map((s) => ({ value: s, label: ACAO_STATUS[s].label }))}
         />
         <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-muted">
-          Concluir a ação exige evidência anexada — isso é feito no detalhe.
+          Concluir a ação exige evidência anexada, e isso é feito no detalhe.
         </p>
       </div>
 

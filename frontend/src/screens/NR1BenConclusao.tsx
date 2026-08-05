@@ -64,8 +64,8 @@ export function NR1BenConclusao() {
 
         <p className="mt-4 text-[15px] leading-relaxed text-ink-secondary">
           Falar sobre como o trabalho tem te afetado não é pouca coisa. O que você contou entra
-          junto com o de todo mundo, sem nome, e vira o retrato que orienta o que precisa mudar
-          por aqui.
+          junto com o de todo mundo, sem nome, e ajuda a mostrar o que precisa mudar por
+          aqui.
         </p>
 
         {protocolo && (
@@ -78,7 +78,7 @@ export function NR1BenConclusao() {
         <section className="mt-8">
           <h2 className="font-heading text-[16px] font-semibold text-ink">E você, como está?</h2>
           <p className="mt-1 text-[13.5px] leading-relaxed text-ink-secondary">
-            Se alguma dessas perguntas mexeu com você, isto aqui é só seu — e só acontece se
+            Se alguma dessas perguntas mexeu com você, isto aqui é só seu, e só acontece se
             você quiser.
           </p>
 
@@ -98,7 +98,7 @@ export function NR1BenConclusao() {
             <OptionCard
               icon="ph:megaphone-simple-bold"
               label="Registrar algo no canal de escuta"
-              desc="Para situações que precisam de apuração — segue anônimo"
+              desc="Para situações que precisam de apuração, sempre anônimo"
               to="/canal-escuta"
             />
           </div>

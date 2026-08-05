@@ -173,7 +173,7 @@ function Wizard({ versao, passo, respostas, onResponder, campanhaId }: {
                 Quer contar mais alguma coisa?
               </h1>
               <p className="mt-2 text-[14px] leading-relaxed text-ink-secondary">
-                Estas são opcionais. Escreva só se fizer sentido para você — continua anônimo.
+                Estas são opcionais. Escreva só se fizer sentido para você. Continua tudo anônimo.
               </p>
 
               <div className="mt-7 flex flex-col gap-5">
@@ -193,7 +193,7 @@ function Wizard({ versao, passo, respostas, onResponder, campanhaId }: {
                 })}
                 <p className="flex items-start gap-2 text-[12px] leading-relaxed text-ink-muted">
                   <Icon icon="ph:lock-bold" width={13} className="mt-0.5 shrink-0" aria-hidden />
-                  Evite escrever nomes — assim garantimos que nada volte para você.
+                  Evite escrever nomes. Assim garantimos que nada volte para você.
                 </p>
               </div>
             </>
@@ -209,7 +209,7 @@ function Wizard({ versao, passo, respostas, onResponder, campanhaId }: {
               </p>
             )}
             <p className="text-center text-[12px] text-ink-secondary">
-              Você pode parar quando quiser — o que já respondeu fica guardado.
+              Se precisar parar, o que você já respondeu fica guardado.
             </p>
           </div>
         </div>

@@ -121,7 +121,7 @@ function Mapa({ linhas }: { linhas: Nr1LinhaMapa[] }) {
         <div>
           <p className="text-[13px] font-semibold text-ink">Anonimato estatístico</p>
           <p className="mt-0.5 text-[12px] leading-relaxed text-ink-secondary">
-            Nenhum recorte com menos de {K} respondentes é exibido — em um time de três pessoas,
+            Nenhum recorte com menos de {K} respondentes é exibido. Em um time de três pessoas,
             um número já identificaria alguém.
             {protegidas.length > 0 && (
               <> Neste ciclo, {protegidas.length === 1 ? 'a área' : 'as áreas'}{' '}

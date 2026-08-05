@@ -61,7 +61,7 @@ export function NR1RhCockpit() {
               <p className="font-heading text-[15px] font-semibold text-ink">Nenhuma campanha em campo</p>
               <p className="mt-0.5 text-[13px] leading-relaxed text-ink-secondary">
                 A avaliação de riscos psicossociais começa por uma campanha. É ela que registra
-                qual instrumento foi aplicado — a base da rastreabilidade.
+                qual instrumento foi aplicado, a base da rastreabilidade.
               </p>
             </div>
             <Link to="/rh/nr1/campanha" className="mt-1 inline-flex items-center gap-1.5 font-heading text-[13px] font-semibold text-primary hover:underline dark:text-primary-300">
@@ -150,7 +150,7 @@ export function NR1RhCockpit() {
             <EloCard
               icon="ph:clipboard-text-bold"
               titulo="Inventário para o PGR"
-              descricao="Fatores de risco, grupo exposto, nível e controles recomendados — pronto para incorporar ao PGR."
+              descricao="Fatores de risco, grupo exposto, nível e controles recomendados, pronto para incorporar ao PGR."
               to="/rh/nr1/inventario"
               estado="pronto"
             />
@@ -191,7 +191,7 @@ export function NR1RhCockpit() {
         <div className="mt-6 flex gap-3 rounded-lg border border-border bg-surface-2 p-4">
           <Icon icon="ph:info-bold" width={20} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
           <p className="text-[12px] leading-relaxed text-ink-secondary">
-            A YNA fornece o insumo qualificado — o inventário e o relatório de gestão. A
+            A YNA fornece o insumo qualificado: o inventário e o relatório de gestão. A
             responsabilidade técnica pelo PGR permanece com o SESMT ou a consultoria de SST da
             sua empresa.
           </p>

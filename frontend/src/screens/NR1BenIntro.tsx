@@ -20,12 +20,12 @@ const GARANTIAS = [
   {
     icon: 'ph:eye-slash-bold',
     titulo: 'Ninguém vê a sua resposta',
-    texto: 'Nem a sua liderança, nem o RH. O que sai daqui é só o retrato do time inteiro, sem nome.',
+    texto: 'Nem a sua liderança, nem o RH. O que sai daqui é o retrato do time todo, somado e sem nome.',
   },
   {
     icon: 'ph:clock-bold',
     titulo: 'Leva cerca de 8 minutos',
-    texto: 'Você pode parar quando quiser e voltar depois — o que já respondeu fica guardado.',
+    texto: 'Você pode parar quando quiser e voltar depois. O que já respondeu fica guardado.',
   },
   {
     icon: 'ph:heart-bold',
@@ -95,7 +95,7 @@ export function NR1BenIntro() {
             </h1>
 
             <p className="mt-4 text-[15px] leading-relaxed text-ink-secondary">
-              Queremos entender como tem sido o seu dia a dia de trabalho — o que pesa, o que
+              Queremos entender como tem sido o seu dia a dia de trabalho: o que pesa, o que
               ajuda, o que poderia ser diferente. O que você compartilhar aqui ajuda a cuidar do
               ambiente de todo mundo.
             </p>

@@ -107,7 +107,7 @@ export function NR1RhRelatorio() {
           {semAcao.length > 0 && (
             <p className="mt-2 text-[12px] leading-relaxed text-warning-ink">
               {semAcao.length} {semAcao.length === 1 ? 'risco priorizado ainda não tem' : 'riscos priorizados ainda não têm'} ação
-              definida — é a lacuna mais comum apontada em fiscalização.
+              definida. É a lacuna mais comum apontada em fiscalização.
             </p>
           )}
         </section>
@@ -176,8 +176,8 @@ export function NR1RhRelatorio() {
           </div>
           <p className="mt-4 flex items-start gap-2 border-t border-border pt-3 text-[12px] leading-relaxed text-ink-muted">
             <Icon icon="ph:info-bold" width={13} className="mt-0.5 shrink-0" aria-hidden />
-            A YNA fornece o insumo qualificado. A responsabilidade técnica pelo PGR permanece com
-            o SESMT ou a consultoria de SST da sua empresa — nós não assinamos o documento.
+            Quem assina o PGR é o SESMT ou a consultoria de SST da sua empresa, não a YNA. O que
+            entregamos aqui é o material técnico para esse profissional sustentar o documento.
           </p>
         </section>
       </div>
