@@ -24,7 +24,7 @@ export function Ben05Despedida() {
         </p>
       </div>
 
-      <Button variant="secondary" onClick={() => navigate('/sigilo')}>
+      <Button variant="secondary" onClick={() => navigate(-1)}>
         Voltar e reconsiderar
       </Button>
 

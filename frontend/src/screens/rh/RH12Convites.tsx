@@ -7,7 +7,7 @@ import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
 import { PAGE_MAX_W } from '../../lib/layout'
 import { useService } from '../../hooks/useService'
-import { rhConviteService, rhBeneficiarioService } from '../../services/rh'
+import { rhConviteService, rhColaboradorService } from '../../services/rh'
 import { useRh } from '../../contexts/RhContext'
 
 /* RH-12 — Envio de convites (Seção 5.5). Funil agregado (sem identificação),
@@ -23,12 +23,12 @@ const ETAPAS = [
 export function RH12Convites() {
   const { empresa } = useRh()
   const funil = useService(() => rhConviteService.funil(), [])
-  const beneficiarios = useService(() => rhBeneficiarioService.list(), [])
+  const colaboradores = useService(() => rhColaboradorService.list(), [])
   const [enviando, setEnviando] = useState(false)
   const [enviadoMsg, setEnviadoMsg] = useState('')
 
-  const naoConvidados = beneficiarios.status === 'success'
-    ? beneficiarios.data.filter((b) => b.status === 'nao_convidado')
+  const naoConvidados = colaboradores.status === 'success'
+    ? colaboradores.data.filter((b) => b.status === 'nao_convidado')
     : []
 
   const dispararTodos = async () => {
@@ -36,7 +36,7 @@ export function RH12Convites() {
     const r = await rhConviteService.disparar(naoConvidados.map((b) => b.id))
     setEnviando(false)
     setEnviadoMsg(`${r.enviados} convite(s) enviados. O reforço automático segue em D+3, D+7 e D+14.`)
-    beneficiarios.reload()
+    colaboradores.reload()
   }
 
   const base = funil.status === 'success' ? funil.data.enviado : 1
@@ -117,8 +117,8 @@ export function RH12Convites() {
             <section>
               <h2 className="mb-3 text-[15px] font-semibold text-ink">Enviar convites</h2>
               <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
-                {beneficiarios.status === 'loading' && <Skeleton className="h-20 w-full rounded-lg" />}
-                {beneficiarios.status === 'success' && (
+                {colaboradores.status === 'loading' && <Skeleton className="h-20 w-full rounded-lg" />}
+                {colaboradores.status === 'success' && (
                   <>
                     <div className="flex items-baseline gap-2">
                       <p className="text-3xl font-bold text-ink">{naoConvidados.length}</p>

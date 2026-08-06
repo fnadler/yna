@@ -233,12 +233,12 @@ const participacaoAreas = () =>
   rhDepartamentos.map((d) => ({
     departamentoId: d.id,
     departamento: d.nome,
-    elegiveis: d.beneficiarios,
+    elegiveis: d.colaboradores,
     respostas: PARTICIPACAO.find((p) => p.id === d.id)?.respostas ?? 0,
   }))
 
 const totalRespostas = PARTICIPACAO.reduce((s, p) => s + p.respostas, 0)
-const totalElegiveis = rhDepartamentos.reduce((s, d) => s + d.beneficiarios, 0)
+const totalElegiveis = rhDepartamentos.reduce((s, d) => s + d.colaboradores, 0)
 
 export const nr1Campanhas: Nr1Campanha[] = [
   {
@@ -530,7 +530,7 @@ export const nr1Relatos: Nr1Relato[] = [
 ]
 
 /* ------------------------------------------------------------------
-   Ciclos, responsável técnico e jornada do beneficiário
+   Ciclos, responsável técnico e jornada do colaborador
    ------------------------------------------------------------------ */
 
 export const nr1Ciclos: Nr1Ciclo[] = [
@@ -571,7 +571,7 @@ export const nr1ResponsavelTecnico: Nr1ResponsavelTecnico = {
   assinadoEm: undefined,
 }
 
-/** Avaliações do próprio beneficiário — só o dado dele (RF-G01). */
+/** Avaliações do próprio colaborador — só o dado dele (RF-G01). */
 export const nr1MinhasAvaliacoes: Nr1MinhaAvaliacao[] = [
   {
     campanhaId: 'camp-2025-2s',

@@ -14,8 +14,8 @@ const content: Record<ErrorType, { icon: string; title: string; body: string; ac
   used: {
     icon: 'ph:check-circle-bold',
     title: 'Convite já utilizado',
-    body: 'Você já criou uma conta com este link. Se não consegue entrar, pode redefinir sua senha.',
-    action: 'Redefinir minha senha',
+    body: 'Você já respondeu com este link. Se quer acessar sua conta, pedimos um novo link de acesso por e-mail.',
+    action: 'Reenviar meu link de acesso',
   },
   invalid: {
     icon: 'ph:link-break-bold',

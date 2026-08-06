@@ -11,10 +11,9 @@ import { ErrorState } from '../../components/ErrorState'
 import { PAGE_MAX_W } from '../../lib/layout'
 import { useService } from '../../hooks/useService'
 import { mngEmpresaService } from '../../services/mng'
-import { EMPRESA_STATUS_LABEL, mngGestores, mngCsms, PLANOS, PLANO_LICENCAS, SEGMENTOS } from '../../data/mngMock'
-import type { MngEmpresa, MngContrato, MngParcela } from '../../types'
+import { EMPRESA_STATUS_LABEL, mngGestores, mngCsms, PLANOS, SEGMENTOS } from '../../data/mngMock'
+import type { MngEmpresa, MngContrato } from '../../types'
 
-const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const fmtData = (iso: string) => { const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}` }
 const diasEntre = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000)
 const HOJE = '2026-06-26'
@@ -35,12 +34,10 @@ const TEXT: Record<'success' | 'warning' | 'danger', string> = { success: 'text-
 const STATUS_TONE: Record<MngEmpresa['status'], 'success' | 'danger' | 'neutral'> = { ativa: 'success', bloqueada: 'danger', inativa: 'neutral' }
 const CONTRATO_TONE: Record<MngContrato['status'], 'success' | 'neutral' | 'danger'> = { vigente: 'success', encerrado: 'neutral', cancelado: 'danger' }
 const CONTRATO_LABEL: Record<MngContrato['status'], string> = { vigente: 'Vigente', encerrado: 'Encerrado', cancelado: 'Cancelado' }
-const PARCELA: Record<MngParcela['status'], { label: string; tone: 'success' | 'warning' | 'neutral' | 'danger' }> = {
-  paga: { label: 'Paga', tone: 'success' }, pendente: { label: 'A vencer', tone: 'neutral' }, vencida: { label: 'Vencida', tone: 'danger' },
-}
 
-/* MNG-11b — Detalhe da empresa (tela): dados, contrato, financeiro, funil,
-   licenças, término e contatos (Master + CSM). */
+/* MNG-11b — Detalhe da empresa: dados cadastrais, contrato (só cadastral,
+   sem cobrança — §12), funil de convites, colaboradores e contatos
+   (Master + CSM). */
 export function Mng11EmpresaDetalhe() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
@@ -76,58 +73,17 @@ function Linha({ label, value }: { label: string; value: string }) {
 
 function EmpresaConteudo({ empresa, reload }: { empresa: MngEmpresa; reload: () => void }) {
   const [csmId, setCsmId] = useState(empresa.csmId)
-  const [notas, setNotas] = useState<Record<string, string>>({})
-  const [verParcelas, setVerParcelas] = useState(false)
   const [verHistorico, setVerHistorico] = useState(false)
   const [novoContrato, setNovoContrato] = useState(false)
   const [editar, setEditar] = useState(false)
 
   const vigente = empresa.contratos.find((c) => c.status === 'vigente')
   const and = vigente ? andamento(vigente.inicio, vigente.fim) : null
-  const usoPct = empresa.licencas > 0 ? Math.round((empresa.beneficiariosAtivos / empresa.licencas) * 100) : 0
-  const disponiveis = Math.max(0, empresa.licencas - empresa.beneficiariosAtivos)
+  const usoPct = empresa.colaboradoresContratados > 0 ? Math.round((empresa.colaboradoresAtivos / empresa.colaboradoresContratados) * 100) : 0
+  const disponiveis = Math.max(0, empresa.colaboradoresContratados - empresa.colaboradoresAtivos)
 
   const csms = mngCsms()
   const trocarCsm = (gid: string) => { setCsmId(gid); void mngEmpresaService.setCsm(empresa.id, gid) }
-  const notaDe = (p: MngParcela) => p.notaFiscal ?? notas[p.id]
-  const anexar = (p: MngParcela) => { const nome = `nf-${empresa.cnpj.replace(/\D/g, '').slice(0, 8)}-${p.numero}.pdf`; setNotas((s) => ({ ...s, [p.id]: nome })); void mngEmpresaService.anexarNota(empresa.id, p.id, nome) }
-
-  // Parcelas: destaque (em atraso + última paga + próxima) + progresso.
-  const parcelas = empresa.parcelas // mais recente → mais antiga
-  const pagasCount = parcelas.filter((p) => p.status === 'paga').length
-  const totalParcelas = parcelas.length
-  const pagasPct = totalParcelas > 0 ? Math.round((pagasCount / totalParcelas) * 100) : 0
-  const emAtraso = parcelas.filter((p) => p.status === 'vencida')
-  const ultimaPaga = parcelas.find((p) => p.status === 'paga') // lista já vem da mais recente
-  const proxima = [...parcelas].reverse().find((p) => p.status === 'pendente') // a mais próxima futura
-  // Destaque: em atraso + última paga + próxima (deduplicado, cronológico).
-  const destaque = [...emAtraso, ultimaPaga, proxima].filter((p): p is MngParcela => Boolean(p))
-  const resumoOrdenado = [...new Map(destaque.map((p) => [p.id, p])).values()].sort((a, b) => a.vencimento.localeCompare(b.vencimento))
-
-  const parcelaRow = (p: MngParcela) => {
-    const nf = notaDe(p)
-    const st = PARCELA[p.status]
-    // Só uma parcela "a vencer" (pendente) sem NF pode ter a nota enviada.
-    // Vencidas/pagas já têm NF emitida → download.
-    return (
-      <li key={p.id} className="flex items-center gap-3 py-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-ink">Parcela {p.numero} · {brl(p.valor)}</p>
-          <p className="text-[12px] text-ink-muted">vence {fmtData(p.vencimento)}</p>
-        </div>
-        <Badge tone={st.tone}>{st.label}</Badge>
-        {nf ? (
-          <button onClick={() => { /* download simulado */ }} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-[12px] font-medium text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink">
-            <Icon icon="ph:file-pdf-bold" width={14} className="text-primary dark:text-primary-300" aria-hidden /> Baixar NF
-          </button>
-        ) : p.status === 'pendente' ? (
-          <button onClick={() => anexar(p)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[12px] font-medium text-ink-secondary transition-colors hover:border-primary hover:text-ink">
-            <Icon icon="ph:paper-plane-tilt-bold" width={14} aria-hidden /> Enviar NF
-          </button>
-        ) : null}
-      </li>
-    )
-  }
 
   const funilBase = empresa.funil.enviado || 1
   const ETAPAS = [
@@ -168,7 +124,7 @@ function EmpresaConteudo({ empresa, reload }: { empresa: MngEmpresa; reload: () 
             </div>
           </section>
 
-          {/* Contrato */}
+          {/* Contrato — só dado cadastral (§12): sem parcelas nem cobrança */}
           <section>
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-[15px] font-semibold text-ink">Contrato</h2>
@@ -178,17 +134,9 @@ function EmpresaConteudo({ empresa, reload }: { empresa: MngEmpresa; reload: () 
               {vigente ? (
                 <div>
                   <Linha label="Plano" value={vigente.plano} />
-                  <Linha label="Valor mensal" value={brl(vigente.valorMensal)} />
-                  <Linha label="Valor total" value={brl(vigente.valorTotal)} />
-                  <Linha label="Licenças" value={`${vigente.licencas} beneficiários`} />
+                  <Linha label="Colaboradores contratados" value={String(vigente.colaboradoresContratados)} />
                   <Linha label="Início" value={fmtData(vigente.inicio)} />
                   <Linha label="Término" value={fmtData(vigente.fim)} />
-                  <div className="flex items-center justify-between gap-4 border-b border-border py-3 last:border-0">
-                    <span className="text-[13px] text-ink-secondary">Contrato assinado</span>
-                    {vigente.arquivo
-                      ? <button className="inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline dark:text-primary-300"><Icon icon="ph:file-pdf-bold" width={14} aria-hidden /> {vigente.arquivo}</button>
-                      : <span className="text-[13px] text-ink-muted">—</span>}
-                  </div>
                 </div>
               ) : (
                 <p className="py-4 text-center text-[13px] text-ink-muted">Sem contrato vigente.</p>
@@ -196,33 +144,6 @@ function EmpresaConteudo({ empresa, reload }: { empresa: MngEmpresa; reload: () 
 
               <Button variant="secondary" size="sm" fullWidth className="mt-4" iconLeft="ph:clock-counter-clockwise-bold" onClick={() => setVerHistorico(true)}>
                 Ver histórico de contratos ({empresa.contratos.length})
-              </Button>
-            </div>
-          </section>
-
-          {/* Financeiro — parcelas em destaque + progresso + ver todas */}
-          <section>
-            <h2 className="mb-3 text-[15px] font-semibold text-ink">Financeiro · parcelas</h2>
-            <div className="rounded-lg border border-border bg-surface p-4">
-              {resumoOrdenado.length > 0 ? (
-                <ul className="flex flex-col divide-y divide-border">{resumoOrdenado.map(parcelaRow)}</ul>
-              ) : (
-                <p className="py-2 text-[13px] text-ink-muted">Sem parcelas a destacar.</p>
-              )}
-
-              {/* Progresso de pagamento */}
-              <div className="mt-4">
-                <div className="flex items-center justify-between text-[12px]">
-                  <span className="text-ink-secondary">Parcelas pagas</span>
-                  <span className="font-mono text-ink-muted">{pagasCount} de {totalParcelas} · {pagasPct}%</span>
-                </div>
-                <div className="mt-1.5 h-2 overflow-hidden rounded-pill bg-surface-2">
-                  <div className="h-full rounded-pill bg-primary transition-all" style={{ width: `${pagasPct}%` }} />
-                </div>
-              </div>
-
-              <Button variant="secondary" size="sm" fullWidth className="mt-4" iconLeft="ph:list-bullets-bold" onClick={() => setVerParcelas(true)}>
-                Ver todas as parcelas
               </Button>
             </div>
           </section>
@@ -274,17 +195,17 @@ function EmpresaConteudo({ empresa, reload }: { empresa: MngEmpresa; reload: () 
 
         {/* Coluna direita */}
         <div className="mt-6 flex flex-col gap-5 lg:mt-0">
-          {/* Licenças */}
+          {/* Colaboradores */}
           <div className="rounded-lg border border-border bg-surface p-4">
             <div className="flex items-center justify-between">
-              <span className="text-[12.5px] text-ink-secondary">Licenças ativas</span>
+              <span className="text-[12.5px] text-ink-secondary">Colaboradores ativos</span>
               <Icon icon="ph:seat-bold" width={16} className="text-primary dark:text-primary-300" aria-hidden />
             </div>
-            <p className="mt-1 font-heading text-[26px] font-bold leading-none text-ink">{empresa.beneficiariosAtivos}<span className="text-base font-semibold text-ink-muted"> / {empresa.licencas}</span></p>
+            <p className="mt-1 font-heading text-[26px] font-bold leading-none text-ink">{empresa.colaboradoresAtivos}<span className="text-base font-semibold text-ink-muted"> / {empresa.colaboradoresContratados}</span></p>
             <div className="mt-2.5 h-2 overflow-hidden rounded-pill bg-surface-2">
               <div className={`h-full rounded-pill transition-all ${usoPct >= 100 ? 'bg-danger' : 'bg-primary'}`} style={{ width: `${Math.min(usoPct, 100)}%` }} />
             </div>
-            <p className="mt-1.5 text-[11.5px] text-ink-muted">{usoPct}% em uso · {disponiveis} disponíveis</p>
+            <p className="mt-1.5 text-[11.5px] text-ink-muted">{usoPct}% ativos · {disponiveis} disponíveis</p>
           </div>
 
           {/* Término do contrato */}
@@ -353,14 +274,6 @@ function EmpresaConteudo({ empresa, reload }: { empresa: MngEmpresa; reload: () 
         </div>
       </div>
 
-      {/* Modal: todas as parcelas do contrato */}
-      <Modal open={verParcelas} title="Parcelas do contrato" onClose={() => setVerParcelas(false)}>
-        <p className="mb-2 text-[13px] text-ink-secondary">{pagasCount} de {totalParcelas} parcelas pagas · {pagasPct}%</p>
-        <div className="max-h-[60vh] overflow-y-auto">
-          <ul className="flex flex-col divide-y divide-border">{parcelas.map(parcelaRow)}</ul>
-        </div>
-      </Modal>
-
       {/* Modal: histórico de contratos */}
       <Modal open={verHistorico} title="Histórico de contratos" onClose={() => setVerHistorico(false)}>
         <p className="mb-3 text-[13px] text-ink-secondary">Apenas um contrato fica vigente; os demais são renovações anteriores ou encerrados.</p>
@@ -374,16 +287,11 @@ function EmpresaConteudo({ empresa, reload }: { empresa: MngEmpresa; reload: () 
                 </div>
                 <Badge tone={CONTRATO_TONE[c.status]}>{CONTRATO_LABEL[c.status]}</Badge>
               </div>
-              <p className="mt-2 text-[12.5px] text-ink-secondary">{brl(c.valorMensal)}/mês · {brl(c.valorTotal)} total · {c.licencas} licenças</p>
+              <p className="mt-2 text-[12.5px] text-ink-secondary">{c.colaboradoresContratados} colaboradores contratados</p>
               <div className="mt-2">
                 <div className="flex items-center justify-between text-[11.5px] text-ink-muted"><span>Execução</span><span>{c.execucaoPct}%</span></div>
                 <div className="mt-1 h-1.5 overflow-hidden rounded-pill bg-surface-2"><div className="h-full rounded-pill bg-primary" style={{ width: `${c.execucaoPct}%` }} /></div>
               </div>
-              {c.arquivo && (
-                <button className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-primary hover:underline dark:text-primary-300">
-                  <Icon icon="ph:file-pdf-bold" width={14} aria-hidden /> {c.arquivo}
-                </button>
-              )}
             </div>
           ))}
         </div>
@@ -464,49 +372,37 @@ function EditarEmpresaForm({ empresa, onClose, onSaved }: { empresa: MngEmpresa;
   )
 }
 
-/* Formulário de novo contrato (renovação). Encerra o vigente e cria o novo. */
+/* Formulário de novo contrato (renovação). Encerra o vigente e cria o novo —
+   dado cadastral, sem cobrança (§12). */
 function NovoContratoForm({ empresa, onClose, onSaved }: { empresa: MngEmpresa; onClose: () => void; onSaved: () => void }) {
   const vigente = empresa.contratos.find((c) => c.status === 'vigente')
   const nextDay = (iso: string) => { const d = new Date(`${iso}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10) }
   const anoDepois = (iso: string) => { const d = new Date(`${iso}T00:00:00Z`); d.setUTCFullYear(d.getUTCFullYear() + 1); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10) }
 
   const inicioPadrao = vigente ? nextDay(vigente.fim) : ''
-  const [plano, setPlano] = useState('Plano Care · Corporativo')
-  const [licencas, setLicencas] = useState(String(PLANO_LICENCAS['Plano Care · Corporativo']))
+  const [plano, setPlano] = useState(vigente?.plano ?? PLANOS[0])
+  const [colaboradoresContratados, setColaboradoresContratados] = useState(String(vigente?.colaboradoresContratados ?? empresa.colaboradoresContratados))
   const [inicio, setInicio] = useState(inicioPadrao)
   const [fim, setFim] = useState(inicioPadrao ? anoDepois(inicioPadrao) : '')
-  const [valorTotal, setValorTotal] = useState('')
-  const [pagamento, setPagamento] = useState<'avista' | 'parcelado'>('parcelado')
-  const [numParcelas, setNumParcelas] = useState('12')
-  const [diaVenc, setDiaVenc] = useState('5')
   const [salvando, setSalvando] = useState(false)
   const [sucesso, setSucesso] = useState(false)
 
-  const onPlano = (v: string) => { setPlano(v); setLicencas(String(PLANO_LICENCAS[v] ?? '')) }
   const onInicio = (v: string) => { setInicio(v); if (v) setFim(anoDepois(v)) }
 
   const datasOk = Boolean(inicio && fim) && fim > inicio
-  const parcelasOk = pagamento === 'avista' || Number(numParcelas) >= 1
-  const diaOk = Number(diaVenc) >= 1 && Number(diaVenc) <= 28
-  const valido = Boolean(plano) && Number(licencas) > 0 && datasOk && Number(valorTotal) > 0 && parcelasOk && diaOk
+  const valido = Boolean(plano) && Number(colaboradoresContratados) > 0 && datasOk
 
   const inputCls = 'w-full rounded border-[1.5px] border-border bg-surface px-3.5 py-2.5 text-sm text-ink outline-none focus:border-primary'
-  const nParcelas = pagamento === 'avista' ? 1 : Number(numParcelas)
-  const valorParcela = nParcelas > 0 && Number(valorTotal) > 0 ? Math.round(Number(valorTotal) / nParcelas) : 0
-  const brlNum = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 
   const salvar = async () => {
     if (!valido) return
     setSalvando(true)
     await mngEmpresaService.novoContrato(empresa.id, {
-      plano, inicio, fim, licencas: Number(licencas), valorTotal: Number(valorTotal),
-      pagamento, numParcelas: nParcelas, diaVencimento: Number(diaVenc),
+      plano, inicio, fim, colaboradoresContratados: Number(colaboradoresContratados),
     })
     setSalvando(false)
     setSucesso(true)
   }
-
-  const primeiroVenc = `${inicio.slice(0, 7)}-${String(Math.min(28, Math.max(1, Number(diaVenc) || 1))).padStart(2, '0')}`
 
   if (sucesso) {
     return (
@@ -520,9 +416,7 @@ function NovoContratoForm({ empresa, onClose, onSaved }: { empresa: MngEmpresa; 
         <div className="mx-auto mt-5 max-w-sm rounded-lg border border-border bg-surface px-4 text-left">
           <Linha label="Plano" value={plano} />
           <Linha label="Vigência" value={`${fmtData(inicio)} — ${fmtData(fim)}`} />
-          <Linha label="Licenças" value={`${licencas} beneficiários`} />
-          <Linha label="Valor total" value={brlNum(Number(valorTotal))} />
-          <Linha label="Pagamento" value={pagamento === 'avista' ? `À vista · vence ${fmtData(primeiroVenc)}` : `${nParcelas}× de ${brlNum(valorParcela)} · dia ${Number(diaVenc)}`} />
+          <Linha label="Colaboradores contratados" value={colaboradoresContratados} />
         </div>
 
         <Button fullWidth className="mt-6" onClick={onSaved}>Concluir</Button>
@@ -541,7 +435,7 @@ function NovoContratoForm({ empresa, onClose, onSaved }: { empresa: MngEmpresa; 
 
       <label className="block">
         <span className="mb-1.5 block text-[13px] font-semibold text-ink">Plano</span>
-        <select className={inputCls} value={plano} onChange={(e) => onPlano(e.target.value)}>
+        <select className={inputCls} value={plano} onChange={(e) => setPlano(e.target.value)}>
           {PLANOS.map((p) => <option key={p}>{p}</option>)}
         </select>
       </label>
@@ -558,58 +452,10 @@ function NovoContratoForm({ empresa, onClose, onSaved }: { empresa: MngEmpresa; 
       </div>
       {inicio && fim && !datasOk && <p className="-mt-2 text-[12.5px] text-danger-ink">O término deve ser posterior ao início.</p>}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block">
-          <span className="mb-1.5 block text-[13px] font-semibold text-ink">Número de licenças</span>
-          <input type="number" min={1} className={inputCls} value={licencas} onChange={(e) => setLicencas(e.target.value)} />
-        </label>
-        <label className="block">
-          <span className="mb-1.5 block text-[13px] font-semibold text-ink">Valor total do contrato</span>
-          <div className="relative">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">R$</span>
-            <input type="number" min={0} className={`${inputCls} pl-9`} value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} placeholder="90000" />
-          </div>
-        </label>
-      </div>
-
-      {/* Modelo de pagamento */}
-      <div>
-        <span className="mb-1.5 block text-[13px] font-semibold text-ink">Modelo de pagamento</span>
-        <div className="flex gap-1 rounded-lg bg-surface-2 p-1">
-          {([['avista', 'À vista'], ['parcelado', 'Parcelado']] as const).map(([k, l]) => (
-            <button key={k} onClick={() => setPagamento(k)} aria-selected={pagamento === k}
-              className={`flex-1 rounded-lg px-3 py-2 font-heading text-sm font-semibold transition-all ${pagamento === k ? 'bg-surface text-ink shadow-xs' : 'text-ink-secondary hover:text-ink'}`}>{l}</button>
-          ))}
-        </div>
-      </div>
-
-      {pagamento === 'parcelado' && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1.5 block text-[13px] font-semibold text-ink">Nº de parcelas</span>
-            <input type="number" min={1} max={60} className={inputCls} value={numParcelas} onChange={(e) => setNumParcelas(e.target.value)} />
-          </label>
-          <label className="block">
-            <span className="mb-1.5 block text-[13px] font-semibold text-ink">Dia do vencimento</span>
-            <input type="number" min={1} max={28} className={inputCls} value={diaVenc} onChange={(e) => setDiaVenc(e.target.value)} />
-          </label>
-        </div>
-      )}
-      {pagamento === 'avista' && (
-        <label className="block">
-          <span className="mb-1.5 block text-[13px] font-semibold text-ink">Dia do vencimento</span>
-          <input type="number" min={1} max={28} className={`${inputCls} sm:w-40`} value={diaVenc} onChange={(e) => setDiaVenc(e.target.value)} />
-        </label>
-      )}
-
-      {/* Resumo */}
-      {valorParcela > 0 && (
-        <div className="rounded-lg border border-border bg-surface-2/50 px-4 py-3 text-[13px] text-ink-secondary">
-          {pagamento === 'avista'
-            ? <>Pagamento único de <span className="font-semibold text-ink">{brlNum(Number(valorTotal))}</span>.</>
-            : <><span className="font-semibold text-ink">{nParcelas}×</span> de <span className="font-semibold text-ink">{brlNum(valorParcela)}</span> · total {brlNum(Number(valorTotal))}.</>}
-        </div>
-      )}
+      <label className="block">
+        <span className="mb-1.5 block text-[13px] font-semibold text-ink">Nº de colaboradores contratados</span>
+        <input type="number" min={1} className={inputCls} value={colaboradoresContratados} onChange={(e) => setColaboradoresContratados(e.target.value)} />
+      </label>
 
       <div className="mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button variant="ghost" onClick={onClose}>Cancelar</Button>

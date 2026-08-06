@@ -17,38 +17,37 @@ export interface Notif {
 export const INITIAL_NOTIFS: Notif[] = [
   {
     id: 'n1',
-    icon: 'ph:calendar-bold',
+    icon: 'ph:chat-teardrop-dots-bold',
     iconBg: 'bg-primary-50',
     iconColor: 'text-primary dark:text-primary-300',
-    title: 'Sessão amanhã às 19h00',
-    body: 'Com Dra. Ana Beltrão. Lembrete automático 1h antes.',
+    title: 'Nova avaliação disponível',
+    body: 'Sua empresa abriu um novo ciclo. Leva cerca de 8 minutos, anônimo.',
     time: 'há 2h',
     read: false,
   },
   {
     id: 'n2',
-    icon: 'ph:flower-tulip-bold',
-    ynaIcon: 'flower' as const,
+    icon: 'ph:megaphone-simple-bold',
     iconBg: 'bg-success/10',
     iconColor: 'text-success',
-    title: 'Check-in disponível',
-    body: 'Como você está hoje? Leva menos de 1 minuto.',
+    title: 'Retorno do canal de escuta',
+    body: 'Há uma atualização no seu protocolo de acompanhamento.',
     time: 'há 5h',
     read: false,
   },
   {
     id: 'n3',
-    icon: 'ph:sparkle-bold',
+    icon: 'ph:hand-heart-bold',
     iconBg: 'bg-lavender/30',
     iconColor: 'text-primary dark:text-primary-300',
-    title: 'Uma reflexão da Nyna',
-    body: 'Ela preparou algo para você sobre a semana.',
+    title: 'Novo conteúdo de apoio',
+    body: 'Um material curto sobre sobrecarga, se fizer sentido pra você.',
     time: 'ontem',
     read: true,
   },
 ]
 
-/* Painel de notificações do beneficiário.
+/* Painel de notificações do colaborador.
    Mobile: full-screen slide-over. Desktop: ancorado à direita da sidebar.
    O gatilho (sino) vive na Sidebar/MobileTopBar; o estado vive no AppLayout. */
 export function NotificationsPanel({

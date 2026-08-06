@@ -6,6 +6,7 @@ import { YnaIcon } from '../components/YnaIcons'
 import { Card } from '../components/Card'
 import { Modal } from '../components/Modal'
 import { useApp } from '../contexts/AppContext'
+import { nr1ColaboradorService } from '../services/nr1'
 
 type Step = 1 | 2 | 3
 
@@ -13,19 +14,19 @@ export function Ben03Lgpd() {
   const [step, setStep] = useState<Step>(1)
   const [accepted, setAccepted] = useState(false)
   const [modal, setModal] = useState<'termos' | 'privacidade' | null>(null)
-  const { setConsented } = useApp()
+  const [enviando, setEnviando] = useState(false)
+  const { nr1Iniciar, nr1Consentir } = useApp()
   const navigate = useNavigate()
 
   const ynaSees = [
-    { icon: 'ph:notebook-bold', text: 'Suas respostas de triagem e check-ins, protegidas por sigilo profissional' },
-    { icon: 'ph:clock-bold', text: 'Que suas sessões aconteceram e quanto duraram. Nunca o conteúdo: sessões não são gravadas' },
-    { icon: 'ph:user-circle-bold', text: 'Seus dados de cadastro, para a sua conta funcionar' },
+    { icon: 'ph:notebook-bold', text: 'Suas respostas à avaliação, tratadas de forma anônima, sem vínculo com seu nome' },
+    { icon: 'ph:user-circle-bold', text: 'Os dados da conta que você criar depois, se quiser acompanhar sua evolução' },
   ]
 
   const hrNeverSees = [
-    'Se você usa ou não a terapia',
-    'Suas respostas, conversas ou prontuário',
+    'Suas respostas individuais',
     'Seu nome ligado a qualquer informação de saúde',
+    'Se você criou conta ou acompanhou sua evolução',
     'Nenhum dado individual: só números de grupo, nunca de pessoas',
   ]
 
@@ -37,9 +38,16 @@ export function Ben03Lgpd() {
     }
   }
 
-  const handleAccept = () => {
-    setConsented(true)
-    navigate('/bem-comecar')
+  const handleAccept = async () => {
+    setEnviando(true)
+    const instrumento = await nr1ColaboradorService.instrumentoDaCampanha()
+    if (!instrumento) {
+      navigate('/despedida')
+      return
+    }
+    nr1Iniciar(instrumento.campanha.id)
+    nr1Consentir()
+    navigate('/avaliacao/intro')
   }
 
   return (
@@ -236,7 +244,7 @@ export function Ben03Lgpd() {
             </label>
 
             <div className="lg:hidden flex flex-col gap-3">
-              <Button size="lg" fullWidth disabled={!accepted} iconRight="ph:arrow-right-bold" onClick={handleAccept}>
+              <Button size="lg" fullWidth disabled={!accepted || enviando} iconRight="ph:arrow-right-bold" onClick={handleAccept}>
                 Quero começar
               </Button>
               <Button variant="ghost" fullWidth onClick={() => navigate('/despedida')}>
@@ -276,7 +284,7 @@ export function Ben03Lgpd() {
         <div className="flex w-40 justify-end">
           <Button
             onClick={step === 1 ? () => setStep(2) : step === 2 ? () => setStep(3) : handleAccept}
-            disabled={step === 3 && !accepted}
+            disabled={step === 3 && (!accepted || enviando)}
             iconRight="ph:arrow-right-bold"
           >
             {step === 3 ? 'Quero começar' : 'Próximo'}
@@ -296,8 +304,9 @@ export function Ben03Lgpd() {
         </p>
         <h3 className="mb-1 font-semibold text-ink">1. Quem somos e o que fazemos</h3>
         <p className="mb-3">
-          A YNA conecta você a cuidado em saúde mental com sigilo garantido por lei e por
-          contrato. Este documento descreve seus direitos e os nossos deveres.
+          A YNA aplica, em nome da sua empresa, a avaliação de riscos psicossociais exigida pela
+          NR-1, com sigilo garantido por lei e por contrato. Este documento descreve seus direitos
+          e os nossos deveres.
         </p>
         <h3 className="mb-1 font-semibold text-ink">2. Seus dados e seus direitos (LGPD)</h3>
         <p className="mb-3">
@@ -306,8 +315,8 @@ export function Ben03Lgpd() {
         </p>
         <h3 className="mb-1 font-semibold text-ink">3. O que nunca fazemos</h3>
         <p>
-          Não vendemos dados. Não gravamos sessões. Não entregamos informação individual à sua
-          empresa, em nenhuma hipótese.
+          Não vendemos dados. Não entregamos informação individual à sua empresa, em nenhuma
+          hipótese: só agregados protegidos por k-anonimato.
         </p>
       </Modal>
     </>

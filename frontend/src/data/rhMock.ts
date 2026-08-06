@@ -2,32 +2,30 @@ import type {
   RhEmpresa,
   RhUsuario,
   RhDepartamento,
-  RhBeneficiario,
+  RhColaborador,
   RhFunilConvites,
-  RhKpi,
-  RhHeatRow,
-  RhAlerta,
   RhNotificacao,
-  RhBeneficiarioStatus,
-  RhParcela,
+  RhColaboradorStatus,
 } from '../types'
 
-/* Dados mockados do fluxo RH / Empresa B2B. Isolados do beneficiário e do
-   profissional — o RH só enxerga dados agregados e anonimizados (LGPD).
-   Para a API real, ver src/services/rh.ts. */
+/* Dados mockados do fluxo RH / Empresa B2B. Isolados do colaborador — o RH
+   só enxerga dados agregados e anonimizados (LGPD). Para a API real, ver
+   src/services/rh.ts. */
 
 /* "Hoje" de referência do protótipo (a empresa-piloto BCP Securities). */
 export const RH_TODAY = '2026-06-25'
 
-/* Conta corporativa — criada pelo backoffice YNA no kick-off (RF-RH-01.1). */
+/* Conta corporativa — criada pelo backoffice YNA no kick-off (RF-RH-01.1).
+   `plano`/`colaboradoresContratados`/`contratoInicio`/`contratoFim` são só
+   dado cadastral (§12): sem parcelas nem cobrança neste recorte. */
 export const rhEmpresa: RhEmpresa = {
   razaoSocial: 'BCP Securities Brasil Ltda.',
   nomeFantasia: 'BCP Securities',
   cnpj: '34.812.097/0001-55',
   segmento: 'Serviços financeiros',
   contatoRh: 'Camila Risi · DHO',
-  plano: 'Plano Base · Piloto',
-  licencasContratadas: 200,
+  plano: 'Conformidade NR-1 · Piloto',
+  colaboradoresContratados: 200,
   contratoInicio: '2026-06-01',
   contratoFim: '2027-05-31',
   initials: 'BCP',
@@ -81,17 +79,17 @@ export const rhEquipe: RhUsuario[] = [
 
 /* Estrutura de departamentos (RF-RH-03.1) — base do mapa de calor NR-1. */
 export const rhDepartamentos: RhDepartamento[] = [
-  { id: 'd-trading', nome: 'Trading & Mercados', beneficiarios: 54 },
-  { id: 'd-tech', nome: 'Tecnologia', beneficiarios: 48 },
-  { id: 'd-ops', nome: 'Operações', beneficiarios: 41 },
-  { id: 'd-compliance', nome: 'Compliance & Risco', beneficiarios: 22 },
-  { id: 'd-rh', nome: 'Pessoas & DHO', beneficiarios: 9 },
-  { id: 'd-diretoria', nome: 'Diretoria', beneficiarios: 3 }, // < 4 → anonimizado
+  { id: 'd-trading', nome: 'Trading & Mercados', colaboradores: 54 },
+  { id: 'd-tech', nome: 'Tecnologia', colaboradores: 48 },
+  { id: 'd-ops', nome: 'Operações', colaboradores: 41 },
+  { id: 'd-compliance', nome: 'Compliance & Risco', colaboradores: 22 },
+  { id: 'd-rh', nome: 'Pessoas & DHO', colaboradores: 9 },
+  { id: 'd-diretoria', nome: 'Diretoria', colaboradores: 3 }, // < 4 → anonimizado
 ]
 
-const PALETTES: RhBeneficiario['palette'][] = ['lavender', 'pink', 'yellow']
+const PALETTES: RhColaborador['palette'][] = ['lavender', 'pink', 'yellow']
 
-/* Gera uma amostra de beneficiários para a lista do RH. A carga real é via
+/* Gera uma amostra de colaboradores para a lista do RH. A carga real é via
    planilha; aqui mockamos ~32 para a tela de gestão funcionar com filtros. */
 const NOMES = [
   'Ana Beatriz Souza', 'Bruno Carvalho', 'Carla Menezes', 'Diego Ferreira',
@@ -104,12 +102,12 @@ const NOMES = [
   'Daniel Teixeira', 'Elaine Borges', 'Fábio Nogueira', 'Giovana Lacerda',
 ]
 
-const STATUS_CICLO: RhBeneficiarioStatus[] = [
+const STATUS_CICLO: RhColaboradorStatus[] = [
   'ativo', 'ativo', 'ativo', 'convidado', 'ativo', 'convidado',
   'nao_convidado', 'ativo', 'nao_convidado', 'ativo', 'convidado', 'ativo',
 ]
 
-export const rhBeneficiarios: RhBeneficiario[] = NOMES.map((nome, i) => {
+export const rhColaboradores: RhColaborador[] = NOMES.map((nome, i) => {
   const partes = nome.split(' ')
   const initials = (partes[0][0] + (partes[1]?.[0] ?? '')).toUpperCase()
   const dep = rhDepartamentos[i % rhDepartamentos.length]
@@ -129,141 +127,14 @@ export const rhBeneficiarios: RhBeneficiario[] = NOMES.map((nome, i) => {
   }
 })
 
-/* Funil de convites agregado (RF-RH-05.4) — totais sobre as 200 licenças. */
+/* Funil de convites agregado (RF-RH-05.4) — totais sobre os 200 colaboradores
+   contratados. */
 export const rhFunilConvites: RhFunilConvites = {
   enviado: 188,
   aberto: 161,
   cadastroIniciado: 142,
   cadastroConcluido: 127,
 }
-
-/* KPIs macro do dashboard (RF-RH-06.1). Todos agregados, sem identificação. */
-export const rhKpis: RhKpi[] = [
-  {
-    key: 'adesao',
-    label: 'Adesão ao benefício',
-    value: '64%',
-    delta: '+9 p.p. no mês',
-    deltaTone: 'up',
-    icon: 'ph:users-three-bold',
-    hint: 'Beneficiários ativos sobre o total de licenças contratadas (127 de 200).',
-  },
-  {
-    key: 'ativos',
-    label: 'Beneficiários ativos',
-    value: '127',
-    delta: 'de 200 licenças',
-    deltaTone: 'neutral',
-    icon: 'ph:user-check-bold',
-    hint: 'Quem concluiu o cadastro e tem acesso ativo à plataforma.',
-  },
-  {
-    key: 'checkins',
-    label: 'Check-ins respondidos',
-    value: '58%',
-    delta: '+4 p.p. no mês',
-    deltaTone: 'up',
-    icon: 'ph:heartbeat-bold',
-    hint: 'Percentual agregado de beneficiários que respondem check-ins de bem-estar. Nunca individualizado.',
-  },
-  {
-    key: 'bemestar',
-    label: 'Índice de bem-estar',
-    value: '7,1',
-    delta: '+0,3 no mês',
-    deltaTone: 'up',
-    icon: 'ph:smiley-bold',
-    hint: 'Média agregada (0–10) dos check-ins respondidos, com k-anonimato ≥ 4.',
-  },
-  {
-    key: 'sessoes',
-    label: 'Sessões realizadas',
-    value: '342',
-    delta: 'no trimestre',
-    deltaTone: 'neutral',
-    icon: 'ph:calendar-check-bold',
-    hint: 'Volume total agregado de sessões concluídas pelos beneficiários.',
-  },
-  {
-    key: 'nps',
-    label: 'NPS da plataforma',
-    value: '72',
-    delta: '+5 no trimestre',
-    deltaTone: 'up',
-    icon: 'ph:star-bold',
-    hint: 'Net Promoter Score agregado das avaliações da plataforma (YNA).',
-  },
-]
-
-/* Mapa de calor por departamento × dimensão NR-1 (RF-RH-06.3).
-   Dimensões na ordem das colunas de RH_DIMENSOES. nivel: 0 anonimizado,
-   1 baixo, 2 médio, 3 alto. */
-export const RH_DIMENSOES = ['Estresse', 'Burnout', 'Ansiedade', 'Sono', 'Carga de trabalho'] as const
-
-export const rhHeatmap: RhHeatRow[] = [
-  {
-    departamentoId: 'd-trading',
-    departamento: 'Trading & Mercados',
-    beneficiarios: 54,
-    anonimizado: false,
-    celulas: [{ nivel: 3 }, { nivel: 3 }, { nivel: 2 }, { nivel: 2 }, { nivel: 3 }],
-  },
-  {
-    departamentoId: 'd-tech',
-    departamento: 'Tecnologia',
-    beneficiarios: 48,
-    anonimizado: false,
-    celulas: [{ nivel: 2 }, { nivel: 2 }, { nivel: 2 }, { nivel: 1 }, { nivel: 2 }],
-  },
-  {
-    departamentoId: 'd-ops',
-    departamento: 'Operações',
-    beneficiarios: 41,
-    anonimizado: false,
-    celulas: [{ nivel: 2 }, { nivel: 1 }, { nivel: 2 }, { nivel: 2 }, { nivel: 1 }],
-  },
-  {
-    departamentoId: 'd-compliance',
-    departamento: 'Compliance & Risco',
-    beneficiarios: 22,
-    anonimizado: false,
-    celulas: [{ nivel: 1 }, { nivel: 1 }, { nivel: 2 }, { nivel: 1 }, { nivel: 1 }],
-  },
-  {
-    departamentoId: 'd-rh',
-    departamento: 'Pessoas & DHO',
-    beneficiarios: 9,
-    anonimizado: false,
-    celulas: [{ nivel: 1 }, { nivel: 1 }, { nivel: 1 }, { nivel: 1 }, { nivel: 1 }],
-  },
-  {
-    departamentoId: 'd-diretoria',
-    departamento: 'Diretoria',
-    beneficiarios: 3,
-    anonimizado: true, // < 4 → bloqueado por k-anonimato
-    celulas: [{ nivel: 0 }, { nivel: 0 }, { nivel: 0 }, { nivel: 0 }, { nivel: 0 }],
-  },
-]
-
-/* Alertas de risco psicossocial (RF-RH-06.5). */
-export const rhAlertas: RhAlerta[] = [
-  {
-    id: 'a-1',
-    nivel: 'alto',
-    departamento: 'Trading & Mercados',
-    dimensao: 'Estresse / Burnout',
-    mensagem: 'Indicadores agregados de estresse e burnout acima do limite no trimestre.',
-    quando: 'há 2 dias',
-  },
-  {
-    id: 'a-2',
-    nivel: 'medio',
-    departamento: 'Tecnologia',
-    dimensao: 'Carga de trabalho',
-    mensagem: 'Carga de trabalho percebida em tendência de alta nas últimas 4 semanas.',
-    quando: 'há 5 dias',
-  },
-]
 
 export const rhNotificacoes: RhNotificacao[] = [
   {
@@ -280,24 +151,8 @@ export const rhNotificacoes: RhNotificacao[] = [
     tipo: 'adesao',
     icon: 'ph:trend-up-bold',
     titulo: 'Adesão passou de 60%',
-    descricao: '127 de 200 beneficiários já estão ativos na plataforma.',
+    descricao: '127 de 200 colaboradores já estão ativos na plataforma.',
     quando: 'há 3 dias',
     lida: false,
   },
-]
-
-/* Financeiro do RH — parcelas dos contratos da empresa. RH_TODAY = 2026-06-25.
-   Parcelas de julho+ são "futuras" (NF/boleto só no mês do vencimento). */
-export const rhParcelas: RhParcela[] = [
-  // Contrato CT-2026-0142 · Plano Care · Corporativo (12x R$ 9.000)
-  { id: 'rp-1', contrato: 'CT-2026-0142', numero: 1, totalParcelas: 12, valor: 9000, vencimento: '2026-04-05', status: 'pago', notaFiscal: 'nf-0142-01.pdf', dataPagamento: '2026-04-04', valorPago: 9000, comprovante: 'comprovante-0142-01.pdf' },
-  { id: 'rp-2', contrato: 'CT-2026-0142', numero: 2, totalParcelas: 12, valor: 9000, vencimento: '2026-05-05', status: 'pago', notaFiscal: 'nf-0142-02.pdf', dataPagamento: '2026-05-05', valorPago: 9000, comprovante: 'comprovante-0142-02.pdf' },
-  { id: 'rp-3', contrato: 'CT-2026-0142', numero: 3, totalParcelas: 12, valor: 9000, vencimento: '2026-06-10', status: 'em-atraso', notaFiscal: 'nf-0142-03.pdf', boleto: 'boleto-0142-03.pdf' },
-  { id: 'rp-4', contrato: 'CT-2026-0142', numero: 4, totalParcelas: 12, valor: 9000, vencimento: '2026-06-30', status: 'a-vencer', notaFiscal: 'nf-0142-04.pdf', boleto: 'boleto-0142-04.pdf' },
-  { id: 'rp-5', contrato: 'CT-2026-0142', numero: 5, totalParcelas: 12, valor: 9000, vencimento: '2026-07-05', status: 'futura' },
-  { id: 'rp-6', contrato: 'CT-2026-0142', numero: 6, totalParcelas: 12, valor: 9000, vencimento: '2026-08-05', status: 'futura' },
-  // Contrato CT-2026-0155 · Plano Care · Pro (6x R$ 4.000)
-  { id: 'rp-7', contrato: 'CT-2026-0155', numero: 1, totalParcelas: 6, valor: 4000, vencimento: '2026-05-20', status: 'pago', notaFiscal: 'nf-0155-01.pdf', dataPagamento: '2026-05-19', valorPago: 4000, comprovante: 'comprovante-0155-01.pdf' },
-  { id: 'rp-8', contrato: 'CT-2026-0155', numero: 2, totalParcelas: 6, valor: 4000, vencimento: '2026-06-20', status: 'em-atraso', notaFiscal: 'nf-0155-02.pdf', boleto: 'boleto-0155-02.pdf' },
-  { id: 'rp-9', contrato: 'CT-2026-0155', numero: 3, totalParcelas: 6, valor: 4000, vencimento: '2026-07-20', status: 'futura' },
 ]

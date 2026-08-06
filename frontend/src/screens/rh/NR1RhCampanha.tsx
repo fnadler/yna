@@ -45,7 +45,16 @@ export function NR1RhCampanha() {
           Conformidade NR-1
         </Link>
 
-        <PageHeader title="Campanha de avaliação" subtitle="O ciclo que gera o inventário de riscos psicossociais." />
+        <PageHeader
+          title="Campanha de avaliação"
+          subtitle="O ciclo que gera o inventário de riscos psicossociais."
+          action={
+            <Link to="/rh/nr1/kit" className="inline-flex items-center gap-1.5 font-heading text-[13px] font-medium text-primary hover:underline dark:text-primary-300">
+              <Icon icon="ph:megaphone-bold" width={14} aria-hidden />
+              Kit de comunicação
+            </Link>
+          }
+        />
 
         {(campanha.status === 'idle' || campanha.status === 'loading') && (
           <div className="flex flex-col gap-3"><Skeleton className="h-40 w-full rounded-lg" /><Skeleton className="h-64 w-full rounded-lg" /></div>

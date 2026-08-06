@@ -23,7 +23,7 @@ const fmtData = (iso: string) => { const [d] = iso.split('T'); const [, m, dd] =
 const STATUS_TONE: Record<MngTicketStatus, 'primary' | 'warning' | 'success'> = { aberto: 'primary', 'em-andamento': 'warning', resolvido: 'success' }
 const STATUS_LABEL: Record<MngTicketStatus, string> = { aberto: 'Aberto', 'em-andamento': 'Em andamento', resolvido: 'Resolvido' }
 const TIPO_ICON: Record<MngTicket['tipo'], string> = {
-  prontuario: 'ph:file-text-bold', duvida: 'ph:question-bold', lgpd: 'ph:shield-check-bold', cadastro: 'ph:user-gear-bold', tecnico: 'ph:wrench-bold', queixa: 'ph:warning-bold',
+  duvida: 'ph:question-bold', lgpd: 'ph:shield-check-bold', cadastro: 'ph:user-gear-bold', tecnico: 'ph:wrench-bold', queixa: 'ph:warning-bold',
 }
 const CARDS: { st: MngTicketStatus; icon: string; label: string }[] = [
   { st: 'aberto', icon: 'ph:envelope-open-bold', label: 'Abertos' },
@@ -70,7 +70,7 @@ export function Mng17Suporte() {
     <div className="min-h-full bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
       <div className={`mx-auto ${PAGE_MAX_W} px-5 lg:px-8 pt-0 lg:pt-9 pb-10`}>
         <MngTopBar />
-        <PageHeader title="Suporte" subtitle="Tickets, solicitações de prontuário e casos LGPD." className="mt-2 lg:mt-0" />
+        <PageHeader title="Suporte" subtitle="Tickets técnicos, dúvidas e casos LGPD." className="mt-2 lg:mt-0" />
 
         {tickets.status === 'loading' && <div className="flex flex-col gap-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}</div>}
         {tickets.status === 'error' && <ErrorState message={tickets.message} onRetry={tickets.reload} />}

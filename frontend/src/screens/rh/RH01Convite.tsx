@@ -50,12 +50,12 @@ export function RH01Convite() {
             Painel do RH · BCP Securities
           </p>
           <h1 className="mt-2 font-heading text-[28px] font-medium leading-[1.1] tracking-[-0.02em] text-ink">
-            Bem-vinda ao cuidado que a sua empresa escolheu construir
+            Bem-vinda à conformidade que a sua empresa escolheu levar a sério
           </h1>
           <p className="mt-4 text-[15px] leading-relaxed text-ink-secondary">
-            A partir daqui, você acompanha a saúde mental do seu time com evidência e respeito —
-            sempre por dados agregados, nunca individuais. O sigilo de cada pessoa é inegociável,
-            e é justamente isso que dá força ao programa.
+            A partir daqui, você gerencia os riscos psicossociais do seu time com evidência e
+            rastreabilidade — sempre por dados agregados, nunca individuais. O sigilo de cada
+            pessoa é inegociável, e é justamente isso que dá força ao inventário.
           </p>
 
           <div className="mt-8 flex flex-col gap-3">

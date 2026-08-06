@@ -70,9 +70,14 @@ export function NR1RhRelatorio() {
           title="Relatório de gestão"
           subtitle="A visão executiva e a trilha que sustenta a conformidade."
           action={
-            <Button variant="secondary" iconLeft="ph:file-pdf-bold" disabled={exportando} onClick={exportar}>
-              {exportando ? 'Gerando…' : <span className="hidden sm:inline">Exportar PDF</span>}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Link to="/rh/nr1/ciclos" className="hidden font-heading text-[13px] font-medium text-primary hover:underline dark:text-primary-300 sm:inline">
+                Ver histórico de ciclos
+              </Link>
+              <Button variant="secondary" iconLeft="ph:file-pdf-bold" disabled={exportando} onClick={exportar}>
+                {exportando ? 'Gerando…' : <span className="hidden sm:inline">Exportar PDF</span>}
+              </Button>
+            </div>
           }
         />
 

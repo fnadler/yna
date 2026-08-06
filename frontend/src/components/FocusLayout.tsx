@@ -3,7 +3,7 @@ import { LogoYna } from './YnaLogo'
 
 interface Props {
   bgClass?: string
-  /** Rota do botão "Sair" no topo (desktop). Default: fluxo do beneficiário. */
+  /** Rota do botão "Sair" no topo (desktop). Default: fluxo do colaborador. */
   exitTo?: string
 }
 

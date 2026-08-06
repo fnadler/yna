@@ -11,23 +11,23 @@ const slides = [
   {
     image: '/images/slide1-rh.png',
     eyebrow: 'Por que agora',
-    title: 'Saúde mental é gestão de risco',
-    highlight: 'gestão de risco',
-    body: 'A NR-1 tornou obrigatório mapear e cuidar dos riscos psicossociais. A YNA transforma essa exigência em cuidado real — com rigor clínico e científico.',
+    title: 'A NR-1 virou obrigação legal',
+    highlight: 'obrigação legal',
+    body: 'Desde a atualização da NR-1, toda empresa precisa mapear e gerir os riscos psicossociais do trabalho. A YNA entrega o inventário para o seu PGR, com rastreabilidade de ponta a ponta.',
   },
   {
     image: '/images/slide2-rh.png',
     eyebrow: 'O que você acompanha',
     title: 'Dados que respeitam o sigilo',
     highlight: 'respeitam o sigilo',
-    body: 'Adesão, engajamento e um mapa de calor de bem-estar por área — sempre agregados e anônimos. Você enxerga o todo, nunca o indivíduo.',
+    body: 'Adesão, mapa de calor por área e plano de ação — sempre agregados e protegidos por k-anonimato. Você enxerga o todo, nunca a resposta de uma pessoa.',
   },
   {
     image: '/images/slide3.png',
     eyebrow: 'Como começa',
     title: 'Pronto em poucos passos',
     highlight: 'poucos passos',
-    body: 'Crie sua conta, cadastre o time e dispare os convites. Em minutos, o cuidado começa a rodar na sua empresa.',
+    body: 'Crie sua conta, cadastre o time e dispare os convites. Em minutos, a avaliação já está em campo e o inventário começa a tomar forma.',
   },
 ]
 

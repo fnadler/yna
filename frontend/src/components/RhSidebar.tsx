@@ -7,10 +7,16 @@ import type { NavItem } from './BottomNav'
 import { useRh } from '../contexts/RhContext'
 import { useTheme } from '../contexts/ThemeContext'
 
+/** Item de navegação do RH, com uma seção opcional (renderiza um cabeçalho
+   divisor antes do primeiro item de cada seção nova — usado para separar as
+   telas operacionais da empresa do módulo de Conformidade NR-1, hoje com 6
+   telas de primeira classe em vez de 1 hub único). */
+export type RhNavItem = NavItem & { section?: string }
+
 /* Sidebar do RH / Empresa (desktop). Mesmo padrão visual do Sidebar do
-   beneficiário e do profissional, com contexto, rotas e itens próprios.
+   colaborador, com contexto, rotas e itens próprios.
    Sem botão de pânico — o RH não tem fluxo de emergência. */
-export function RhSidebar({ items }: { items: NavItem[] }) {
+export function RhSidebar({ items }: { items: RhNavItem[] }) {
   const { empresa, usuario, unreadNotifs } = useRh()
   const { dark, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
@@ -63,28 +69,34 @@ export function RhSidebar({ items }: { items: NavItem[] }) {
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 px-3 pt-2" aria-label="Navegação principal">
-        {items.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === '/rh/home'}
-            className={({ isActive }) =>
-              `relative flex min-h-[44px] items-center gap-3 rounded-sm px-3 py-2.5 font-heading text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-primary-50 text-primary dark:text-primary-300 dark:bg-primary-50'
-                  : 'text-ink-secondary hover:bg-surface-hover hover:text-ink'
-              }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <Icon icon={item.icon} width={20} aria-hidden />
-                {item.label}
-                {isActive && <span className="absolute inset-y-0 left-0 w-0.5 rounded-r-pill bg-primary" />}
-              </>
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pt-2" aria-label="Navegação principal">
+        {items.map((item, i) => (
+          <div key={item.to}>
+            {item.section && item.section !== items[i - 1]?.section && (
+              <h2 className={`px-3 pb-1.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted ${i > 0 ? 'pt-4' : 'pt-1'}`}>
+                {item.section}
+              </h2>
             )}
-          </NavLink>
+            <NavLink
+              to={item.to}
+              end={item.to === '/rh/home'}
+              className={({ isActive }) =>
+                `relative flex min-h-[44px] items-center gap-3 rounded-sm px-3 py-2.5 font-heading text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-primary-50 text-primary dark:text-primary-300 dark:bg-primary-50'
+                    : 'text-ink-secondary hover:bg-surface-hover hover:text-ink'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon icon={item.icon} width={20} aria-hidden />
+                  {item.label}
+                  {isActive && <span className="absolute inset-y-0 left-0 w-0.5 rounded-r-pill bg-primary" />}
+                </>
+              )}
+            </NavLink>
+          </div>
         ))}
       </nav>
 

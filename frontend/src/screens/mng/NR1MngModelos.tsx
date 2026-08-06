@@ -18,11 +18,10 @@ import { mngEmpresas } from '../../data/mngMock'
 import type { Nr1QuestionarioModelo } from '../../types'
 
 /* NR1-MNG-01 — Modelos de avaliação psicossocial (RF-YN-NR1-01).
-   Lista o Modelo YNA base e os modelos derivados por cliente. Segue o padrão
-   de "Modelos de documentos" (MNG-21).
+   Lista o Modelo YNA base e os modelos derivados por cliente.
 
    Toda a configuração do questionário vive aqui, no backoffice: nem o RH nem
-   o beneficiário editam instrumento (decisão de produto — sem autosserviço). */
+   o colaborador editam instrumento (decisão de produto — sem autosserviço). */
 
 const contarItens = (m: Nr1QuestionarioModelo, versao: string) =>
   m.versoes.find((v) => v.versao === versao)?.dimensoes.reduce((s, d) => s + d.itens.length, 0) ?? 0

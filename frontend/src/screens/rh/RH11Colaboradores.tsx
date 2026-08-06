@@ -12,38 +12,38 @@ import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
 import { PAGE_MAX_W } from '../../lib/layout'
 import { useService } from '../../hooks/useService'
-import { rhBeneficiarioService, rhDepartamentoService, rhConviteService } from '../../services/rh'
-import type { RhBeneficiario, RhBeneficiarioStatus, RhDepartamento, RhImportResult } from '../../types'
+import { rhColaboradorService, rhDepartamentoService, rhConviteService } from '../../services/rh'
+import type { RhColaborador, RhColaboradorStatus, RhDepartamento, RhImportResult } from '../../types'
 
-/* RH-11 — Cadastro e gestão de beneficiários (Seção 5.4 e 5.7).
+/* RH-11 — Cadastro e gestão de colaboradores (Seção 5.4 e 5.7).
    Lista com busca, filtros por status/departamento, cadastro individual,
    importação por planilha, edição em massa de departamento, envio de convite
    e exclusão lógica. O RH nunca vê dado clínico — apenas dados de carga. */
 
-const STATUS_META: Record<RhBeneficiarioStatus, { label: string; tone: 'success' | 'primary' | 'neutral' }> = {
+const STATUS_META: Record<RhColaboradorStatus, { label: string; tone: 'success' | 'primary' | 'neutral' }> = {
   ativo: { label: 'Ativo', tone: 'success' },
   convidado: { label: 'Convidado', tone: 'primary' },
   nao_convidado: { label: 'Não convidado', tone: 'neutral' },
 }
 
-const FILTROS: { value: RhBeneficiarioStatus | 'todos'; label: string }[] = [
+const FILTROS: { value: RhColaboradorStatus | 'todos'; label: string }[] = [
   { value: 'todos', label: 'Todos' },
   { value: 'ativo', label: 'Ativos' },
   { value: 'convidado', label: 'Convidados' },
   { value: 'nao_convidado', label: 'Não convidados' },
 ]
 
-export function RH11Beneficiarios() {
-  const query = useService(() => rhBeneficiarioService.list(), [])
+export function RH11Colaboradores() {
+  const query = useService(() => rhColaboradorService.list(), [])
   const deps = useService(() => rhDepartamentoService.list(), [])
   const [busca, setBusca] = useState('')
-  const [filtro, setFiltro] = useState<RhBeneficiarioStatus | 'todos'>('todos')
+  const [filtro, setFiltro] = useState<RhColaboradorStatus | 'todos'>('todos')
   const [depFiltro, setDepFiltro] = useState('todos')
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
   const [addOpen, setAddOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [moverOpen, setMoverOpen] = useState(false)
-  const [excluir, setExcluir] = useState<RhBeneficiario | null>(null)
+  const [excluir, setExcluir] = useState<RhColaborador | null>(null)
   const [excluindo, setExcluindo] = useState(false)
 
   const departamentos = deps.status === 'success' ? deps.data : []
@@ -80,7 +80,7 @@ export function RH11Beneficiarios() {
       <div className={`mx-auto ${PAGE_MAX_W} px-5 lg:px-8 pt-0 lg:pt-9 pb-10`}>
         <RhTopBar />
         <PageHeader
-          title="Beneficiários"
+          title="Colaboradores"
           subtitle="O quadro elegível da sua empresa."
           className="mt-2 lg:mt-0"
           action={
@@ -106,7 +106,7 @@ export function RH11Beneficiarios() {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar por nome ou e-mail…"
-              aria-label="Buscar beneficiário"
+              aria-label="Buscar colaborador"
               className="w-full rounded-lg border border-border bg-surface py-3 pl-11 pr-4 text-[15px] text-ink placeholder:text-ink-muted transition-colors focus:border-primary focus:outline-none"
             />
           </div>
@@ -161,7 +161,7 @@ export function RH11Beneficiarios() {
         {query.status === 'success' && deps.status === 'success' && (
           filtrados.length > 0 ? (
             <>
-              <p className="mb-2 text-[13px] text-ink-muted">{filtrados.length} beneficiário(s)</p>
+              <p className="mb-2 text-[13px] text-ink-muted">{filtrados.length} colaborador(es)</p>
               <ul className="flex flex-col gap-2">
                 {filtrados.map((b) => {
                   const meta = STATUS_META[b.status]
@@ -198,14 +198,14 @@ export function RH11Beneficiarios() {
           ) : (
             <div className="rounded-lg border border-border bg-surface px-4 py-12 text-center">
               <Icon icon="ph:users-three-bold" width={32} className="mx-auto text-ink-muted" aria-hidden />
-              <p className="mt-3 text-sm text-ink-secondary">Nenhum beneficiário encontrado com esses filtros.</p>
+              <p className="mt-3 text-sm text-ink-secondary">Nenhum colaborador encontrado com esses filtros.</p>
             </div>
           )
         )}
       </div>
 
       {/* Sheet: cadastro individual */}
-      <Sheet open={addOpen} onClose={() => setAddOpen(false)} title="Adicionar beneficiário" icon="ph:user-plus-bold" size="md">
+      <Sheet open={addOpen} onClose={() => setAddOpen(false)} title="Adicionar colaborador" icon="ph:user-plus-bold" size="md">
         <AdicionarForm departamentos={departamentos} onDone={() => { setAddOpen(false); query.reload() }} />
       </Sheet>
 
@@ -220,7 +220,7 @@ export function RH11Beneficiarios() {
           count={selecionados.size}
           departamentos={departamentos}
           onDone={async (depId) => {
-            await rhBeneficiarioService.moverDepartamento([...selecionados], depId)
+            await rhColaboradorService.moverDepartamento([...selecionados], depId)
             setMoverOpen(false)
             setSelecionados(new Set())
             query.reload()
@@ -229,12 +229,12 @@ export function RH11Beneficiarios() {
       </Sheet>
 
       {/* Sheet: confirmação de exclusão (ação irreversível) */}
-      <Sheet open={excluir !== null} onClose={() => setExcluir(null)} title="Excluir beneficiário" icon="ph:trash-bold" iconColor="text-danger" size="md">
+      <Sheet open={excluir !== null} onClose={() => setExcluir(null)} title="Excluir colaborador" icon="ph:trash-bold" iconColor="text-danger" size="md">
         {excluir && (
           <div className="flex flex-col gap-4 px-5 py-6 lg:px-6">
             <div className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger-bg px-4 py-3 text-[13px] text-danger-ink">
               <Icon icon="ph:warning-bold" width={16} className="mt-0.5 shrink-0" aria-hidden />
-              Esta ação não poderá ser desfeita. O acesso será encerrado e a licença liberada.
+              Esta ação não poderá ser desfeita. O acesso será encerrado e a vaga contratada liberada.
             </div>
             <div className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3">
               <Avatar initials={excluir.initials} size={40} palette={excluir.palette} />
@@ -252,7 +252,7 @@ export function RH11Beneficiarios() {
                 iconLeft={excluindo ? undefined : 'ph:trash-bold'}
                 onClick={async () => {
                   setExcluindo(true)
-                  await rhBeneficiarioService.remove(excluir.id)
+                  await rhColaboradorService.remove(excluir.id)
                   setExcluindo(false)
                   setExcluir(null)
                   setSelecionados((prev) => {
@@ -284,7 +284,7 @@ function AdicionarForm({ departamentos, onDone }: { departamentos: RhDepartament
 
   const submit = async () => {
     setSaving(true)
-    await rhBeneficiarioService.create({ nomeCompleto: nome, cpf, emailCorporativo: email, departamentoId: dep })
+    await rhColaboradorService.create({ nomeCompleto: nome, cpf, emailCorporativo: email, departamentoId: dep })
     setSaving(false)
     onDone()
   }
@@ -292,7 +292,7 @@ function AdicionarForm({ departamentos, onDone }: { departamentos: RhDepartament
   return (
     <div className="flex flex-col gap-4 px-5 py-6 lg:px-6">
       <p className="text-[13px] leading-relaxed text-ink-secondary">
-        Cadastro da carga inicial. O beneficiário completa os dados pessoais sensíveis no primeiro
+        Cadastro da carga inicial. O colaborador completa os dados pessoais sensíveis no primeiro
         acesso, com consentimento individual.
       </p>
       <Input label="Nome completo" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Como consta no RH" />
@@ -303,7 +303,7 @@ function AdicionarForm({ departamentos, onDone }: { departamentos: RhDepartament
         <Select value={dep} onChange={setDep} ariaLabel="Departamento" options={departamentos.map((d) => ({ value: d.id, label: d.nome }))} />
       </div>
       <Button fullWidth disabled={!valido || saving} iconRight={saving ? undefined : 'ph:check-bold'} onClick={submit}>
-        {saving ? 'Salvando…' : 'Cadastrar beneficiário'}
+        {saving ? 'Salvando…' : 'Cadastrar colaborador'}
       </Button>
     </div>
   )
@@ -315,7 +315,7 @@ function ImportarForm({ onDone }: { onDone: () => void }) {
 
   const processar = async () => {
     setFase('processando')
-    const r = await rhBeneficiarioService.importar(154)
+    const r = await rhColaboradorService.importar(154)
     setResultado(r)
     setFase('resultado')
   }
@@ -332,7 +332,7 @@ function ImportarForm({ onDone }: { onDone: () => void }) {
             <Icon icon="ph:download-simple-bold" width={20} className="shrink-0 text-primary dark:text-primary-300" aria-hidden />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-ink">Baixar modelo de planilha</p>
-              <p className="text-[12px] text-ink-secondary">modelo-beneficiarios-yna.xlsx</p>
+              <p className="text-[12px] text-ink-secondary">modelo-colaboradores-yna.xlsx</p>
             </div>
           </button>
           <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-[1.5px] border-dashed border-border-strong bg-surface-2 px-4 py-8 text-center transition-colors hover:border-primary">
@@ -393,7 +393,7 @@ function MoverForm({ count, departamentos, onDone }: { count: number; departamen
   return (
     <div className="flex flex-col gap-4 px-5 py-6 lg:px-6">
       <p className="text-[13px] leading-relaxed text-ink-secondary">
-        Mover <span className="font-semibold text-ink">{count}</span> beneficiário(s) para outro departamento.
+        Mover <span className="font-semibold text-ink">{count}</span> colaborador(es) para outro departamento.
         Útil em reorganizações internas — não altera nenhum dado pessoal.
       </p>
       <div className="flex flex-col gap-1.5">

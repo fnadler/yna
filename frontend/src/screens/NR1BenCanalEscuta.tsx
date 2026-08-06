@@ -69,16 +69,16 @@ export function NR1BenCanalEscuta() {
             <div className="mt-5 flex items-start gap-3 rounded-lg bg-surface-2 p-4">
               <Icon icon="ph:hand-heart-bold" width={19} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
               <p className="text-[12.5px] leading-relaxed text-ink-secondary">
-                O canal cuida da apuração. Mas você também merece cuidado agora. Se quiser
-                conversar com alguém, a rede da YNA está disponível para você.
+                O canal cuida da apuração. Mas você também merece cuidado agora: veja o nosso
+                conteúdo de apoio, ou ligue para o CVV (188) se precisar de alguém agora.
               </p>
             </div>
 
             <div className="mt-6 flex flex-col gap-2">
-              <Button size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/matches')}>
-                Quero conversar com um profissional
+              <Button size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/apoio')}>
+                Ver conteúdo de apoio
               </Button>
-              <Button variant="ghost" fullWidth onClick={() => navigate('/home')}>Voltar para o início</Button>
+              <Button variant="ghost" fullWidth onClick={() => navigate('/meu-espaco')}>Voltar para o início</Button>
             </div>
           </div>
         </div>

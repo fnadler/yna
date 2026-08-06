@@ -6,7 +6,7 @@ import { Input } from '../../components/Input'
 import { useRh } from '../../contexts/RhContext'
 
 /* RH-04 — Cadastro da conta (criação da conta do usuário administrador).
-   Mesmo modelo de tela do cadastro do beneficiário (wizard de 3 passos com
+   Mesmo modelo de tela do cadastro do colaborador (wizard de 3 passos com
    barra de progresso, footer mobile e barra inferior fixa no desktop). */
 
 type Step = 1 | 2 | 3
@@ -151,8 +151,7 @@ export function RH04CadastroConta() {
               {[
                 { label: 'Razão social', value: empresa.razaoSocial },
                 { label: 'CNPJ', value: empresa.cnpj },
-                { label: 'Plano', value: empresa.plano },
-                { label: 'Licenças', value: `${empresa.licencasContratadas} beneficiários` },
+                { label: 'Colaboradores contratados', value: String(empresa.colaboradoresContratados) },
                 { label: 'Vigência', value: `${fmtData(empresa.contratoInicio)} a ${fmtData(empresa.contratoFim)}` },
               ].map((l) => (
                 <div key={l.label} className="flex items-center justify-between gap-4 border-b border-border py-3 last:border-0">

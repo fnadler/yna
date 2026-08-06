@@ -9,7 +9,7 @@ import { ErrorState } from '../components/ErrorState'
 import { PAGE_MAX_W } from '../lib/layout'
 import { fmtData } from '../lib/nr1'
 import { useService } from '../hooks/useService'
-import { nr1BeneficiarioService } from '../services/nr1'
+import { nr1ColaboradorService } from '../services/nr1'
 import { NR1_DIMENSOES } from '../data/nr1Mock'
 import type { Nr1MinhaAvaliacao } from '../types'
 
@@ -19,7 +19,7 @@ import type { Nr1MinhaAvaliacao } from '../types'
    os números dela — é a contrapartida de quem respondeu. */
 
 export function NR1BenEvolucao() {
-  const avaliacoes = useService(() => nr1BeneficiarioService.minhasAvaliacoes(), [])
+  const avaliacoes = useService(() => nr1ColaboradorService.minhasAvaliacoes(), [])
 
   return (
     <div className="min-h-full bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
@@ -108,8 +108,9 @@ function Evolucao({ avaliacoes }: { avaliacoes: Nr1MinhaAvaliacao[] }) {
       <div className="mt-5 flex gap-3 rounded-lg bg-surface-2 p-4">
         <Icon icon="ph:eye-slash-bold" width={19} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
         <p className="text-[12px] leading-relaxed text-ink-secondary">
-          Estes números são só seus. Ninguém na sua empresa tem acesso a eles: a empresa vê
-          apenas médias por área, sem chegar em ninguém.
+          Estes números são só seus. Sua resposta é guardada com uma chave que é sua, nunca da
+          empresa: o RH não consegue ligar este gráfico a você, só vê médias por área, com pelo
+          menos 4 pessoas somadas em cada uma.
         </p>
       </div>
 
@@ -119,10 +120,15 @@ function Evolucao({ avaliacoes }: { avaliacoes: Nr1MinhaAvaliacao[] }) {
           Isto é um ponto de partida, não um diagnóstico. Se algo aqui te chamou a
           atenção, você não precisa lidar com isso sozinho.
         </p>
-        <div className="mt-2">
-          <Link to="/matches">
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+          <Link to="/apoio">
             <Button variant="secondary" iconRight="ph:arrow-right-bold">
-              Ver profissionais disponíveis
+              Ver conteúdo de apoio
+            </Button>
+          </Link>
+          <Link to="/canal-escuta">
+            <Button variant="ghost" iconRight="ph:arrow-right-bold">
+              Abrir canal de escuta
             </Button>
           </Link>
         </div>

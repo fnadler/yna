@@ -3,10 +3,9 @@ import { Icon } from '@iconify/react'
 import { Button } from '../../components/Button'
 import { Sheet } from '../../components/Sheet'
 import { mngEmpresaService } from '../../services/mng'
-import { PLANOS, PLANO_LICENCAS, SEGMENTOS, mngCsms, MNG_TODAY } from '../../data/mngMock'
+import { PLANOS, SEGMENTOS, mngCsms, MNG_TODAY } from '../../data/mngMock'
 import type { MngContatoMaster, MngEmpresa } from '../../types'
 
-const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const fmtData = (iso: string) => { const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}` }
 const anoDepois = (iso: string) => { const d = new Date(`${iso}T00:00:00Z`); d.setUTCFullYear(d.getUTCFullYear() + 1); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0, 10) }
 const inputCls = 'w-full rounded border-[1.5px] border-border bg-surface px-3.5 py-2.5 text-sm text-ink outline-none focus:border-primary'
@@ -14,7 +13,8 @@ const inputCls = 'w-full rounded border-[1.5px] border-border bg-surface px-3.5 
 const STEPS = ['Empresa', 'Contrato', 'Acessos'] as const
 
 /* Cadastro de nova empresa em modal, por etapas: dados da empresa → contrato →
-   usuário(s) Master + CSM. */
+   usuário(s) Master + CSM. Contrato é só dado cadastral (§12): sem valores,
+   parcelas ou anexo de nota fiscal neste recorte. */
 export function NovaEmpresaModal({ open, onClose, onCreated }: {
   open: boolean; onClose: () => void; onCreated: (e: MngEmpresa) => void
 }) {
@@ -36,34 +36,25 @@ function Wizard({ onClose, onCreated }: { onClose: () => void; onCreated: (e: Mn
   const [cnpj, setCnpj] = useState('')
   const [segmento, setSegmento] = useState('')
 
-  // Step 2 — contrato
-  const [plano, setPlano] = useState('Plano Care · Corporativo')
-  const [licencas, setLicencas] = useState(String(PLANO_LICENCAS['Plano Care · Corporativo']))
+  // Step 2 — contrato (cadastral)
+  const [plano, setPlano] = useState('Conformidade NR-1 · Corporativo')
+  const [colaboradoresContratados, setColaboradoresContratados] = useState('150')
   const [inicio, setInicio] = useState(MNG_TODAY)
   const [fim, setFim] = useState(anoDepois(MNG_TODAY))
-  const [valorTotal, setValorTotal] = useState('')
-  const [pagamento, setPagamento] = useState<'avista' | 'parcelado'>('parcelado')
-  const [numParcelas, setNumParcelas] = useState('12')
-  const [diaVenc, setDiaVenc] = useState('5')
-  const [arquivo, setArquivo] = useState<string | null>(null)
 
   // Step 3 — masters + CSM
   const [masters, setMasters] = useState<MngContatoMaster[]>([{ nome: '', email: '', telefone: '' }])
   const [csmId, setCsmId] = useState(mngCsms()[0]?.id ?? '')
 
-  const onPlano = (v: string) => { setPlano(v); setLicencas(String(PLANO_LICENCAS[v] ?? '')) }
   const onInicio = (v: string) => { setInicio(v); if (v) setFim(anoDepois(v)) }
   const setMaster = (i: number, patch: Partial<MngContatoMaster>) => setMasters((ms) => ms.map((m, k) => (k === i ? { ...m, ...patch } : m)))
   const addMaster = () => setMasters((ms) => [...ms, { nome: '', email: '', telefone: '' }])
   const removeMaster = (i: number) => setMasters((ms) => ms.filter((_, k) => k !== i))
 
   const datasOk = Boolean(inicio && fim) && fim > inicio
-  const nParcelas = pagamento === 'avista' ? 1 : Number(numParcelas)
-  const valorParcela = nParcelas > 0 && Number(valorTotal) > 0 ? Math.round(Number(valorTotal) / nParcelas) : 0
 
   const step1Ok = Boolean(razaoSocial.trim() && nomeFantasia.trim() && cnpj.trim() && segmento)
-  const step2Ok = Boolean(plano) && Number(licencas) > 0 && datasOk && Number(valorTotal) > 0 &&
-    (pagamento === 'avista' || Number(numParcelas) >= 1) && Number(diaVenc) >= 1 && Number(diaVenc) <= 28
+  const step2Ok = Boolean(plano) && Number(colaboradoresContratados) > 0 && datasOk
   const step3Ok = masters.some((m) => m.nome.trim() && m.email.trim()) && Boolean(csmId)
   const stepOk = [step1Ok, step2Ok, step3Ok][step]
 
@@ -75,9 +66,8 @@ function Wizard({ onClose, onCreated }: { onClose: () => void; onCreated: (e: Mn
     const empresa = await mngEmpresaService.create({
       razaoSocial: razaoSocial.trim(), nomeFantasia: nomeFantasia.trim(), cnpj: cnpj.trim(), segmento,
       masters: mastersValidos.map((m) => ({ nome: m.nome.trim(), email: m.email.trim(), telefone: m.telefone.trim() })),
-      csmId, plano, licencas: Number(licencas), valorTotal: Number(valorTotal),
-      pagamento, numParcelas: nParcelas, diaVencimento: Number(diaVenc),
-      inicio, fim, arquivo: arquivo ?? undefined,
+      csmId, plano, colaboradoresContratados: Number(colaboradoresContratados),
+      inicio, fim,
     })
     setSalvando(false)
     setCriada(empresa)
@@ -96,8 +86,7 @@ function Wizard({ onClose, onCreated }: { onClose: () => void; onCreated: (e: Mn
         <div className="mx-auto mt-5 max-w-sm rounded-lg border border-border bg-surface px-4 text-left">
           <Resumo label="Plano" value={plano} />
           <Resumo label="Vigência" value={`${fmtData(inicio)} — ${fmtData(fim)}`} />
-          <Resumo label="Licenças" value={`${licencas} beneficiários`} />
-          <Resumo label="Pagamento" value={pagamento === 'avista' ? 'À vista' : `${nParcelas}× de ${brl(valorParcela)}`} />
+          <Resumo label="Colaboradores contratados" value={colaboradoresContratados} />
           <Resumo label={mastersValidos.length > 1 ? 'Masters' : 'Master'} value={mastersValidos.length > 1 ? `${mastersValidos.length} usuários` : mastersValidos[0]?.nome ?? '—'} />
           <Resumo label="CSM responsável" value={csmNome} />
         </div>
@@ -146,11 +135,11 @@ function Wizard({ onClose, onCreated }: { onClose: () => void; onCreated: (e: Mn
         </div>
       )}
 
-      {/* Step 2 — Contrato */}
+      {/* Step 2 — Contrato (dado cadastral, sem cobrança) */}
       {step === 1 && (
         <div className="flex flex-col gap-4">
           <Campo label="Plano contratado">
-            <select className={inputCls} value={plano} onChange={(e) => onPlano(e.target.value)}>
+            <select className={inputCls} value={plano} onChange={(e) => setPlano(e.target.value)}>
               {PLANOS.map((p) => <option key={p}>{p}</option>)}
             </select>
           </Campo>
@@ -159,52 +148,9 @@ function Wizard({ onClose, onCreated }: { onClose: () => void; onCreated: (e: Mn
             <Campo label="Data de término"><input type="date" className={inputCls} value={fim} min={inicio || undefined} onChange={(e) => setFim(e.target.value)} /></Campo>
           </div>
           {inicio && fim && !datasOk && <p className="-mt-2 text-[12.5px] text-danger-ink">O término deve ser posterior ao início.</p>}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Campo label="Número de licenças"><input type="number" min={1} className={inputCls} value={licencas} onChange={(e) => setLicencas(e.target.value)} /></Campo>
-            <Campo label="Valor total do contrato">
-              <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">R$</span>
-                <input type="number" min={0} className={`${inputCls} pl-9`} value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} placeholder="90000" />
-              </div>
-            </Campo>
-          </div>
-
-          <div>
-            <span className="mb-1.5 block text-[13px] font-semibold text-ink">Modelo de pagamento</span>
-            <div className="flex gap-1 rounded-lg bg-surface-2 p-1">
-              {([['avista', 'À vista'], ['parcelado', 'Parcelado']] as const).map(([k, l]) => (
-                <button key={k} onClick={() => setPagamento(k)} aria-selected={pagamento === k}
-                  className={`flex-1 rounded-lg px-3 py-2 font-heading text-sm font-semibold transition-all ${pagamento === k ? 'bg-surface text-ink shadow-xs' : 'text-ink-secondary hover:text-ink'}`}>{l}</button>
-              ))}
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {pagamento === 'parcelado' && (
-              <Campo label="Nº de parcelas"><input type="number" min={1} max={60} className={inputCls} value={numParcelas} onChange={(e) => setNumParcelas(e.target.value)} /></Campo>
-            )}
-            <Campo label="Dia do vencimento"><input type="number" min={1} max={28} className={inputCls} value={diaVenc} onChange={(e) => setDiaVenc(e.target.value)} /></Campo>
-          </div>
-          {valorParcela > 0 && (
-            <div className="rounded-lg border border-border bg-surface-2/50 px-4 py-3 text-[13px] text-ink-secondary">
-              {pagamento === 'avista'
-                ? <>Pagamento único de <span className="font-semibold text-ink">{brl(Number(valorTotal))}</span>.</>
-                : <><span className="font-semibold text-ink">{nParcelas}×</span> de <span className="font-semibold text-ink">{brl(valorParcela)}</span> · total {brl(Number(valorTotal))}.</>}
-            </div>
-          )}
-
-          <div>
-            <span className="mb-1.5 block text-[13px] font-semibold text-ink">Contrato assinado (PDF)</span>
-            {arquivo ? (
-              <div className="flex items-center justify-between rounded-lg border border-border bg-surface px-3 py-2.5 text-[13px]">
-                <span className="flex items-center gap-2"><Icon icon="ph:file-pdf-bold" width={16} className="text-primary dark:text-primary-300" aria-hidden /> {arquivo}</span>
-                <button onClick={() => setArquivo(null)} className="text-ink-muted hover:text-ink" aria-label="Remover"><Icon icon="ph:x-bold" width={14} aria-hidden /></button>
-              </div>
-            ) : (
-              <button onClick={() => setArquivo('contrato-assinado.pdf')} className="flex w-full items-center justify-center gap-2 rounded border-[1.5px] border-dashed border-border bg-surface px-4 py-3 text-[13px] font-medium text-ink-secondary transition-colors hover:border-primary hover:text-ink">
-                <Icon icon="ph:upload-simple-bold" width={16} aria-hidden /> Anexar contrato (PDF)
-              </button>
-            )}
-          </div>
+          <Campo label="Nº de colaboradores contratados">
+            <input type="number" min={1} className={inputCls} value={colaboradoresContratados} onChange={(e) => setColaboradoresContratados(e.target.value)} />
+          </Campo>
         </div>
       )}
 

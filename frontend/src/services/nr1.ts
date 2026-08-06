@@ -169,7 +169,7 @@ export const nr1CampanhaService = {
     return nr1Campanhas
   },
 
-  /** Campanha em campo — a que o beneficiário responde e o RH acompanha. */
+  /** Campanha em campo — a que o colaborador responde e o RH acompanha. */
   ativa: async (): Promise<Nr1Campanha | undefined> => {
     await delay(rand(250, 500))
     return nr1Campanhas.find((c) => c.status === 'em-campo')
@@ -383,8 +383,8 @@ export const nr1CanalService = {
   },
 }
 
-export const nr1BeneficiarioService = {
-  /** Instrumento que o beneficiário vai responder: a versão registrada na
+export const nr1ColaboradorService = {
+  /** Instrumento que o colaborador vai responder: a versão registrada na
      campanha ativa — nunca um formulário fixo no código (RF-CO-NR1-01). */
   instrumentoDaCampanha: async (): Promise<{ campanha: Nr1Campanha; versao: Nr1QuestionarioVersao } | undefined> => {
     await delay(rand(350, 700))
@@ -396,7 +396,7 @@ export const nr1BeneficiarioService = {
     return { campanha, versao }
   },
 
-  /** Salvamento progressivo — o beneficiário pode parar e voltar. */
+  /** Salvamento progressivo — o colaborador pode parar e voltar. */
   salvarParcial: async (_campanhaId: string, _respostas: Record<string, number | string>): Promise<{ ok: boolean }> => {
     await delay(rand(200, 450))
     return { ok: true }

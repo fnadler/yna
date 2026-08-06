@@ -1,68 +1,3 @@
-export interface Professional {
-  id: string
-  name: string
-  crp: string
-  approach: string
-  approachLong: string
-  specialties: string[]
-  nextSlot: string
-  videoLength: string
-  whyThisMatch: string
-  initials: string
-  palette: 'lavender' | 'pink' | 'yellow'
-  bio: string
-  formation: string[]
-  yearsExp: number
-  sessionDuration: number
-}
-
-export type Specialty = 'saude-mental' | 'nutricao' | 'fisioterapia'
-
-export interface Session {
-  id: string
-  professionalId: string
-  professional: string
-  professionalInitials: string
-  professionalPalette: 'lavender' | 'pink' | 'yellow'
-  weekday: string
-  date: string
-  time: string
-  status: 'scheduled' | 'completed' | 'cancelled'
-  roomLink: string
-  specialty?: Specialty
-  startTime?: string
-  endTime?: string
-  durationMin?: number
-  monthGroup?: string
-}
-
-export interface TriagemQuestion {
-  number: number
-  total: number
-  kind: 'closed' | 'open'
-  intro?: string
-  question: string
-  highlight?: string
-  options?: string[]
-  selectedIndex?: number
-  placeholder?: string
-  helper?: string
-}
-
-export interface WheelOfLife {
-  labels: string[]
-  values: number[]
-  previousValues?: number[]
-  updatedAt: string
-}
-
-export interface CheckInConfig {
-  cadence: 'daily' | 'weekly' | 'custom' | 'off'
-  mode: 'nina' | 'form'
-  customDays?: number[]
-  customTime?: string
-}
-
 export interface UserProfile {
   id: string
   name: string
@@ -70,456 +5,17 @@ export interface UserProfile {
   email: string
   company: string
   department: string
-  hasConsented: boolean
-  hasCompletedProfile: boolean
-  hasCompletedTriagem: boolean
-  hasMatches: boolean
-  currentProfessionalId: string | null
-}
-
-export interface NinaMessage {
-  id: string
-  role: 'nina' | 'user'
-  content: string
-  timestamp: string
-  isRisk?: boolean
-}
-
-export interface Achievement {
-  id: string
-  title: string
-  description: string
-  earnedAt: string
-  icon: string
-}
-
-/* ============================================================
-   FLUXO 3 — PROFISSIONAL (psicólogo)
-   Tipos isolados do beneficiário. Mockados atrás de src/services/pro.ts.
-   ============================================================ */
-
-export type ProCadastroStatus = 'rascunho' | 'em-revisao' | 'aprovado' | 'requer-ajuste'
-
-/** Dados da Pessoa Jurídica (obrigatória para atender — RN-PR-02.1). */
-/** Documento da PJ (contrato social, certidões negativas etc.). */
-export interface ProPJDocumento {
-  id: string
-  tipo: string
-  /** Nome do arquivo enviado (ausente enquanto pendente). */
-  nome?: string
-  status: 'pendente' | 'enviado'
-}
-
-export interface ProPJ {
-  cnpj: string
-  razaoSocial: string
-  banco: string
-  agencia: string
-  conta: string
-  /** Número da operação (quando aplicável, ex.: Caixa). */
-  operacao?: string
-  pixChave?: string
-  documentos: ProPJDocumento[]
-}
-
-export interface ProCertificado {
-  id: string
-  titulo: string
-  instituicao: string
-  ano: string
-  arquivo: string
-  validado: boolean
-}
-
-export interface ProProfile {
-  id: string
-  name: string
-  initials: string
-  palette: 'lavender' | 'pink' | 'yellow'
-  crp: string
-  crpUf: string
-  email: string
-  phone?: string
-  linhasTeoricas: string[]
-  areasAtuacao: string[]
-  bio: string
-  comoTrabalha: string
-  formation: string[]
-  certificados: ProCertificado[]
-  fotoUrl?: string
-  videoUrl?: string
-  yearsExp: number
-  sessionDuration: number
-  /** Fuso horário do profissional (offset GMT), ex.: "America/Sao_Paulo". */
-  fusoHorario: string
-  pj?: ProPJ
-  cadastroStatus: ProCadastroStatus
-  integracaoConcluida: boolean
-}
-
-/** Item que compõe o indicador "Perfil pronto para match". */
-export interface ProfileStrengthItem {
-  key: string
-  label: string
-  peso: number
-  done: boolean
-  href: string
-}
-
-export interface ProfileStrength {
-  percent: number
-  items: ProfileStrengthItem[]
-}
-
-/** Sessão na perspectiva do profissional. */
-export interface ProSession {
-  id: string
-  beneficiarioId: string
-  beneficiarioApelido: string
-  beneficiarioInitials: string
-  beneficiarioPalette: 'lavender' | 'pink' | 'yellow'
-  weekday: string
-  date: string
-  time: string
-  status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled'
-  roomLink: string
-  prontuarioPendente?: boolean
-  durationMin?: number
-  /** Segundos desde que o beneficiário abriu a sala (definido = já entrou e aguarda). */
-  salaAbertaSeg?: number
-}
-
-/* Disponibilidade do profissional (configurada em PRO-11, resumida em PRO-09). */
-export type ProDiaDisponibilidade = { active: boolean; times: string[] }
-export interface ProBloqueio { id: string; inicio: string; fim?: string; motivo: string }
-export interface ProDisponibilidade {
-  atendimento: Record<string, ProDiaDisponibilidade>
-  plantao: Record<string, ProDiaDisponibilidade>
-  bloqueios: ProBloqueio[]
-}
-
-/** Prontuário pós-sessão (obrigatório — RF-PR-07).
-   `conteudo` é a evolução clínica (texto). Os demais campos são estruturados e
-   opcionais (preenchidos no novo registro estruturado da sala de sessão). */
-export interface ProntuarioEntry {
-  id: string
-  sessionId: string
-  beneficiarioApelido: string
-  date: string
-  conteudo: string
-  finalizado: boolean
-  comparecimento?: 'compareceu' | 'faltou' | 'cancelou' | 'remarcada'
-  temas?: string[]
-  risco?: 'sem-risco' | 'ideacao-suicida' | 'autolesao' | 'risco-terceiros'
-  cids?: string[]
-  humor?: string[]
-  tecnicas?: string[]
-  encaminhamentos?: string[]
-  tarefas?: string
-}
-
-export interface TriagemResposta {
-  pergunta: string
-  resposta: string
-}
-
-/** Sessão passada (resumo) no histórico do beneficiário. */
-export interface ProSessaoResumo {
-  id: string
-  data: string   // ex.: "15/06/2026"
-  hora: string   // ex.: "09:00"
-  status: 'realizada' | 'cancelada' | 'falta'
-}
-
-/** Objetivo terapêutico — item vivo, revisado/atualizado ao longo do tratamento. */
-export interface ObjetivoTerapeutico {
-  id: string
-  texto: string
-  status: 'em-andamento' | 'alcancado'
-}
-
-/** Plano terapêutico / acompanhamento do beneficiário (nível do paciente, distinto
-   da evolução por sessão). Avaliação de demanda + objetivos do trabalho (CFP 001/2009). */
-export interface PlanoTerapeutico {
-  demanda: string
-  objetivos: ObjetivoTerapeutico[]
-  /** Hipótese diagnóstica atual (códigos CID-10). */
-  hipoteseDiagnostica: string[]
-  abordagem: string
-  riscoAtual: 'sem-risco' | 'ideacao-suicida' | 'autolesao' | 'risco-terceiros'
-  atualizadoEm: string
-}
-
-/** Detalhe do beneficiário visível ao profissional (sigilo: apelido, sem nome real). */
-export interface ProBeneficiarioDetail {
-  id: string
-  apelido: string
-  initials: string
-  palette: 'lavender' | 'pink' | 'yellow'
-  desde: string
-  totalSessoes: number
-  /** Próxima sessão (data ISO + hora) no fuso base; convertida ao exibir. */
-  proximaSessao?: { date: string; time: string }
-  /** Sessão recorrente (dia da semana 0=Dom + hora) no fuso base; convertida ao exibir. */
-  sessaoRecorrente?: { weekday: number; time: string }
-  triagem: TriagemResposta[]
-  prontuarios: ProntuarioEntry[]
-  historicoSessoes: ProSessaoResumo[]
-  plano?: PlanoTerapeutico
-}
-
-export interface PlantaoShift {
-  id: string
-  dia: string
-  inicio: string
-  fim: string
-  ativo: boolean
-}
-
-/** Acionamento de emergência recebido pelo plantonista (lado do profissional). */
-export interface ProAcionamento {
-  id: string
-  apelido: string
-  initials: string
-  palette: 'lavender' | 'pink' | 'yellow'
-  motivo: string
-  horario: string
-}
-
-export interface FinanceSummary {
-  aReceber: number
-  antecipacaoDisponivel: number
-  cadencia: 'semanal' | 'quinzenal' | 'mensal'
-  taxaAntecipacao: number
-  sessoesNoMes: number
-  totalResgatado: number
-  sessoesPagas: number
-  sessoesAReceber: number
-}
-
-/** Sessão realizada que compõe uma fatura mensal do profissional. */
-export interface ProFaturaSessao {
-  id: string
-  data: string     // ISO
-  hora: string     // HH:mm
-  beneficiario: string
-  valor: number
-}
-
-/** Fatura (período) do profissional — modelo "fatura de cartão": um mês/ano
-   acumula as sessões realizadas. Aberto = ainda acumulando (antecipável);
-   fechado = com nota fiscal e ciclo de pagamento. */
-export type ProFaturaStatus = 'aberto' | 'fechado'
-export interface ProFatura {
-  mes: string           // 'YYYY-MM'
-  label: string         // ex.: 'Junho 2026'
-  status: ProFaturaStatus
-  total: number         // soma das sessões do período
-  sessoes: ProFaturaSessao[]
-  /** Data prevista para o pagamento do período. */
-  dataPrevistaPagamento: string
-  /** Antecipação disponível (período aberto). */
-  antecipacaoDisponivel?: number
-  /** Nota fiscal do período (fechado). */
-  nota?: NotaFiscal
-}
-
-/** Lançamento do extrato financeiro (conta corrente: sessão credita, resgate debita). */
-export interface ExtratoItem {
-  id: string
-  data: string
-  tipo: 'sessao' | 'resgate'
-  valor: number
-  /** Saldo da conta após o lançamento (calculado no serviço). */
-  saldo: number
-}
-
-/** Sessão contemplada por uma nota fiscal. */
-export interface NotaFiscalSessao {
-  id: string
-  data: string
-  beneficiario: string
-  valor: number
-}
-
-/** Dados da YNA (tomador) que devem constar na nota fiscal emitida pelo profissional. */
-export interface DadosNotaYna {
-  razaoSocial: string
-  cnpj: string
-  endereco: string
-}
-
-/** Gatilho que originou a nota: fechamento automático do período ou antecipação. */
-export type NotaFiscalOrigem = 'fechamento' | 'antecipacao'
-
-/** Ciclo de vida da nota, controlado pelo backoffice YNA.
-   pendente → profissional deve emitir e anexar · em-analise → aguardando YNA ·
-   requer-ajuste → retificação solicitada · aprovada → paga (comprovante + data). */
-export type NotaFiscalStatus = 'pendente' | 'em-analise' | 'requer-ajuste' | 'aprovada'
-
-/** Nota fiscal do repasse — emitida pelo profissional (PJ) e controlada pelo backoffice.
-   O recebimento depende do envio da nota; a YNA a analisa, retifica ou aprova. */
-export interface NotaFiscal {
-  id: string
-  origem: NotaFiscalOrigem
-  status: NotaFiscalStatus
-  /** Período/referência do repasse (ex.: "16–22 jun" ou "Antecipação"). */
-  referencia: string
-  valorTotal: number
-  /** Instruções de emissão fornecidas pela YNA. */
-  vencimento: string          // ISO — data de vencimento da nota
-  descricaoServico: string    // descrição dos serviços que deve constar
-  /** Sessões contempladas (fluxo de fechamento). */
-  sessoes: NotaFiscalSessao[]
-  /** Preenchidos quando o profissional emite e anexa a nota. */
-  numero?: string
-  emitidaEm?: string
-  arquivoNome?: string
-  /** Motivo da retificação, quando status = requer-ajuste. */
-  motivoRetificacao?: string
-  /** Comprovante + data de pagamento, quando status = aprovada. */
-  dataPagamento?: string
-  comprovanteNome?: string
-}
-
-export interface Trilha {
-  id: string
-  titulo: string
-  descricao: string
-  categoria: string
-  nivel: 'iniciante' | 'intermediario' | 'avancado'
-  duracaoMin: number
-  progresso: number
-}
-
-/** Aula de um curso (lista no detalhe). */
-export interface CursoAula {
-  id: string
-  titulo: string
-  duracaoMin: number
-  concluida: boolean
-}
-
-/** Curso da Academia YNA. */
-export interface Curso {
-  id: string
-  titulo: string
-  autor: string
-  descricao: string
-  tema: string
-  trilha: string
-  nivel: 'iniciante' | 'intermediario' | 'avancado'
-  duracaoMin: number
-  totalAulas: number
-  aulasConcluidas: number
-  progresso: number
-  /** Data ISO (YYYY-MM-DD) para ordenar "Últimos lançamentos". */
-  lancadoEm: string
-  concluido: boolean
-  /** Chave de gradiente da capa (sem imagem real no mock). */
-  cover: 'lavender' | 'pink' | 'yellow' | 'teal' | 'blue'
-  aulas?: CursoAula[]
-}
-
-export type CoverKey = 'lavender' | 'pink' | 'yellow' | 'teal' | 'blue'
-
-/** Bloco de conteúdo de um artigo (editorial: texto, mídia, citação, lista…). */
-export type ArtigoBloco =
-  | { tipo: 'paragrafo'; texto: string }
-  | { tipo: 'subtitulo'; texto: string }
-  | { tipo: 'citacao'; texto: string; fonte?: string }
-  | { tipo: 'imagem'; cor: CoverKey; legenda?: string }
-  | { tipo: 'video'; titulo?: string; duracao?: string }
-  | { tipo: 'lista'; itens: string[] }
-
-/** Artigo da Academia YNA. */
-export interface Artigo {
-  id: string
-  titulo: string
-  subheadline: string
-  autor: string
-  data: string
-  tema: string
-  conteudo: ArtigoBloco[]
-  /** Tempo estimado de leitura (minutos). */
-  tempoLeituraMin: number
-  /** Imagem de capa (chave de gradiente). Opcional — artigos podem não ter imagem. */
-  imagem?: CoverKey
-}
-
-/** Big numbers do dashboard da Universidade. */
-export interface UniversidadeStats {
-  cursosFinalizados: number
-  tempoEstudoMin: number
-  certificados: number
-  livesParticipadas: number
-}
-
-export interface QualityScore {
-  criterio: string
-  descricao: string
-  score: number
-}
-
-export interface ProSupervisao {
-  id: string
-  tema: string
-  data: string
-  horario: string
-  supervisor: string
-  inscrito: boolean
-  status: 'agendada' | 'realizada'
-}
-
-export interface ProLive {
-  id: string
-  /** Tipo da live YNA: conteúdo (universidade) ou supervisão clínica. */
-  categoria: 'conteudo' | 'supervisao'
-  titulo: string
-  data: string
-  horario: string
-  status: 'agendada' | 'replay'
-  inscrito: boolean
-  descricao?: string
-  palestrante?: string
-  espectadores?: number
-  /** Segundos desde o início da transmissão (definido = ao vivo agora). */
-  aoVivoSeg?: number
-}
-
-export interface ProRecebimento {
-  id: string
-  periodo: string
-  valor: number
-  status: 'pago' | 'previsto'
-  nf: boolean
-}
-
-export interface ProNotificacao {
-  id: string
-  tipo: 'troca' | 'supervisao' | 'plataforma' | 'financeiro'
-  icon: string
-  titulo: string
-  descricao: string
-  quando: string
-  lida: boolean
-}
-
-/** Estado de sessão/onboarding do profissional (ProContext). */
-export interface ProUser {
-  hasAccount: boolean
-  profile: ProProfile
 }
 
 /* ============================================================
    FLUXO 1 — RH / EMPRESA B2B (tipos isolados)
    Jornada do RH/DHO (Master/Operador). Não se conecta aos
-   dados de beneficiário/profissional: tudo é agregado e
+   dados individuais do colaborador: tudo é agregado e
    anonimizado (k-anonimato ≥ 4). Ver Seção 5 do documento.
    ============================================================ */
 
-/** Status do beneficiário no quadro da empresa (visão RH). */
-export type RhBeneficiarioStatus =
+/** Status do colaborador no quadro da empresa (visão RH). */
+export type RhColaboradorStatus =
   | 'nao_convidado'
   | 'convidado'
   | 'ativo'
@@ -527,7 +23,9 @@ export type RhBeneficiarioStatus =
 /** Papel do usuário corporativo na plataforma. */
 export type RhPapel = 'master' | 'operador'
 
-/** Dados da conta corporativa (criada pelo backoffice YNA no kick-off). */
+/** Dados da conta corporativa (criada pelo backoffice YNA no kick-off).
+   `plano`/`colaboradoresContratados`/`contratoInicio`/`contratoFim` são só
+   dado cadastral (§12): sem parcelas nem cobrança neste recorte. */
 export interface RhEmpresa {
   razaoSocial: string
   nomeFantasia: string
@@ -535,30 +33,10 @@ export interface RhEmpresa {
   segmento: string
   contatoRh: string
   plano: string
-  licencasContratadas: number
+  colaboradoresContratados: number
   contratoInicio: string
   contratoFim: string
   initials: string
-}
-
-/** Parcela do contrato na visão do RH (financeiro da empresa).
-   'futura' = ainda não gerada (sem NF/boleto — só no mês do vencimento). */
-export type RhParcelaStatus = 'pago' | 'a-vencer' | 'em-atraso' | 'futura'
-export interface RhParcela {
-  id: string
-  contrato: string        // número/rótulo do contrato
-  numero: number
-  totalParcelas: number
-  valor: number
-  vencimento: string      // ISO
-  status: RhParcelaStatus
-  /** NF e boleto — presentes a partir do mês do vencimento (a-vencer/em-atraso/pago). */
-  notaFiscal?: string
-  boleto?: string
-  /** Baixa do pagamento. */
-  dataPagamento?: string
-  valorPago?: number
-  comprovante?: string
 }
 
 /** Usuário corporativo (Master ou Operador). */
@@ -577,17 +55,17 @@ export interface RhUsuario {
 export interface RhDepartamento {
   id: string
   nome: string
-  beneficiarios: number
+  colaboradores: number
 }
 
-/** Beneficiário na visão do RH — sem nenhum dado clínico/de jornada. */
-export interface RhBeneficiario {
+/** Colaborador na visão do RH — sem nenhum dado clínico/de jornada. */
+export interface RhColaborador {
   id: string
   nomeCompleto: string
   cpfMascarado: string
   emailCorporativo: string
   departamentoId: string
-  status: RhBeneficiarioStatus
+  status: RhColaboradorStatus
   convidadoEm?: string
   initials: string
   palette: 'lavender' | 'pink' | 'yellow'
@@ -599,43 +77,6 @@ export interface RhFunilConvites {
   aberto: number
   cadastroIniciado: number
   cadastroConcluido: number
-}
-
-/** KPI macro do dashboard RH. */
-export interface RhKpi {
-  key: string
-  label: string
-  value: string
-  delta?: string
-  deltaTone?: 'up' | 'down' | 'neutral'
-  icon: string
-  hint?: string
-}
-
-/** Célula do mapa de calor: nível de atenção por dimensão NR-1. */
-export interface RhHeatCell {
-  /** 0 = sem dado / anonimizado · 1 = baixo · 2 = médio · 3 = alto. */
-  nivel: 0 | 1 | 2 | 3
-}
-
-/** Linha (departamento) do mapa de calor NR-1. */
-export interface RhHeatRow {
-  departamentoId: string
-  departamento: string
-  beneficiarios: number
-  /** true quando < 4 beneficiários → bloqueado por k-anonimato. */
-  anonimizado: boolean
-  celulas: RhHeatCell[]
-}
-
-/** Alerta de risco psicossocial agregado (threshold NR-1). */
-export interface RhAlerta {
-  id: string
-  nivel: 'alto' | 'medio'
-  departamento: string
-  dimensao: string
-  mensagem: string
-  quando: string
 }
 
 /** Linha com erro de validação na importação por planilha. */
@@ -665,36 +106,13 @@ export interface RhNotificacao {
 }
 
 /* ============================================================
-   CADASTRO DO PROFISSIONAL (Fluxo 3) — dados dos 5 steps do cadastro.
-   Compartilhado entre o fluxo do profissional e a aprovação no Manager.
-   ============================================================ */
-export interface ProFormacao { id: string; nivel: string; curso: string; instituicao: string; inicio: string; fim: string; emAndamento: boolean }
-export interface ProCursoCert { id: string; nome: string; instituicao: string; inicio: string; fim: string; emAndamento: boolean }
-export interface ProIdioma { id: string; idioma: string; nivel: string }
-export interface ProDispCadastro { dias: string[]; horaInicio: string; horaFim: string; plantao: boolean }
-
-export interface ProCadastro {
-  // Step 1 — Dados pessoais
-  nomeCompleto: string; cpf: string; email: string; telefone: string; instagram: string
-  // Step 2 — Dados da empresa (PJ)
-  cnpj: string; razaoSocial: string; contratoSocial?: string; banco: string; agencia: string; conta: string; pixChave: string
-  // Step 3 — Perfil profissional (campos definidos pelo tipo de profissional)
-  perfil: Record<string, string | string[]>
-  // Step 4 — Formação
-  formacoes: ProFormacao[]; cursos: ProCursoCert[]; idiomas: ProIdioma[]
-  // Step 5 — Disponibilidade
-  disponibilidade: ProDispCadastro
-}
-
-/* ============================================================
    FLUXO 4 — MANAGER / BACKOFFICE YNA (tipos isolados)
-   "Motor interno" da plataforma. Habilita empresas e profissionais,
-   gerencia conteúdo, plantão, suporte e finanças. Ver Seção 8 do documento.
+   "Motor interno" da plataforma: governa empresas clientes, o instrumento
+   NR-1 (modelos, versões, núcleo) e o suporte. Ver Seção 8 do documento.
    ============================================================ */
 
 /** Perfil de gestor YNA (§8.1). */
-export type MngPerfilGestor =
-  | 'super-admin' | 'comercial' | 'profissionais' | 'clinico' | 'conteudo' | 'suporte' | 'branding'
+export type MngPerfilGestor = 'super-admin' | 'comercial' | 'suporte' | 'branding'
 
 export interface MngGestor {
   id: string
@@ -710,56 +128,17 @@ export interface MngGestor {
   ultimoAcesso?: string
 }
 
-/* Modelos de documentos — geridos no Manager, disponibilizados ao profissional
-   (atestado, encaminhamento, declaração, etc.). Público-alvo por tipo. */
-export type MngModeloFormato = 'pdf' | 'docx'
-export interface MngModeloDocumento {
-  id: string
-  nome: string
-  descricao: string
-  icon: string          // ícone phosphor
-  arquivo: string       // nome do arquivo do modelo
-  formato: MngModeloFormato
-  publicoTipos: string[]  // ids de tipos de profissional; [] = todos
-  atualizadoEm: string
-}
-
-/* Financeiro das empresas — parcelas dos contratos (visão do backoffice §8.13).
-   Fluxo: pendente-emissao → (enviar NF + boleto) emitida → (dar baixa) paga;
-   vencida e não paga → atrasada. */
-export type MngParcelaFinStatus = 'pendente-emissao' | 'emitida' | 'paga' | 'atrasada'
-export interface MngParcelaFin {
-  id: string
-  empresaId: string
-  razaoSocial: string
-  nomeFantasia: string
-  cnpj: string
-  contrato: string        // rótulo do contrato/plano
-  numero: number          // nº da parcela
-  totalParcelas: number
-  valor: number
-  vencimento: string      // ISO
-  status: MngParcelaFinStatus
-  /** Nota fiscal e boleto (presentes quando emitida/paga). */
-  notaFiscal?: string
-  boleto?: string
-  /** Baixa do pagamento. */
-  dataPagamento?: string
-  valorPago?: number
-}
-
-/* Empresas + controle de contratos (§8.4) */
+/* Empresas + controle de contratos (§8.4). Financeiro/parcelas/plano
+   comercial ficaram fora deste recorte (§12): o contrato é só dado
+   cadastral (vigência, status), sem cobrança. */
 export type MngContratoStatus = 'vigente' | 'encerrado' | 'cancelado'
 export interface MngContrato {
   id: string
-  /** Plano contratado (ex.: "Plano Care · Corporativo"). */
+  /** Plano contratado (ex.: "Conformidade NR-1 · Corporativo"). */
   plano: string
-  valorMensal: number
-  valorTotal: number
-  licencas: number
+  colaboradoresContratados: number
   inicio: string
   fim: string
-  arquivo?: string
   status: MngContratoStatus
   /** % de execução por meses decorridos sobre a vigência. */
   execucaoPct: number
@@ -768,18 +147,6 @@ export type MngEmpresaStatus = 'ativa' | 'bloqueada' | 'inativa'
 
 /** Contato do usuário Master (RH) da empresa. */
 export interface MngContatoMaster { nome: string; email: string; telefone: string }
-
-/** Parcela do contrato B2B (mensalidade). Nota fiscal emitida pela YNA. */
-export type MngParcelaStatus = 'paga' | 'pendente' | 'vencida'
-export interface MngParcela {
-  id: string
-  numero: number
-  vencimento: string
-  valor: number
-  status: MngParcelaStatus
-  /** Nome do arquivo da NF (presente quando emitida/anexada). */
-  notaFiscal?: string
-}
 
 /** Funil de convites agregado da empresa (base do dashboard RH). */
 export interface MngFunilConvites {
@@ -797,8 +164,8 @@ export interface MngEmpresa {
   segmento: string
   contatoRh: string
   status: MngEmpresaStatus
-  licencas: number
-  beneficiariosAtivos: number
+  colaboradoresContratados: number
+  colaboradoresAtivos: number
   initials: string
   contratos: MngContrato[]
   /** Usuário(s) Master (RH) da empresa. */
@@ -806,256 +173,15 @@ export interface MngEmpresa {
   /** CSM responsável na YNA (id de um gestor com perfil 'comercial'). */
   csmId: string
   funil: MngFunilConvites
-  parcelas: MngParcela[]
 }
 
-/** Campo customizável do cadastro do profissional (formulário flexível). */
-export type MngCampoTipo = 'text' | 'textarea' | 'select' | 'multiselect' | 'number' | 'date'
-export interface MngCampoCadastro {
-  id: string
-  label: string
-  tipo: MngCampoTipo
-  obrigatorio: boolean
-  /** Opções — para select/multiselect. */
-  opcoes?: string[]
-  /** Texto de ajuda/placeholder. */
-  ajuda?: string
-}
-
-/** Pergunta da triagem do beneficiário (para indicar o profissional). */
-export type MngTriagemTipo = 'aberta' | 'escala' | 'unica' | 'multipla'
-export interface MngTriagemPergunta {
-  id: string
-  pergunta: string
-  tipo: MngTriagemTipo
-  /** Opções — para escolha única/múltipla. */
-  opcoes?: string[]
-  obrigatoria: boolean
-}
-
-/** Tipo de profissional — define a triagem e os campos do cadastro (§8.5). */
-export interface MngTipoProfissional {
-  id: string
-  nome: string
-  conselho: string      // ex.: CRP, CRN, CREFITO
-  ativo: boolean
-  profissionais: number
-  /** Campos exigidos no cadastro deste tipo. */
-  campos: MngCampoCadastro[]
-  /** Perguntas da triagem dos beneficiários. */
-  triagem: MngTriagemPergunta[]
-}
-
-export type MngProfStatus = 'ativo' | 'para-analise' | 'em-analise' | 'reprovado' | 'inativo'
-export interface MngProfissional {
-  id: string
-  nome: string
-  tipo: string          // id do tipo (ex.: 'psicologo')
-  tipoLabel: string
-  conselho: string      // ex.: CRP 06/123456
-  uf: string            // estado do conselho (ex.: SP)
-  email: string
-  status: MngProfStatus
-  initials: string
-  palette: 'lavender' | 'pink' | 'yellow'
-  fotoUrl?: string
-  linhasTeoricas: string[]
-  clientesRecorrentes: number
-  sessoesRealizadas: number
-  qualidadeGeral: number   // índice geral 0–100
-  avaliacao: number        // 0–5
-}
-
-/** Sessão no histórico do profissional (visão detalhe). */
-export interface MngSessaoResumo {
-  id: string
-  data: string
-  hora: string
-  status: 'realizada' | 'nao-realizada' | 'cancelada'
-  entrada?: string
-  termino?: string
-  duracaoMin?: number
-  atrasoMin?: number
-  /** Em "não realizada": quem não entrou na sala. */
-  ausente?: 'profissional' | 'beneficiario'
-  /** Em "cancelada": detalhes do cancelamento. */
-  cancelamento?: { em: string; por: 'profissional' | 'beneficiario' | 'yna'; motivo: string }
-}
-export interface MngProfissionalDetalhe extends MngProfissional {
-  crpUf: string
-  bio: string
-  formacao: string[]
-  cnpj: string
-  banco: string
-  /** Dados completos enviados no cadastro (usados na análise/aprovação),
-     nos mesmos 5 steps do fluxo do profissional. */
-  cadastro: ProCadastro
-  historicoSessoes: MngSessaoResumo[]
-  qualidade: { criterio: string; score: number }[]
-  financeiro: {
-    /** Saldo a pagar ao profissional (a receber por ele). */
-    saldoAPagar: number
-    /** Valor já recebido pelo profissional. */
-    totalPago: number
-    extrato: ExtratoItem[]
-    notas: MngNota[]
-  }
-}
-
-/* Painel de controle de sessões (§8.11) */
-export type MngSessaoStatus = 'agendada' | 'realizada' | 'cancelada' | 'nao-realizada'
-export interface MngSessao {
-  id: string
-  profissional: string
-  profissionalInitials: string
-  palette: 'lavender' | 'pink' | 'yellow'
-  tipoLabel: string
-  empresa: string
-  data: string
-  inicio: string
-  fim?: string
-  atrasoMin: number
-  duracaoMin?: number
-  status: MngSessaoStatus
-  /** Em "cancelada": detalhes do cancelamento. */
-  cancelamento?: { em: string; por: 'profissional' | 'beneficiario' | 'yna'; motivo: string }
-}
-
-/* Curadoria informativa de matches (§8.6) */
-export interface MngMatch {
-  id: string
-  beneficiario: string
-  quando: string
-  triagem: { pergunta: string; resposta: string }[]
-  sugeridos: { nome: string; abordagem: string; aderencia: number }[]
-}
-
-/* Academia YNA — CMS (§8.7). Três tipos de conteúdo com cadastro próprio:
-   curso, live e artigo. Cada um carrega métricas de performance. */
-export type MngConteudoTipo = 'curso' | 'artigo' | 'live'
-export type MngConteudoStatus = 'publicado' | 'rascunho' | 'arquivado'
-export type MngNivel = 'iniciante' | 'intermediario' | 'avancado'
-
-/** Performance do conteúdo (exibida na edição). */
-export interface MngConteudoMetrics {
-  visualizacoes: number
-  /** curso: matrículas · artigo: leitores · live: inscritos */
-  alcance: number
-  /** curso: % de conclusão · artigo: % de leitura completa · live: % de comparecimento */
-  conclusaoPct: number
-  /** live: pico de espectadores simultâneos */
-  espectadoresPico?: number
-  /** média de avaliação (0–5) */
-  avaliacao?: number
-  /** % de engajamento geral */
-  engajamento: number
-}
-
-interface MngConteudoBase {
-  id: string
-  titulo: string
-  status: MngConteudoStatus
-  publicoTipos: string[]  // ids de tipos de profissional; [] = todos
-  atualizadoEm: string
-  metrics: MngConteudoMetrics
-}
-
-export interface MngCursoAula {
-  id: string
-  titulo: string
-  duracaoMin: number
-  autor?: string
-  descricao?: string
-  /** Arquivo/URL do vídeo da aula. */
-  video?: string
-  /** Materiais complementares da aula (nomes de arquivo). */
-  materiais?: string[]
-}
-export interface MngCurso extends MngConteudoBase {
-  tipo: 'curso'
-  autor: string
-  descricao: string
-  tema: string
-  trilha: string
-  nivel: MngNivel
-  /** Cor de capa (fallback quando não há imagem). */
-  cover: CoverKey
-  /** Imagem de capa (arquivo). Se ausente, usa `cover`. */
-  capaImagem?: string
-  aulas: MngCursoAula[]
-  /** Materiais complementares do curso (eletivos). */
-  materiais?: string[]
-}
-export interface MngLive extends MngConteudoBase {
-  tipo: 'live'
-  categoria: 'conteudo' | 'supervisao'
-  palestrante: string
-  descricao: string
-  data: string        // ISO (YYYY-MM-DD)
-  horario: string     // HH:mm
-  duracaoMin: number
-  transmissao: 'agendada' | 'replay'
-}
-/** Bloco do corpo do artigo (editor rico: texto, mídia, listas). */
-export type MngArtigoBloco = { id: string } & (
-  | { tipo: 'paragrafo'; texto: string }
-  | { tipo: 'subtitulo'; texto: string }
-  | { tipo: 'citacao'; texto: string; fonte?: string }
-  | { tipo: 'lista'; itens: string[] }
-  | { tipo: 'imagem'; cor: CoverKey; arquivo?: string; legenda?: string }
-  | { tipo: 'video'; titulo?: string; arquivo?: string; duracao?: string }
-)
-export interface MngArtigo extends MngConteudoBase {
-  tipo: 'artigo'
-  subheadline: string
-  autor: string
-  tema: string
-  tempoLeituraMin: number
-  /** Cor de capa (fallback quando não há imagem). */
-  imagem?: CoverKey
-  /** Imagem de capa (arquivo). Se ausente, usa `imagem` (cor). */
-  capaImagem?: string
-  corpo: MngArtigoBloco[]
-}
-export type MngConteudo = MngCurso | MngLive | MngArtigo
-
-/** Sessão realizada que compõe uma nota (exibida na conferência). */
-export interface MngNotaSessao {
-  id: string
-  data: string
-  hora: string
-  beneficiario: string
-  valor: number
-}
-
-export type MngNotaStatus = 'em-analise' | 'requer-ajuste' | 'para-pagamento' | 'paga'
-
-/** Nota fiscal na visão do backoffice — controle e aprovação (§8.13).
-   Fluxo: em-analise → (aprovar) para-pagamento → (registrar pagamento) paga;
-   ou em-analise → (retificar) requer-ajuste → (reenvio do profissional) em-analise. */
-export interface MngNota {
-  id: string
-  profissional: string
-  origem: 'fechamento' | 'antecipacao'
-  referencia: string
-  valor: number
-  status: MngNotaStatus
-  numero?: string
-  /** Data de recebimento da nota (usada nos filtros de período). */
-  enviadaEm?: string
-  /** Sessões realizadas que compõem a nota. */
-  sessoes?: MngNotaSessao[]
-  /** Antecipação de recebíveis (quando origem = 'antecipacao'): taxa aplicada. */
-  taxaPct?: number
-  valorTaxa?: number
-  /** Motivo da retificação, quando status = requer-ajuste. */
-  motivoAjuste?: string
-  /** Comprovante + data, quando status = paga. */
-  pagamento?: { em: string; comprovante: string }
-}
+/** União de tipos de campo de formulário flexível — usada pelo item do
+   instrumento NR-1 (`Nr1Item.tipoCampo`). Sem "de profissional" no nome:
+   não há mais tipo de profissional neste produto. */
+export type CampoTipo = 'text' | 'textarea' | 'select' | 'multiselect' | 'number' | 'date'
 
 /* Tickets de suporte (§8.9) */
-export type MngTicketTipo = 'prontuario' | 'duvida' | 'lgpd' | 'cadastro' | 'tecnico' | 'queixa'
+export type MngTicketTipo = 'duvida' | 'lgpd' | 'cadastro' | 'tecnico' | 'queixa'
 export type MngTicketStatus = 'aberto' | 'em-andamento' | 'resolvido'
 
 /** Resposta do backoffice a um ticket. */
@@ -1083,92 +209,25 @@ export interface MngTicket {
   respostas?: MngTicketResposta[]
 }
 
-/* Dashboard macro YNA (§8.10) */
-export interface MngDashboard {
+/** Cockpit de conformidade do backoffice YNA (MNG-02, §5.1). Depois do
+   recorte, não há mais dimensão de sessão/profissional/repasse: só o que
+   sustenta a operação multiempresa da conformidade NR-1, mais o indicador
+   comercial de potencial de adesão futura a cuidado (opt-in, §5.4/RF-J01). */
+export interface MngCockpit {
   empresasAtivas: number
   empresasBloqueadas: number
-  beneficiariosAtivos: number
-  novosBeneficiariosMes: number
-  profissionaisAtivos: number
-  profissionaisFerias: number
-  sessoesMes: number
-  noShows: number
-  receitaMes: number
-  npsMacro: number
+  campanhasEmCampo: number
+  adesaoMediaPct: number
+  versoesPublicadas: number
+  empresasSemInventario: number
+  casosCanalEscutaAbertos: number
+  /** Agregado, nunca por pessoa: quantas respostas de interesse em cuidado
+     futuro (opt-in pós-avaliação) foram "sim"/"talvez", sobre o total de
+     respostas coletadas. */
+  interesseCuidado: { sim: number; talvez: number; nao: number; total: number }
 }
 
-/** Cockpit macro do gestor YNA (§8.10). Distingue indicadores de FOTO ATUAL
-   (estoque — o estado de hoje, independe do período) dos de FLUXO (acumulados
-   no período selecionado). */
-export interface MngCockpitUtilizacao {
-  nome: string
-  pct: number
-}
-/** Métricas de fluxo — acumuladas num período (mês ou ano). */
-export interface MngCockpitFluxo {
-  /** Empresas — receita recebida no período. */
-  receitaRecebida: number
-  sessoesRealizadas: number
-  noShowBeneficiarioPct: number
-  noShowProfissionalPct: number
-  atrasoMedioMin: number
-  duracaoMediaMin: number
-  valorPago: number
-  valorAntecipado: number
-  valorMedioSessao: number
-  receitaAntecipacao: number
-}
-/** Fluxo de um mês específico. `meses` vem em ordem crescente (último = atual). */
-export interface MngCockpitMes {
-  ano: number
-  mes: number
-  label: string
-  dados: MngCockpitFluxo
-}
-export interface MngCockpit {
-  /** Foto atual (estoque) — estado de hoje, independe do período. */
-  empresas: {
-    contratoAtivo: number
-    bloqueadas: number
-    utilizacaoMediaPct: number
-    /** Utilização por empresa ativa (base do gráfico). */
-    utilizacao: MngCockpitUtilizacao[]
-    inadimplencia: number
-  }
-  profissionais: {
-    ativosPorTipo: { tipo: string; total: number }[]
-    ativosTotal: number
-    dispSemanalMediaH: number
-    dispPlantaoMediaH: number
-  }
-  /** Saldo a pagar aos profissionais — foto atual. */
-  saldoAPagar: number
-  /** Fluxo mês a mês (crescente; último = mês atual). */
-  meses: MngCockpitMes[]
-  /** Consolidado do ano corrente. */
-  anoConsolidado: { label: string; dados: MngCockpitFluxo }
-}
-
-/** Planos de contratação da plataforma (§8.17). */
-export type MngPlanoPublico = 'empresa' | 'pessoa'
-export interface MngPlano {
-  id: string
-  nome: string
-  /** Para quem o plano é vendido. */
-  publico: MngPlanoPublico
-  /** IDs das features liberadas (catálogo MNG_PLANO_FEATURES). */
-  features: string[]
-  /** Número de licenças incluídas no plano. */
-  licencas: number
-  /** Valor base por licença no pagamento mensal (R$). */
-  valorMensalLicenca: number
-  /** Valor base por licença no pagamento anual (R$). */
-  valorAnualLicenca: number
-  ativo: boolean
-}
-
-export type MngNotificacaoTipo =
-  | 'aprovacao' | 'ativacao' | 'nota' | 'antecipacao' | 'pagamento-empresa' | 'ticket' | 'sessao' | 'nr1'
+export type MngNotificacaoTipo = 'ticket' | 'nr1'
 export interface MngNotificacao {
   id: string
   tipo: MngNotificacaoTipo
@@ -1185,7 +244,7 @@ export interface MngNotificacao {
    MÓDULO DE CONFORMIDADE NR-1 — riscos psicossociais
    Atravessa três jornadas: o Manager mantém os MODELOS de avaliação
    (versionados, com núcleo obrigatório), o RH aplica a campanha e opera o
-   cockpit, o beneficiário responde de forma anônima.
+   cockpit, o colaborador responde de forma anônima.
 
    Duas travas estruturais que o front respeita em todas as telas:
    · k-anonimato — nenhum recorte com menos de `kAnonimato` respondentes é
@@ -1204,12 +263,12 @@ export type Nr1EscalaId = 'A' | 'B'
    antes de somar). */
 export type Nr1Direcao = 'positivo' | 'reverso'
 
-/** Item do questionário. `tipoCampo` reusa os tipos do formulário flexível
-   (MngCampoTipo) já usados em tipos de profissional e triagem. */
+/** Item do questionário. `tipoCampo` reusa a união de tipos de campo do
+   formulário flexível (`CampoTipo`). */
 export interface Nr1Item {
   id: string
   texto: string
-  tipoCampo: MngCampoTipo
+  tipoCampo: CampoTipo
   escala: Nr1EscalaId
   direcao: Nr1Direcao
   /** Item do núcleo obrigatório — não removível em modelos derivados. */
@@ -1462,9 +521,9 @@ export interface Nr1Trilha {
   etapas: Nr1TrilhaEtapa[]
 }
 
-/* --- Jornada do beneficiário --- */
+/* --- Jornada do colaborador --- */
 
-/** Uma resposta do beneficiário à avaliação, com a versão aplicada (RF-F02). */
+/** Uma resposta do colaborador à avaliação, com a versão aplicada (RF-F02). */
 export interface Nr1MinhaAvaliacao {
   campanhaId: string
   nome: string

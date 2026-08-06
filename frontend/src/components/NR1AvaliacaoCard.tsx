@@ -2,9 +2,9 @@ import { Link } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { useService } from '../hooks/useService'
 import { useApp } from '../contexts/AppContext'
-import { nr1BeneficiarioService } from '../services/nr1'
+import { nr1ColaboradorService } from '../services/nr1'
 
-/* NR1-BEN-01 — Entrada da avaliação psicossocial na home do beneficiário
+/* NR1-BEN-01 — Entrada da avaliação psicossocial na home do colaborador
    (RF-B01, RF-B03).
 
    Só aparece quando há campanha em campo e a pessoa ainda não concluiu. O
@@ -13,7 +13,7 @@ import { nr1BeneficiarioService } from '../services/nr1'
 
 export function NR1AvaliacaoCard() {
   const { nr1 } = useApp()
-  const instrumento = useService(() => nr1BeneficiarioService.instrumentoDaCampanha(), [])
+  const instrumento = useService(() => nr1ColaboradorService.instrumentoDaCampanha(), [])
 
   if (instrumento.status !== 'success' || !instrumento.data) return null
   if (nr1?.campanhaId === instrumento.data.campanha.id && nr1.concluida) return null

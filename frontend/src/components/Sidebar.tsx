@@ -87,7 +87,7 @@ export function Sidebar({
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.to === '/home'}
+            end={item.to === '/meu-espaco'}
             className={({ isActive }) =>
               `relative flex min-h-[44px] items-center gap-3 rounded-sm px-3 py-2.5 font-heading text-sm font-medium transition-colors ${
                 isActive
@@ -141,7 +141,7 @@ export function Sidebar({
 
       <div className="border-t border-border px-4 py-4">
         <button
-          onClick={() => navigate('/bem-vindo')}
+          onClick={() => navigate('/despedida')}
           className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface px-2 py-2 font-heading text-xs font-semibold text-ink-secondary transition-colors hover:border-danger/30 hover:bg-danger-bg hover:text-danger"
         >
           <Icon icon="ph:sign-out-bold" width={14} aria-hidden />

@@ -18,11 +18,11 @@ import type { RhPapel } from '../../types'
 
 /* RH-15 — Gestão da equipe de RH: Masters e Operadores (Seção 5.3).
    Apenas Master cria/remove usuários (RN-RH-03.1). Operador tem permissões
-   limitadas (CRUD de beneficiários). */
+   limitadas (CRUD de colaboradores). */
 
 const PAPEL_DESC: Record<RhPapel, string> = {
   master: 'Acesso completo à gestão da empresa, indicadores e equipe.',
-  operador: 'Cadastro, edição e exclusão de beneficiários.',
+  operador: 'Cadastro, edição e exclusão de colaboradores.',
 }
 
 export function RH15Equipe() {

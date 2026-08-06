@@ -29,21 +29,16 @@ export function Mng19Mais() {
   const navigate = useNavigate()
 
   const grupos: { titulo: string; items: MaisItem[] }[] = [
-    { titulo: 'Comercial', items: [
-      { icon: 'ph:package-bold', label: 'Planos', to: '/mng/planos' },
-    ] },
     { titulo: 'Operação', items: [
-      { icon: 'ph:shuffle-bold', label: 'Curadoria de matches', to: '/mng/matches' },
-      { icon: 'ph:graduation-cap-bold', label: 'Academia YNA', to: '/mng/universidade' },
-      { icon: 'ph:files-bold', label: 'Modelos de documentos', to: '/mng/documentos' },
-      { icon: 'ph:receipt-bold', label: 'Financeiro · notas fiscais', to: '/mng/financeiro' },
       { icon: 'ph:lifebuoy-bold', label: 'Suporte e tickets', to: '/mng/suporte', badge: unreadNotifs },
+      { icon: 'ph:bell-bold', label: 'Notificações', to: '/mng/notificacoes' },
     ] },
-    { titulo: 'Configuração & compliance', items: [
-      { icon: 'ph:users-three-bold', label: 'Usuários', to: '/mng/gestores' },
-      { icon: 'ph:identification-card-bold', label: 'Tipos de profissional', to: '/mng/tipos-profissional' },
+    { titulo: 'Conformidade NR-1', items: [
       { icon: 'ph:shield-check-bold', label: 'Modelos de avaliação NR-1', to: '/mng/nr1/modelos' },
       { icon: 'ph:lock-key-bold', label: 'Núcleo obrigatório', to: '/mng/nr1/nucleo' },
+    ] },
+    { titulo: 'Configuração', items: [
+      { icon: 'ph:users-three-bold', label: 'Usuários', to: '/mng/gestores' },
     ] },
   ]
 

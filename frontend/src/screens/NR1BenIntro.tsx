@@ -6,7 +6,7 @@ import { Skeleton } from '../components/Skeleton'
 import { ErrorState } from '../components/ErrorState'
 import { useService } from '../hooks/useService'
 import { useApp } from '../contexts/AppContext'
-import { nr1BeneficiarioService } from '../services/nr1'
+import { nr1ColaboradorService } from '../services/nr1'
 
 /* NR1-BEN-02 — Introdução e consentimento da avaliação (RF-A02, RNF-01/02).
 
@@ -37,7 +37,7 @@ const GARANTIAS = [
 export function NR1BenIntro() {
   const navigate = useNavigate()
   const { nr1, nr1Iniciar, nr1Consentir } = useApp()
-  const instrumento = useService(() => nr1BeneficiarioService.instrumentoDaCampanha(), [])
+  const instrumento = useService(() => nr1ColaboradorService.instrumentoDaCampanha(), [])
 
   const campanhaId = instrumento.status === 'success' ? instrumento.data?.campanha.id : undefined
 
@@ -79,7 +79,7 @@ export function NR1BenIntro() {
               Não há nenhuma conversa aberta sobre o ambiente de trabalho no momento. Quando
               houver, a gente te avisa por aqui.
             </p>
-            <Button variant="secondary" onClick={() => navigate('/home')}>Voltar para o início</Button>
+            <Button variant="secondary" onClick={() => navigate('/despedida')}>Voltar para o início</Button>
           </div>
         )}
 
@@ -126,7 +126,7 @@ export function NR1BenIntro() {
               <Button size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={comecar}>
                 {retomando ? 'Continuar de onde parei' : 'Começar'}
               </Button>
-              <Button variant="ghost" fullWidth onClick={() => navigate('/home')}>
+              <Button variant="ghost" fullWidth onClick={() => navigate('/despedida')}>
                 Agora não
               </Button>
               {retomando && (

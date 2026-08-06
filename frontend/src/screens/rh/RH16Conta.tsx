@@ -51,12 +51,11 @@ export function RH16Conta() {
               </p>
             </section>
 
-            {/* Contrato */}
+            {/* Contrato — só dado cadastral (§12), sem plano comercial */}
             <section>
               <h2 className="mb-3 text-[15px] font-semibold text-ink">Contrato</h2>
               <div className="rounded-lg border border-border bg-surface px-4 py-1">
-                <Linha label="Plano" value={empresa.plano} />
-                <Linha label="Licenças" value={`${empresa.licencasContratadas} beneficiários`} />
+                <Linha label="Colaboradores contratados" value={String(empresa.colaboradoresContratados)} />
                 <Linha label="Início" value={fmtData(empresa.contratoInicio)} />
                 <Linha label="Término" value={fmtData(empresa.contratoFim)} />
               </div>

@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 
-/* Seletor "Visualizando como" — alterna entre as visões dos perfis da
-   plataforma (RH, Beneficiário, Profissional e Manager/Backoffice). Ao
-   escolher uma visão diferente da atual, direciona para a respectiva área
-   logada. Usado nas navs (sidebar desktop + "Mais"). */
+/* Seletor "Visualizando como" — alterna entre as visões dos três perfis da
+   plataforma (RH, Colaborador e Manager/Backoffice). Ao escolher uma visão
+   diferente da atual, direciona para a respectiva área logada. Usado nas
+   navs (sidebar desktop + "Mais"). */
 
-type Visao = 'admin' | 'beneficiario' | 'profissional' | 'manager'
+type Visao = 'admin' | 'colaborador' | 'manager'
 
 interface Opcao {
   id: Visao
@@ -19,8 +19,7 @@ interface Opcao {
 
 const OPCOES: Opcao[] = [
   { id: 'admin', label: 'RH / Empresa', desc: 'Painel do RH', icon: 'ph:buildings-bold', to: '/rh/home' },
-  { id: 'beneficiario', label: 'Beneficiário', desc: 'Jornada de cuidado', icon: 'ph:user-bold', to: '/home' },
-  { id: 'profissional', label: 'Profissional', desc: 'Atendimentos e agenda', icon: 'ph:stethoscope-bold', to: '/pro/home' },
+  { id: 'colaborador', label: 'Colaborador', desc: 'Meu espaço', icon: 'ph:user-bold', to: '/meu-espaco' },
   { id: 'manager', label: 'Manager YNA', desc: 'Backoffice / operação', icon: 'ph:shield-star-bold', to: '/mng/home' },
 ]
 

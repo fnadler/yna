@@ -66,7 +66,7 @@ export function BottomNav({ items }: { items: NavItem[] }) {
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.to === '/home'}
+            end={item.to.endsWith('/home') || item.to === '/meu-espaco'}
             className={({ isActive }) =>
               `relative flex min-h-[52px] min-w-[60px] flex-col items-center justify-center gap-0.5 rounded-sm px-2 transition-colors ${
                 isActive

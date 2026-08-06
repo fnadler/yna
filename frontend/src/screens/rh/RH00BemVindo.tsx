@@ -83,10 +83,10 @@ export function RH00BemVindo() {
             Bem-vindo à YNA
           </p>
           <h1 className="mb-4 text-[32px] font-heading font-light leading-[1.08] tracking-[-0.03em] text-ink animate-yna-slide-up animate-yna-delay-250">
-            O cuidado que<br />move a sua <span className="font-extrabold bg-yna-gradient-button bg-clip-text text-transparent">empresa.</span>
+            A gestão de riscos psicossociais que a<br /><span className="font-extrabold bg-yna-gradient-button bg-clip-text text-transparent">NR-1 exige.</span>
           </h1>
           <p className="mb-6 max-w-sm text-[15px] leading-relaxed text-ink-secondary animate-yna-slide-up animate-yna-delay-400">
-            Um programa de saúde mental com rigor clínico, sigilo inegociável e resultado que a liderança enxerga.
+            Avaliação anônima, mapa de calor por área e um plano de ação com rastreabilidade, prontos para o seu PGR.
           </p>
           <button
             onClick={() => navigate('/rh/apresentacao/1')}
@@ -120,10 +120,10 @@ export function RH00BemVindo() {
               Bem-vindo à YNA
             </p>
             <h1 className="mb-5 text-[56px] font-heading font-light leading-[1.05] tracking-[-0.03em] text-ink animate-yna-slide-up animate-yna-delay-250">
-              O cuidado que<br />move a sua <span className="font-extrabold bg-yna-gradient-button bg-clip-text text-transparent">empresa.</span>
+              A gestão de riscos psicossociais que a<br /><span className="font-extrabold bg-yna-gradient-button bg-clip-text text-transparent">NR-1 exige.</span>
             </h1>
             <p className="mb-10 max-w-sm text-[16px] leading-relaxed text-ink-secondary animate-yna-slide-up animate-yna-delay-400">
-              Um programa de saúde mental com rigor clínico, sigilo inegociável e resultado que a liderança enxerga.
+              Avaliação anônima, mapa de calor por área e um plano de ação com rastreabilidade, prontos para o seu PGR.
             </p>
 
             <div className="flex items-center gap-6 animate-yna-slide-up animate-yna-delay-550">

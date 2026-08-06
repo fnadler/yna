@@ -3,31 +3,45 @@ import type { UserProfile } from '../types'
 import { mockUser } from '../data/mock'
 
 /** Avaliação psicossocial em andamento (NR-1). Vive no AppContext porque
-   atravessa intro → dimensões → conclusão, e o beneficiário pode parar e
+   atravessa intro → dimensões → conclusão, e o colaborador pode parar e
    voltar. Nada aqui identifica a pessoa: são só as respostas do formulário
-   em memória, enviadas de forma anônima ao concluir. */
+   em memória, enviadas de forma anônima ao concluir — inclusive o
+   consentimento LGPD (RF-A02/RNF-01) mora aqui, não no perfil, porque hoje
+   a avaliação acontece antes de existir qualquer conta.
+
+   `interesseCuidado`/`emTratamento` são as duas perguntas opcionais do
+   pós-avaliação (não fazem parte do instrumento NR-1, nunca entram no
+   inventário nem no relatório do RH — só alimentam um agregado comercial
+   que o backoffice YNA usa para estimar adesão futura a um serviço de
+   cuidado que ainda não existe no produto). */
 export interface Nr1AvaliacaoEmAndamento {
   campanhaId: string
-  /** Aceite do texto de anonimato/consentimento (RF-A02 / RNF-01). */
   consentiu: boolean
-  /** Respostas por id de item — valor da escala ou texto das perguntas abertas. */
   respostas: Record<string, number | string>
   concluida: boolean
+  interesseCuidado?: 'sim' | 'nao' | 'talvez'
+  emTratamento?: 'sim' | 'nao' | 'prefiro-nao-informar'
 }
 
 interface AppContextValue {
   user: UserProfile
   setUser: (u: UserProfile) => void
-  setConsented: (v: boolean) => void
-  setProfileComplete: (v: boolean) => void
-  setTriagemComplete: (v: boolean) => void
-  setHasMatches: (v: boolean) => void
+  /** Token do convite, guardado desde /convite/:token até a criação da conta
+     em /criar-conta — nunca lido por services/rh.ts nem exposto ao RH. */
+  sessaoToken: string | null
+  setSessaoToken: (token: string) => void
+  contaCriada: boolean
+  criarConta: (dados: { nome: string; apelido: string }) => void
   /** Avaliação NR-1 em andamento (null = não iniciada). */
   nr1: Nr1AvaliacaoEmAndamento | null
   nr1Iniciar: (campanhaId: string) => void
   nr1Consentir: () => void
   nr1Responder: (itemId: string, valor: number | string) => void
   nr1Concluir: () => void
+  nr1RegistrarInteresse: (
+    interesseCuidado: Nr1AvaliacaoEmAndamento['interesseCuidado'],
+    emTratamento: Nr1AvaliacaoEmAndamento['emTratamento'],
+  ) => void
   nr1Limpar: () => void
 }
 
@@ -35,20 +49,15 @@ const AppContext = createContext<AppContextValue | null>(null)
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<UserProfile>(mockUser)
-
   const setUser = (u: UserProfile) => setUserState(u)
 
-  const setConsented = (v: boolean) =>
-    setUserState((prev) => ({ ...prev, hasConsented: v }))
+  const [sessaoToken, setSessaoToken] = useState<string | null>(null)
+  const [contaCriada, setContaCriada] = useState(false)
 
-  const setProfileComplete = (v: boolean) =>
-    setUserState((prev) => ({ ...prev, hasCompletedProfile: v }))
-
-  const setTriagemComplete = (v: boolean) =>
-    setUserState((prev) => ({ ...prev, hasCompletedTriagem: v }))
-
-  const setHasMatches = (v: boolean) =>
-    setUserState((prev) => ({ ...prev, hasMatches: v }))
+  const criarConta = (dados: { nome: string; apelido: string }) => {
+    setUserState((prev) => ({ ...prev, name: dados.nome, nickname: dados.apelido }))
+    setContaCriada(true)
+  }
 
   const [nr1, setNr1] = useState<Nr1AvaliacaoEmAndamento | null>(null)
 
@@ -68,13 +77,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const nr1Concluir = () => setNr1((prev) => (prev ? { ...prev, concluida: true } : prev))
 
+  const nr1RegistrarInteresse: AppContextValue['nr1RegistrarInteresse'] = (interesseCuidado, emTratamento) =>
+    setNr1((prev) => (prev ? { ...prev, interesseCuidado, emTratamento } : prev))
+
   const nr1Limpar = () => setNr1(null)
 
   return (
     <AppContext.Provider
       value={{
-        user, setUser, setConsented, setProfileComplete, setTriagemComplete, setHasMatches,
-        nr1, nr1Iniciar, nr1Consentir, nr1Responder, nr1Concluir, nr1Limpar,
+        user, setUser, sessaoToken, setSessaoToken, contaCriada, criarConta,
+        nr1, nr1Iniciar, nr1Consentir, nr1Responder, nr1Concluir, nr1RegistrarInteresse, nr1Limpar,
       }}
     >
       {children}

@@ -52,7 +52,7 @@ export function RH14Departamentos() {
         {deps.status === 'success' && (
           <ul className="flex flex-col gap-2">
             {deps.data.map((d) => {
-              const anon = d.beneficiarios < ANON_MIN
+              const anon = d.colaboradores < ANON_MIN
               return (
                 <li key={d.id} className="flex items-center gap-3 rounded-lg border border-border bg-surface p-4">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary dark:text-primary-300">
@@ -60,7 +60,7 @@ export function RH14Departamentos() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-heading text-sm font-semibold text-ink">{d.nome}</p>
-                    <p className="text-[12px] text-ink-secondary">{d.beneficiarios} beneficiário(s)</p>
+                    <p className="text-[12px] text-ink-secondary">{d.colaboradores} colaborador(es)</p>
                   </div>
                   {anon && (
                     <span className="hidden items-center gap-1 rounded-pill bg-surface-2 px-2.5 py-1 text-[11px] text-ink-muted sm:inline-flex">
@@ -86,7 +86,7 @@ export function RH14Departamentos() {
         <div className="mt-5 flex gap-3 rounded-lg border border-border bg-surface-2 p-4">
           <Icon icon="ph:info-bold" width={20} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
           <p className="text-[12px] leading-relaxed text-ink-secondary">
-            Departamentos com menos de {ANON_MIN} beneficiários são automaticamente agrupados nos
+            Departamentos com menos de {ANON_MIN} colaboradores são automaticamente agrupados nos
             relatórios e no mapa de calor, para que ninguém possa ser individualizado.
           </p>
         </div>

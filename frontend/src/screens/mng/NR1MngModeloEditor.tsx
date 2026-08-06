@@ -17,13 +17,13 @@ import { nr1ModeloService } from '../../services/nr1'
 import { NR1_DIMENSOES } from '../../data/nr1Mock'
 import type {
   Nr1QuestionarioModelo, Nr1QuestionarioVersao, Nr1Item, Nr1Dimensao,
-  Nr1EscalaId, Nr1Direcao, MngCampoTipo,
+  Nr1EscalaId, Nr1Direcao, CampoTipo,
 } from '../../types'
 
 /* NR1-MNG-02 — Editor do modelo: dimensões e itens (RF-YN-NR1-01/05).
 
-   Reusa o construtor de campos flexíveis dos "Tipos de profissional": cada
-   item é texto + tipo de campo + escala + direção + marcação de núcleo.
+   Cada item é texto + tipo de campo (união genérica `CampoTipo`) + escala +
+   direção + marcação de núcleo.
 
    Duas travas de governança, ambas aplicadas na UI e no serviço:
    · item de núcleo não pode ser removido — nem pelo operador do backoffice,
@@ -32,7 +32,7 @@ import type {
 
 const inputCls = 'w-full rounded border-[1.5px] border-border bg-surface px-3.5 py-2.5 text-sm text-ink outline-none focus:border-primary'
 
-const TIPOS_CAMPO: { value: MngCampoTipo; label: string }[] = [
+const TIPOS_CAMPO: { value: CampoTipo; label: string }[] = [
   { value: 'select', label: 'Escala (escolha única)' },
   { value: 'multiselect', label: 'Múltipla escolha' },
   { value: 'text', label: 'Texto curto' },
@@ -340,7 +340,7 @@ function ItemForm({ inicial, dimensaoId, escopo, onClose, onSave }: {
 }) {
   const novo = !inicial
   const [texto, setTexto] = useState(inicial?.texto ?? '')
-  const [tipoCampo, setTipoCampo] = useState<MngCampoTipo>(inicial?.tipoCampo ?? 'select')
+  const [tipoCampo, setTipoCampo] = useState<CampoTipo>(inicial?.tipoCampo ?? 'select')
   const [escala, setEscala] = useState<Nr1EscalaId>(inicial?.escala ?? 'A')
   const [direcao, setDirecao] = useState<Nr1Direcao>(inicial?.direcao ?? 'positivo')
   const [referencia, setReferencia] = useState(inicial?.referencia ?? '')
@@ -386,7 +386,7 @@ function ItemForm({ inicial, dimensaoId, escopo, onClose, onSave }: {
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <p className="mb-1.5 text-[13px] font-semibold text-ink">Tipo de campo</p>
-          <Select value={tipoCampo} onChange={(v) => setTipoCampo(v as MngCampoTipo)} ariaLabel="Tipo de campo" options={TIPOS_CAMPO} />
+          <Select value={tipoCampo} onChange={(v) => setTipoCampo(v as CampoTipo)} ariaLabel="Tipo de campo" options={TIPOS_CAMPO} />
         </div>
         <div>
           <p className="mb-1.5 text-[13px] font-semibold text-ink">Escala</p>

@@ -2,16 +2,14 @@ import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { BottomNav } from './BottomNav'
 import { Sidebar } from './Sidebar'
-import { EmergencyModal } from './EmergencyModal'
 import { NotificationsPanel, INITIAL_NOTIFS, type Notif } from './NotificationsPanel'
 import { useTheme } from '../contexts/ThemeContext'
 import type { NavItem } from './BottomNav'
 
 const navItems: NavItem[] = [
-  { icon: 'ph:house-bold', label: 'Início', to: '/home' },
-  { icon: 'ph:calendar-bold', label: 'Agenda', to: '/agenda' },
-  { icon: 'ph:sparkle-bold', ynaIcon: 'chat' as const, label: 'Nyna', to: '/nina', variant: 'highlight' },
-  { icon: 'ph:first-aid-bold', label: 'Emergência', to: '/emergencia', variant: 'emergency' },
+  { icon: 'ph:house-bold', label: 'Meu espaço', to: '/meu-espaco' },
+  { icon: 'ph:chat-teardrop-dots-bold', label: 'Avaliação', to: '/avaliacao' },
+  { icon: 'ph:hand-heart-bold', label: 'Apoio', to: '/apoio' },
   { icon: 'ph:user-circle-bold', ynaIcon: 'profile' as const, label: 'Perfil', to: '/meus-dados' },
 ]
 
@@ -23,7 +21,6 @@ export interface AppLayoutContext {
 }
 
 export function AppLayout() {
-  const [emergencyOpen, setEmergencyOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifs, setNotifs] = useState<Notif[]>(INITIAL_NOTIFS)
   const { dark, toggle: toggleTheme } = useTheme()
@@ -42,13 +39,11 @@ export function AppLayout() {
     <div className="flex h-dvh overflow-hidden bg-page lg:flex-row">
       <Sidebar
         items={navItems}
-        onEmergencyClick={() => setEmergencyOpen(true)}
         dark={dark}
         onToggleTheme={toggleTheme}
         unread={unread}
         onNotifClick={() => setNotifOpen(true)}
       />
-      <EmergencyModal open={emergencyOpen} onClose={() => setEmergencyOpen(false)} />
       <NotificationsPanel
         open={notifOpen}
         onClose={() => setNotifOpen(false)}

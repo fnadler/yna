@@ -7,7 +7,7 @@ import { Skeleton } from '../components/Skeleton'
 import { ErrorState } from '../components/ErrorState'
 import { useService } from '../hooks/useService'
 import { useApp } from '../contexts/AppContext'
-import { nr1BeneficiarioService } from '../services/nr1'
+import { nr1ColaboradorService } from '../services/nr1'
 import type { Nr1Item, Nr1QuestionarioVersao, Nr1EscalaConfig } from '../types'
 
 /* NR1-BEN-03 — Questionário renderizado dinamicamente a partir do
@@ -27,7 +27,7 @@ export function NR1BenQuestionario() {
   const { passo } = useParams<{ passo: string }>()
   const navigate = useNavigate()
   const { nr1, nr1Responder } = useApp()
-  const instrumento = useService(() => nr1BeneficiarioService.instrumentoDaCampanha(), [])
+  const instrumento = useService(() => nr1ColaboradorService.instrumentoDaCampanha(), [])
 
   if (instrumento.status === 'idle' || instrumento.status === 'loading') {
     return (
@@ -55,7 +55,7 @@ export function NR1BenQuestionario() {
     return (
       <main className="flex flex-1 flex-col justify-center px-5 py-10">
         <div className="mx-auto w-full max-w-xl">
-          <ErrorState message="Esta conversa não está mais aberta." onRetry={() => navigate('/home')} />
+          <ErrorState message="Esta conversa não está mais aberta." onRetry={() => navigate('/despedida')} />
         </div>
       </main>
     )
@@ -104,7 +104,7 @@ function Wizard({ versao, passo, respostas, onResponder, campanhaId }: {
 
   const avancar = async () => {
     setSalvando(true)
-    await nr1BeneficiarioService.salvarParcial(campanhaId, respostas)
+    await nr1ColaboradorService.salvarParcial(campanhaId, respostas)
     setSalvando(false)
     if (ultimo) navigate('/avaliacao/conclusao')
     else navigate(`/avaliacao/${numero + 1}`)

@@ -61,7 +61,7 @@ const CARD_ACTIVE: Record<'success' | 'warning' | 'danger', string> = {
 const ORDEM_OPCOES = [
   { key: 'venc', label: 'Vencimento (mais próximo)' },
   { key: 'nome', label: 'Razão social (A–Z)' },
-  { key: 'licencas', label: 'Licenças (maior)' },
+  { key: 'licencas', label: 'Colaboradores contratados (maior)' },
   { key: 'adesao', label: 'Adesão (maior)' },
 ] as const
 type OrdemKey = (typeof ORDEM_OPCOES)[number]['key']
@@ -111,11 +111,11 @@ export function Mng11Empresas() {
       const t = andamentoContrato(v.inicio, v.fim).tone
       return (vencFiltro === 'verde' && t === 'success') || (vencFiltro === 'amarelo' && t === 'warning') || (vencFiltro === 'vermelho' && t === 'danger')
     })
-    const adesao = (e: MngEmpresa) => (e.licencas > 0 ? e.beneficiariosAtivos / e.licencas : 0)
+    const adesao = (e: MngEmpresa) => (e.colaboradoresContratados > 0 ? e.colaboradoresAtivos / e.colaboradoresContratados : 0)
     return [...filtradas].sort((a, b) => {
       switch (ordem) {
         case 'nome': return a.razaoSocial.localeCompare(b.razaoSocial, 'pt-BR')
-        case 'licencas': return b.licencas - a.licencas
+        case 'licencas': return b.colaboradoresContratados - a.colaboradoresContratados
         case 'adesao': return adesao(b) - adesao(a)
         case 'venc':
         default: return (vigenteDe(a)?.fim ?? '9999-99') .localeCompare(vigenteDe(b)?.fim ?? '9999-99')
@@ -218,7 +218,7 @@ export function Mng11Empresas() {
               <div className="flex flex-col gap-2">
                 {lista.map((e) => {
                   const vigente = vigenteDe(e)
-                  const usoPct = e.licencas > 0 ? Math.round((e.beneficiariosAtivos / e.licencas) * 100) : 0
+                  const usoPct = e.colaboradoresContratados > 0 ? Math.round((e.colaboradoresAtivos / e.colaboradoresContratados) * 100) : 0
                   const and = vigente ? andamentoContrato(vigente.inicio, vigente.fim) : null
                   return (
                     <button key={e.id} onClick={() => navigate(`/mng/empresas/${e.id}`)} className="rounded-lg border border-border bg-surface p-4 text-left transition-colors hover:bg-surface-hover">
@@ -234,11 +234,11 @@ export function Mng11Empresas() {
                       </div>
 
                       <div className="mt-3 grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
-                        {/* Licenças usadas/contratadas */}
+                        {/* Colaboradores ativos/contratados */}
                         <div>
                           <div className="flex items-center justify-between text-[11.5px]">
-                            <span className="flex items-center gap-1 text-ink-secondary"><Icon icon="ph:seat-bold" width={12} className="text-ink-muted" aria-hidden /> Licenças</span>
-                            <span className="font-mono text-ink-muted">{e.beneficiariosAtivos}/{e.licencas} · {usoPct}%</span>
+                            <span className="flex items-center gap-1 text-ink-secondary"><Icon icon="ph:seat-bold" width={12} className="text-ink-muted" aria-hidden /> Colaboradores</span>
+                            <span className="font-mono text-ink-muted">{e.colaboradoresAtivos}/{e.colaboradoresContratados} · {usoPct}%</span>
                           </div>
                           <div className="mt-1 h-2 overflow-hidden rounded-pill bg-surface-2">
                             <div className={`h-full rounded-pill ${usoPct >= 100 ? 'bg-danger' : 'bg-primary'}`} style={{ width: `${Math.min(usoPct, 100)}%` }} />

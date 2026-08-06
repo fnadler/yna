@@ -4,7 +4,7 @@ import { Icon } from '@iconify/react'
 import { Button } from '../../components/Button'
 
 /* RH-05 — Transição "Conta criada" (mesmo modelo do Ben08bTransicao).
-   Faz a ponte do Cadastro da conta para o Onboarding dos beneficiários. */
+   Faz a ponte do Cadastro da conta para o Onboarding dos colaboradores. */
 export function RH05ContaCriada() {
   const [phase, setPhase] = useState<'celebrating' | 'leaving' | 'content'>('celebrating')
   const navigate = useNavigate()
@@ -48,7 +48,7 @@ export function RH05ContaCriada() {
 
             <div className="w-full animate-yna-slide-up animate-yna-delay-250">
               <Button variant="gradient" size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/rh/onboarding')}>
-                Cadastrar beneficiários
+                Cadastrar colaboradores
               </Button>
             </div>
           </div>

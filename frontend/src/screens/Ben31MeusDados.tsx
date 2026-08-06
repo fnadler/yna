@@ -144,7 +144,7 @@ export function Ben31MeusDados() {
       {/* Logout — visible on mobile; desktop already has it in the sidebar */}
       <div className="mt-8 border-t border-border pt-6 lg:hidden">
         <button
-          onClick={() => navigate('/bem-vindo')}
+          onClick={() => navigate('/despedida')}
           className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-3 font-heading text-sm font-medium text-ink-secondary transition-colors hover:border-danger/40 hover:bg-danger-bg hover:text-danger"
         >
           <Icon icon="ph:sign-out-bold" width={18} aria-hidden />

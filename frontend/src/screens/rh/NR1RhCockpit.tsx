@@ -9,22 +9,23 @@ import { PAGE_MAX_W } from '../../lib/layout'
 import { NIVEL_RISCO, fmtData, pct } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
 import { useRh } from '../../contexts/RhContext'
-import { nr1CampanhaService, nr1ResultadoService, nr1AcaoService, nr1CanalService } from '../../services/nr1'
+import { nr1CampanhaService, nr1ResultadoService } from '../../services/nr1'
 import { NR1_DIMENSOES } from '../../data/nr1Mock'
 
-/* NR1-RH-06 — Painel de conformidade NR-1 (RF-I01) e porta de entrada do
-   cockpit. Estende a lógica do RH-13 com o recorte de conformidade.
+/* NR1-RH-06 — Visão geral da conformidade NR-1 (RF-I01).
 
-   O que o RH precisa enxergar em 10 segundos: se a campanha está de pé, onde
-   o risco está concentrado, e se o plano de ação está vivo. Tudo agregado —
-   nunca uma resposta individual. */
+   Era o hub que concentrava as outras 8 telas atrás de si (cards + atalhos
+   secundários) — o que fazia o módulo parecer improvisado e espremia
+   mapeamento, planejamento e controle atrás de um único ponto de entrada.
+   Agora cada uma dessas telas tem seu próprio item de primeira classe no
+   sidebar (ver RhAppLayout), e esta tela volta a ser só o que o nome promete:
+   um resumo de 10 segundos — a campanha está de pé? onde o risco está
+   concentrado? — sem virar menu. */
 
 export function NR1RhCockpit() {
   const { setInstrumentoNr1 } = useRh()
   const campanha = useService(() => nr1CampanhaService.ativa(), [])
   const dimensoes = useService(() => nr1ResultadoService.mediaPorDimensao(), [])
-  const acoes = useService(() => nr1AcaoService.list(), [])
-  const relatos = useService(() => nr1CanalService.list(), [])
 
   /* Publica o instrumento aplicado no contexto: inventário e relatório citam
      modelo + versão a partir daqui (RF-F02). */
@@ -34,18 +35,13 @@ export function NR1RhCockpit() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [c?.id])
 
-  const acoesAtrasadas = acoes.status === 'success' ? acoes.data.filter((a) => a.status === 'atrasada').length : 0
-  const acoesConcluidas = acoes.status === 'success' ? acoes.data.filter((a) => a.status === 'concluida').length : 0
-  const totalAcoes = acoes.status === 'success' ? acoes.data.length : 0
-  const relatosAbertos = relatos.status === 'success' ? relatos.data.filter((r) => r.status !== 'concluido').length : 0
-
   return (
     <div className="min-h-full bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
       <div className={`mx-auto ${PAGE_MAX_W} px-5 lg:px-8 pt-0 lg:pt-9 pb-10`}>
         <RhTopBar />
         <PageHeader
           title="Conformidade NR-1"
-          subtitle="Riscos psicossociais: avaliar, documentar no PGR, agir e comprovar."
+          subtitle="O estado do ciclo, num relance."
           className="mt-2 lg:mt-0"
         />
 
@@ -106,7 +102,7 @@ export function NR1RhCockpit() {
         )}
 
         {/* Risco por dimensão */}
-        <section className="mb-6">
+        <section>
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-[15px] font-semibold text-ink">Risco por dimensão</h2>
             <Link to="/rh/nr1/mapa-calor" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-primary hover:underline dark:text-primary-300">
@@ -143,51 +139,6 @@ export function NR1RhCockpit() {
           </p>
         </section>
 
-        {/* Estado da conformidade — os elos da cadeia */}
-        <section className="mb-6">
-          <h2 className="mb-3 text-[15px] font-semibold text-ink">A cadeia da conformidade</h2>
-          <div className="flex flex-col gap-2">
-            <EloCard
-              icon="ph:clipboard-text-bold"
-              titulo="Inventário para o PGR"
-              descricao="Fatores de risco, grupo exposto, nível e controles recomendados, pronto para incorporar ao PGR."
-              to="/rh/nr1/inventario"
-              estado="pronto"
-            />
-            <EloCard
-              icon="ph:list-checks-bold"
-              titulo="Plano de ação 5W2H"
-              descricao={totalAcoes > 0
-                ? `${acoesConcluidas} de ${totalAcoes} ações concluídas${acoesAtrasadas > 0 ? ` · ${acoesAtrasadas} com prazo vencido` : ''}`
-                : 'Nenhuma ação registrada ainda.'}
-              to="/rh/nr1/plano-acao"
-              estado={acoesAtrasadas > 0 ? 'atencao' : totalAcoes > 0 ? 'pronto' : 'pendente'}
-            />
-            <EloCard
-              icon="ph:seal-check-bold"
-              titulo="Relatório de gestão"
-              descricao="Trilha risco → avaliação → ação → evidência, com a versão do instrumento e o responsável técnico."
-              to="/rh/nr1/relatorio"
-              estado="pronto"
-            />
-            <EloCard
-              icon="ph:megaphone-simple-bold"
-              titulo="Canal de escuta"
-              descricao={relatosAbertos > 0
-                ? `${relatosAbertos} ${relatosAbertos === 1 ? 'caso aberto' : 'casos abertos'} em tratamento.`
-                : 'Nenhum caso aberto no momento.'}
-              to="/rh/nr1/canal"
-              estado={relatosAbertos > 0 ? 'atencao' : 'pronto'}
-            />
-          </div>
-        </section>
-
-        {/* Atalhos secundários */}
-        <section className="grid gap-2 sm:grid-cols-2">
-          <AtalhoCard icon="ph:chart-line-up-bold" titulo="Ciclos e reavaliação" descricao="Comparar resultados entre campanhas." to="/rh/nr1/ciclos" />
-          <AtalhoCard icon="ph:megaphone-bold" titulo="Kit de comunicação" descricao="Materiais prontos para engajar o time." to="/rh/nr1/kit" />
-        </section>
-
         <div className="mt-6 flex gap-3 rounded-lg border border-border bg-surface-2 p-4">
           <Icon icon="ph:info-bold" width={20} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
           <p className="text-[12px] leading-relaxed text-ink-secondary">
@@ -198,49 +149,5 @@ export function NR1RhCockpit() {
         </div>
       </div>
     </div>
-  )
-}
-
-const ESTADO_STYLE = {
-  pronto: { cls: 'bg-success-bg text-success-ink', icon: 'ph:check-circle-bold', label: 'Em dia' },
-  atencao: { cls: 'bg-warning-bg text-warning-ink', icon: 'ph:warning-bold', label: 'Requer atenção' },
-  pendente: { cls: 'bg-surface-2 text-ink-secondary', icon: 'ph:circle-dashed-bold', label: 'Pendente' },
-} as const
-
-function EloCard({ icon, titulo, descricao, to, estado }: {
-  icon: string
-  titulo: string
-  descricao: string
-  to: string
-  estado: keyof typeof ESTADO_STYLE
-}) {
-  const st = ESTADO_STYLE[estado]
-  return (
-    <Link to={to} className="flex items-start gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:bg-surface-hover">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary dark:text-primary-300">
-        <Icon icon={icon} width={20} aria-hidden />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="font-heading text-sm font-semibold text-ink">{titulo}</p>
-        <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-secondary">{descricao}</p>
-      </div>
-      <span className={`inline-flex shrink-0 items-center gap-1 rounded-pill px-2.5 py-1 text-[11px] font-semibold ${st.cls}`}>
-        <Icon icon={st.icon} width={11} aria-hidden />
-        <span className="hidden sm:inline">{st.label}</span>
-      </span>
-    </Link>
-  )
-}
-
-function AtalhoCard({ icon, titulo, descricao, to }: { icon: string; titulo: string; descricao: string; to: string }) {
-  return (
-    <Link to={to} className="flex items-start gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:bg-surface-hover">
-      <Icon icon={icon} width={20} className="mt-0.5 shrink-0 text-ink-secondary" aria-hidden />
-      <div className="min-w-0">
-        <p className="font-heading text-[13.5px] font-semibold text-ink">{titulo}</p>
-        <p className="mt-0.5 text-[12px] text-ink-secondary">{descricao}</p>
-      </div>
-      <Icon icon="ph:caret-right-bold" width={15} className="ml-auto mt-1 shrink-0 text-ink-muted" aria-hidden />
-    </Link>
   )
 }

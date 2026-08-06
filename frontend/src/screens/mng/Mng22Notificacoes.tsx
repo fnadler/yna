@@ -27,7 +27,7 @@ export function Mng22Notificacoes() {
               onClick={() => abrir(n)}
               className={`flex items-start gap-3 rounded-lg border px-4 py-4 text-left transition-colors hover:border-border-strong ${n.lida ? 'border-border bg-surface' : 'border-primary/30 bg-primary-50 dark:bg-primary-50/10'}`}
             >
-              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-pill ${n.tipo === 'nr1' || n.tipo === 'sessao' ? 'bg-danger-bg text-danger-ink' : 'bg-surface text-primary dark:text-primary-300'}`}>
+              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-pill ${n.tipo === 'nr1' ? 'bg-danger-bg text-danger-ink' : 'bg-surface text-primary dark:text-primary-300'}`}>
                 <Icon icon={n.icon} width={20} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">

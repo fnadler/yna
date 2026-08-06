@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from 're
 import type { RhEmpresa, RhUsuario } from '../types'
 import { rhEmpresa, rhUsuarioAtual, rhNotificacoes } from '../data/rhMock'
 
-/* Estado do fluxo RH / Empresa B2B. Isolado do AppContext (beneficiário) e do
+/* Estado do fluxo RH / Empresa B2B. Isolado do AppContext (colaborador) e do
    ProContext (profissional). ThemeContext continua compartilhado.
    O RH nunca acessa dados clínicos/individuais — só agregados (LGPD). */
 

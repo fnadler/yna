@@ -2,32 +2,24 @@ import type {
   RhEmpresa,
   RhUsuario,
   RhDepartamento,
-  RhBeneficiario,
+  RhColaborador,
   RhFunilConvites,
-  RhKpi,
-  RhHeatRow,
-  RhAlerta,
   RhNotificacao,
   RhImportResult,
-  RhParcela,
 } from '../types'
 import {
   rhEmpresa,
   rhEquipe,
   rhDepartamentos,
-  rhBeneficiarios,
+  rhColaboradores,
   rhFunilConvites,
-  rhKpis,
-  rhHeatmap,
-  rhAlertas,
   rhNotificacoes,
-  rhParcelas,
 } from '../data/rhMock'
 
 /* Camada de serviços do RH / Empresa B2B — mockada, com latência simulada.
    Assinaturas espelham a futura API REST; trocar o corpo por fetch/axios.
    Toda saída para o RH é agregada/anonimizada — nunca expõe dado clínico
-   ou de jornada individual do beneficiário (RN-RH-04.2 / RN-RH-06.1). */
+   ou de jornada individual do colaborador (RN-RH-04.2 / RN-RH-06.1). */
 
 const delay = (ms: number) => new Promise<void>((res) => setTimeout(res, ms))
 const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min
@@ -95,7 +87,7 @@ export const rhDepartamentoService = {
   },
   create: async (nome: string): Promise<RhDepartamento> => {
     await delay(rand(300, 600))
-    const novo: RhDepartamento = { id: `d-${Date.now()}`, nome, beneficiarios: 0 }
+    const novo: RhDepartamento = { id: `d-${Date.now()}`, nome, colaboradores: 0 }
     rhDepartamentos.push(novo)
     return novo
   },
@@ -113,10 +105,10 @@ export const rhDepartamentoService = {
   },
 }
 
-export const rhBeneficiarioService = {
-  list: async (): Promise<RhBeneficiario[]> => {
+export const rhColaboradorService = {
+  list: async (): Promise<RhColaborador[]> => {
     await delay(rand(350, 650))
-    return rhBeneficiarios
+    return rhColaboradores
   },
   /** Cadastro individual (RF-RH-04.3). */
   create: async (b: {
@@ -124,11 +116,11 @@ export const rhBeneficiarioService = {
     cpf: string
     emailCorporativo: string
     departamentoId: string
-  }): Promise<RhBeneficiario> => {
+  }): Promise<RhColaborador> => {
     await delay(rand(300, 600))
     const partes = b.nomeCompleto.split(' ')
     const initials = (partes[0][0] + (partes[1]?.[0] ?? '')).toUpperCase()
-    const novo: RhBeneficiario = {
+    const novo: RhColaborador = {
       id: `b-${Date.now()}`,
       nomeCompleto: b.nomeCompleto,
       cpfMascarado: `***.***.***-${b.cpf.replace(/\D/g, '').slice(-2) || '00'}`,
@@ -138,14 +130,14 @@ export const rhBeneficiarioService = {
       initials,
       palette: 'lavender',
     }
-    rhBeneficiarios.unshift(novo)
+    rhColaboradores.unshift(novo)
     return novo
   },
   /** Edição em massa de departamento (RF-RH-04.5). */
   moverDepartamento: async (ids: string[], departamentoId: string): Promise<{ count: number }> => {
     await delay(rand(300, 600))
     let count = 0
-    rhBeneficiarios.forEach((b) => {
+    rhColaboradores.forEach((b) => {
       if (ids.includes(b.id)) {
         b.departamentoId = departamentoId
         count++
@@ -153,12 +145,12 @@ export const rhBeneficiarioService = {
     })
     return { count }
   },
-  /** Exclusão do beneficiário (libera a licença). No backend mantém histórico
-     anonimizado para auditoria (RF-RH-04.6 / RN-RH-07.1). */
+  /** Exclusão do colaborador (libera a vaga contratada). No backend mantém
+     histórico anonimizado para auditoria (RF-RH-04.6 / RN-RH-07.1). */
   remove: async (id: string): Promise<{ success: boolean }> => {
     await delay(rand(250, 500))
-    const i = rhBeneficiarios.findIndex((x) => x.id === id)
-    if (i >= 0) rhBeneficiarios.splice(i, 1)
+    const i = rhColaboradores.findIndex((x) => x.id === id)
+    if (i >= 0) rhColaboradores.splice(i, 1)
     return { success: true }
   },
   /** Simula o processamento de uma planilha (RF-RH-04.2). */
@@ -187,7 +179,7 @@ export const rhConviteService = {
   disparar: async (ids: string[]): Promise<{ enviados: number }> => {
     await delay(rand(400, 800))
     let enviados = 0
-    rhBeneficiarios.forEach((b) => {
+    rhColaboradores.forEach((b) => {
       if (ids.includes(b.id) && b.status === 'nao_convidado') {
         b.status = 'convidado'
         b.convidadoEm = new Date().toISOString().slice(0, 10)
@@ -198,44 +190,9 @@ export const rhConviteService = {
   },
 }
 
-export const rhDashboardService = {
-  kpis: async (): Promise<RhKpi[]> => {
-    await delay(rand(300, 600))
-    return rhKpis
-  },
-  heatmap: async (): Promise<RhHeatRow[]> => {
-    await delay(rand(350, 650))
-    return rhHeatmap
-  },
-  alertas: async (): Promise<RhAlerta[]> => {
-    await delay(rand(250, 500))
-    return rhAlertas
-  },
-  /** Exportação assíncrona do one-page (RF-RH-06.4 / RNF-RH-06.2). */
-  exportarRelatorio: async (): Promise<{ success: boolean }> => {
-    await delay(rand(800, 1400))
-    return { success: true }
-  },
-}
-
 export const rhNotificacaoService = {
   list: async (): Promise<RhNotificacao[]> => {
     await delay(rand(200, 400))
     return rhNotificacoes
-  },
-}
-
-export const rhFinanceiroService = {
-  /** Parcelas dos contratos da empresa, ordenadas por vencimento crescente. */
-  parcelas: async (): Promise<RhParcela[]> => {
-    await delay(rand(300, 600))
-    return [...rhParcelas].sort((a, b) => a.vencimento.localeCompare(b.vencimento))
-  },
-  /** Informar pagamento — registra data, valor e comprovante; parcela vira "pago". */
-  informarPagamento: async (id: string, dataPagamento: string, valorPago: number, comprovante: string): Promise<{ ok: boolean }> => {
-    await delay(rand(300, 600))
-    const p = rhParcelas.find((x) => x.id === id)
-    if (p) { p.status = 'pago'; p.dataPagamento = dataPagamento; p.valorPago = valorPago; p.comprovante = comprovante }
-    return { ok: true }
   },
 }

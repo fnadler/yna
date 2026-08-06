@@ -4,10 +4,12 @@ import { Icon } from '@iconify/react'
 import { Button } from '../components/Button'
 import { YnaIcon } from '../components/YnaIcons'
 import { inviteService } from '../services'
+import { useApp } from '../contexts/AppContext'
 
 export function Ben01Convite() {
   const { token } = useParams<{ token: string }>()
   const navigate = useNavigate()
+  const { setSessaoToken } = useApp()
   const [status, setStatus] = useState<'loading' | 'valid' | 'error'>('loading')
   const [errorType, setErrorType] = useState<'expired' | 'used' | 'invalid'>('invalid')
 
@@ -18,15 +20,17 @@ export function Ben01Convite() {
     }
     inviteService.validate(token).then((result) => {
       if (result.valid) {
+        setSessaoToken(token)
         setTimeout(() => {
           setStatus('valid')
-          navigate('/bem-vindo', { replace: true })
+          navigate('/sigilo', { replace: true })
         }, 500)
       } else {
         setErrorType(result.expired ? 'expired' : result.used ? 'used' : 'invalid')
         setStatus('error')
       }
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, navigate])
 
   if (status === 'loading' || status === 'valid') {

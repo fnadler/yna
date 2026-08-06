@@ -5,11 +5,11 @@ import { Button } from '../../components/Button'
 import { Input } from '../../components/Input'
 import { Select } from '../../components/Select'
 import { useService } from '../../hooks/useService'
-import { rhBeneficiarioService, rhDepartamentoService } from '../../services/rh'
+import { rhColaboradorService, rhDepartamentoService } from '../../services/rh'
 import type { RhImportResult } from '../../types'
 
-/* RH-06 — Onboarding: cadastro dos beneficiários em lote ou individualmente.
-   Mesmo modelo de tela da triagem do beneficiário (barra de progresso,
+/* RH-06 — Onboarding: cadastro dos colaboradores em lote ou individualmente.
+   Mesmo modelo de tela da triagem do colaborador (barra de progresso,
    título grande, opções e barra inferior fixa no desktop), com 3 passos. */
 
 type Step = 1 | 2 | 3
@@ -39,7 +39,7 @@ export function RH06Onboarding() {
 
   const processarPlanilha = async () => {
     setImportFase('processando')
-    const r = await rhBeneficiarioService.importar(154)
+    const r = await rhColaboradorService.importar(154)
     setResultado(r)
     setImportFase('resultado')
   }
@@ -48,7 +48,7 @@ export function RH06Onboarding() {
     const dep = form.dep || departamentos[0]?.id || ''
     if (form.nome.trim().length < 3 || !/\S+@\S+\.\S+/.test(form.email) || !dep) return
     setAddSaving(true)
-    await rhBeneficiarioService.create({ nomeCompleto: form.nome, cpf: form.cpf, emailCorporativo: form.email, departamentoId: dep })
+    await rhColaboradorService.create({ nomeCompleto: form.nome, cpf: form.cpf, emailCorporativo: form.email, departamentoId: dep })
     setAddSaving(false)
     setAdicionados((n) => n + 1)
     setForm({ nome: '', cpf: '', email: '', dep })
@@ -166,7 +166,7 @@ export function RH06Onboarding() {
                   <Icon icon="ph:download-simple-bold" width={20} className="shrink-0 text-primary dark:text-primary-300" aria-hidden />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-ink">Baixar modelo de planilha</p>
-                    <p className="text-[12px] text-ink-secondary">modelo-beneficiarios-yna.xlsx</p>
+                    <p className="text-[12px] text-ink-secondary">modelo-colaboradores-yna.xlsx</p>
                   </div>
                 </button>
                 <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-[1.5px] border-dashed border-border-strong bg-surface-2 px-4 py-8 text-center transition-colors hover:border-primary">
@@ -239,7 +239,7 @@ export function RH06Onboarding() {
             {adicionados > 0 && (
               <p className="flex items-center gap-2 rounded-lg bg-success-bg px-4 py-3 text-[13px] text-success-ink">
                 <Icon icon="ph:check-circle-bold" width={16} aria-hidden />
-                {adicionados} beneficiário(s) adicionado(s).
+                {adicionados} colaborador(es) adicionado(s).
               </p>
             )}
           </div>
