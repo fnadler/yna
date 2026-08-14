@@ -7,18 +7,19 @@ import { mockUser } from '../data/mock'
    voltar. Nada aqui identifica a pessoa: são só as respostas do formulário
    em memória, enviadas de forma anônima ao concluir — inclusive o
    consentimento LGPD (RF-A02/RNF-01) mora aqui, não no perfil, porque hoje
-   a avaliação acontece antes de existir qualquer conta.
-
-   `interesseCuidado`/`emTratamento` são as duas perguntas opcionais do
-   pós-avaliação (não fazem parte do instrumento NR-1, nunca entram no
-   inventário nem no relatório do RH — só alimentam um agregado comercial
-   que o backoffice YNA usa para estimar adesão futura a um serviço de
-   cuidado que ainda não existe no produto). */
+   a avaliação acontece antes de existir qualquer conta. */
 export interface Nr1AvaliacaoEmAndamento {
   campanhaId: string
   consentiu: boolean
   respostas: Record<string, number | string>
   concluida: boolean
+}
+
+/** Respostas opcionais coletadas na criação da conta (não fazem parte do
+   instrumento NR-1: não entram no inventário nem no relatório do RH — só
+   alimentam um agregado comercial que o backoffice YNA usa para estimar
+   adesão futura a um serviço de cuidado que ainda não existe no produto). */
+export interface PerfilInteresseCuidado {
   interesseCuidado?: 'sim' | 'nao' | 'talvez'
   emTratamento?: 'sim' | 'nao' | 'prefiro-nao-informar'
 }
@@ -31,17 +32,14 @@ interface AppContextValue {
   sessaoToken: string | null
   setSessaoToken: (token: string) => void
   contaCriada: boolean
-  criarConta: (dados: { nome: string; apelido: string }) => void
+  perfilInteresse: PerfilInteresseCuidado | null
+  criarConta: (dados: { nome: string; apelido: string; email?: string } & PerfilInteresseCuidado) => void
   /** Avaliação NR-1 em andamento (null = não iniciada). */
   nr1: Nr1AvaliacaoEmAndamento | null
   nr1Iniciar: (campanhaId: string) => void
   nr1Consentir: () => void
   nr1Responder: (itemId: string, valor: number | string) => void
   nr1Concluir: () => void
-  nr1RegistrarInteresse: (
-    interesseCuidado: Nr1AvaliacaoEmAndamento['interesseCuidado'],
-    emTratamento: Nr1AvaliacaoEmAndamento['emTratamento'],
-  ) => void
   nr1Limpar: () => void
 }
 
@@ -53,9 +51,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [sessaoToken, setSessaoToken] = useState<string | null>(null)
   const [contaCriada, setContaCriada] = useState(false)
+  const [perfilInteresse, setPerfilInteresse] = useState<PerfilInteresseCuidado | null>(null)
 
-  const criarConta = (dados: { nome: string; apelido: string }) => {
-    setUserState((prev) => ({ ...prev, name: dados.nome, nickname: dados.apelido }))
+  const criarConta: AppContextValue['criarConta'] = ({ nome, apelido, email, interesseCuidado, emTratamento }) => {
+    setUserState((prev) => ({ ...prev, name: nome, nickname: apelido, email: email ?? prev.email }))
+    setPerfilInteresse({ interesseCuidado, emTratamento })
     setContaCriada(true)
   }
 
@@ -77,16 +77,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const nr1Concluir = () => setNr1((prev) => (prev ? { ...prev, concluida: true } : prev))
 
-  const nr1RegistrarInteresse: AppContextValue['nr1RegistrarInteresse'] = (interesseCuidado, emTratamento) =>
-    setNr1((prev) => (prev ? { ...prev, interesseCuidado, emTratamento } : prev))
-
   const nr1Limpar = () => setNr1(null)
 
   return (
     <AppContext.Provider
       value={{
-        user, setUser, sessaoToken, setSessaoToken, contaCriada, criarConta,
-        nr1, nr1Iniciar, nr1Consentir, nr1Responder, nr1Concluir, nr1RegistrarInteresse, nr1Limpar,
+        user, setUser, sessaoToken, setSessaoToken, contaCriada, perfilInteresse, criarConta,
+        nr1, nr1Iniciar, nr1Consentir, nr1Responder, nr1Concluir, nr1Limpar,
       }}
     >
       {children}

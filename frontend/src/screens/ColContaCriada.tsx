@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
-import { Button } from '../../components/Button'
+import { Button } from '../components/Button'
 
-/* RH-05 — Transição "Conta criada" (mesmo modelo do Ben08bTransicao).
-   Vai direto para o painel — sem onboarding de colaboradores neste ponto:
-   a empresa precisa configurar a pesquisa antes de cadastrar o time, então
-   isso acontece depois, dentro do painel (RH11Colaboradores), não aqui. */
-export function RH05ContaCriada() {
+/* Transição "conta criada" — fecha o cadastro (mesmo modelo do
+   RH05ContaCriada/ColTransicaoAvaliacao/NR1BenConclusao). Reforça a
+   fronteira de sigilo: ter conta não abre nenhuma janela para o RH. */
+export function ColContaCriada() {
   const [phase, setPhase] = useState<'celebrating' | 'leaving' | 'content'>('celebrating')
   const navigate = useNavigate()
 
@@ -43,14 +42,15 @@ export function RH05ContaCriada() {
                 <span className="font-extrabold text-primary">pronta.</span>
               </h1>
               <p className="text-[15px] leading-relaxed text-ink-secondary">
-                O próximo passo é configurar a sua pesquisa de riscos psicossociais. Depois disso,
-                você cadastra o seu time direto no painel.
+                A partir daqui você pode acompanhar sua evolução sempre que quiser. O RH da sua
+                empresa não vê seus dados de acesso, nem o que você faz aqui dentro — isso continua
+                sendo só seu.
               </p>
             </div>
 
             <div className="w-full animate-yna-slide-up animate-yna-delay-250">
-              <Button variant="gradient" size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/rh/home')}>
-                Acessar painel da empresa
+              <Button variant="gradient" size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/meu-espaco', { replace: true })}>
+                Acessar a plataforma
               </Button>
             </div>
           </div>

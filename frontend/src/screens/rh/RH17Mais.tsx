@@ -38,12 +38,10 @@ export function RH17Mais() {
       titulo: 'Conformidade NR-1',
       items: [
         { icon: 'ph:squares-four-bold', label: 'Visão geral', to: '/rh/nr1' },
-        { icon: 'ph:calendar-check-bold', label: 'Campanha de avaliação', to: '/rh/nr1/campanha' },
-        { icon: 'ph:thermometer-bold', label: 'Mapa de calor', to: '/rh/nr1/mapa-calor' },
+        { icon: 'ph:calendar-check-bold', label: 'Campanhas', to: '/rh/nr1/campanha' },
         { icon: 'ph:clipboard-text-bold', label: 'Inventário de riscos', to: '/rh/nr1/inventario' },
         { icon: 'ph:list-checks-bold', label: 'Plano de ação', to: '/rh/nr1/plano-acao' },
         { icon: 'ph:file-text-bold', label: 'Relatório e rastreabilidade', to: '/rh/nr1/relatorio' },
-        { icon: 'ph:megaphone-simple-bold', label: 'Canal de escuta', to: '/rh/nr1/canal' },
       ],
     },
     {

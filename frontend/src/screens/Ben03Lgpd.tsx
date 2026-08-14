@@ -47,7 +47,7 @@ export function Ben03Lgpd() {
     }
     nr1Iniciar(instrumento.campanha.id)
     nr1Consentir()
-    navigate('/avaliacao/intro')
+    navigate('/comecar')
   }
 
   return (

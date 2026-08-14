@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { Button } from '../components/Button'
+import { Badge } from '../components/Badge'
 import { Textarea } from '../components/Textarea'
 import { Skeleton } from '../components/Skeleton'
 import { ErrorState } from '../components/ErrorState'
@@ -117,34 +118,32 @@ function Wizard({ versao, passo, respostas, onResponder, campanhaId }: {
 
   return (
     <>
-      {/* Progresso — no topo, sempre visível */}
-      <header className="px-5 pb-2 pt-8 lg:pt-10">
-        <div className="mx-auto flex w-full max-w-xl items-center gap-3">
-          <button
-            onClick={voltar}
-            aria-label="Voltar"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill border border-border bg-surface text-ink-secondary transition-colors hover:bg-surface-hover"
-          >
-            <Icon icon="ph:arrow-left-bold" width={18} aria-hidden />
-          </button>
+      {/* Header: back button + progress bar — hidden on desktop (barra inferior própria) */}
+      <header className="flex lg:hidden items-center gap-3 px-5 pb-2 pt-8">
+        <button
+          onClick={voltar}
+          aria-label="Voltar"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill border border-border bg-surface text-ink-secondary transition-colors hover:bg-surface-hover"
+        >
+          <Icon icon="ph:arrow-left-bold" width={18} aria-hidden />
+        </button>
+        <div
+          className="h-2 flex-1 overflow-hidden rounded-pill bg-surface-2"
+          role="progressbar"
+          aria-valuemin={1}
+          aria-valuemax={total}
+          aria-valuenow={numero}
+          aria-label={`Parte ${numero} de ${total}`}
+        >
           <div
-            className="h-2 flex-1 overflow-hidden rounded-pill bg-surface-2"
-            role="progressbar"
-            aria-valuemin={1}
-            aria-valuemax={total}
-            aria-valuenow={numero}
-            aria-label={`Parte ${numero} de ${total}`}
-          >
-            <div
-              className="h-full rounded-pill bg-gradient-to-r from-primary to-pink transition-all duration-500"
-              style={{ width: `${(numero / total) * 100}%` }}
-            />
-          </div>
-          <span className="shrink-0 font-mono text-xs font-medium text-ink-secondary">{numero} de {total}</span>
+            className="h-full rounded-pill bg-gradient-to-r from-primary to-pink transition-all duration-500"
+            style={{ width: `${(numero / total) * 100}%` }}
+          />
         </div>
+        <span className="shrink-0 font-mono text-xs font-medium text-ink-secondary">{numero} de {total}</span>
       </header>
 
-      <main key={idx} className="flex flex-1 flex-col px-5 pb-10 pt-6 animate-yna-slide-up">
+      <main key={idx} className="flex flex-1 flex-col px-5 pb-10 pt-6 lg:pb-28 animate-yna-slide-up">
         <div className="mx-auto w-full max-w-xl">
           {atual.tipo === 'dimensao' ? (
             <>
@@ -199,7 +198,7 @@ function Wizard({ versao, passo, respostas, onResponder, campanhaId }: {
             </>
           )}
 
-          <div className="mt-9 flex flex-col gap-2">
+          <div className="mt-9 flex flex-col gap-2 lg:hidden">
             <Button size="lg" fullWidth iconRight="ph:arrow-right-bold" disabled={!completo || salvando} onClick={avancar}>
               {salvando ? 'Salvando…' : ultimo ? 'Finalizar' : 'Continuar'}
             </Button>
@@ -214,6 +213,39 @@ function Wizard({ versao, passo, respostas, onResponder, campanhaId }: {
           </div>
         </div>
       </main>
+
+      {/* Barra inferior desktop — voltar à esquerda, progresso ao centro, continuar à direita */}
+      <div className="hidden lg:flex fixed bottom-0 left-0 right-0 z-20 h-[72px] items-center border-t border-border bg-surface/90 px-10 backdrop-blur-sm">
+        <div className="w-40">
+          <button
+            onClick={voltar}
+            className="flex items-center gap-2 font-heading text-sm font-medium text-ink-secondary transition-colors hover:text-ink"
+          >
+            <Icon icon="ph:arrow-left-bold" width={16} aria-hidden />
+            Voltar
+          </button>
+        </div>
+
+        <div className="flex flex-1 flex-col items-center gap-1.5">
+          <div className="h-1.5 w-52 overflow-hidden rounded-pill bg-surface-2">
+            <div
+              className="h-full rounded-pill bg-gradient-to-r from-primary to-pink transition-all duration-500"
+              style={{ width: `${(numero / total) * 100}%` }}
+            />
+          </div>
+          <span className="font-mono text-[11px] text-ink-secondary">{numero} de {total}</span>
+        </div>
+
+        <div className="flex w-40 justify-end">
+          <Button
+            onClick={avancar}
+            disabled={!completo || salvando}
+            iconRight="ph:arrow-right-bold"
+          >
+            {salvando ? 'Salvando…' : ultimo ? 'Finalizar' : 'Continuar'}
+          </Button>
+        </div>
+      </div>
     </>
   )
 }
@@ -263,15 +295,15 @@ function ItemCard({ item, escalas, valor, onChange }: {
               )
             })}
           </div>
-          <div className="mt-1.5 flex justify-between text-[11px] text-ink-muted">
+          <div className="mt-2 flex justify-between text-[13px] font-medium text-ink-secondary">
             <span>{escala.opcoes[0]?.rotulo}</span>
             <span>{escala.opcoes[escala.opcoes.length - 1]?.rotulo}</span>
           </div>
           {/* Rótulo da opção escolhida — confirma a leitura sem depender da cor */}
           {typeof valor === 'number' && (
-            <p className="mt-2 text-[12px] font-medium text-primary dark:text-primary-300">
-              {escala.opcoes.find((o) => o.valor === valor)?.rotulo}
-            </p>
+            <div className="mt-3 flex justify-center">
+              <Badge tone="primary">{escala.opcoes.find((o) => o.valor === valor)?.rotulo}</Badge>
+            </div>
           )}
         </>
       )}

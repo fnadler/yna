@@ -1,60 +1,45 @@
 import { Link } from 'react-router-dom'
 import { Icon } from '@iconify/react'
-import { RhTopBar } from '../../components/RhTopBar'
-import { PageHeader } from '../../components/PageHeader'
-import { Skeleton } from '../../components/Skeleton'
-import { ErrorState } from '../../components/ErrorState'
-import { PAGE_MAX_W } from '../../lib/layout'
-import { NIVEL_RISCO, NIVEL_PROTEGIDO } from '../../lib/nr1'
-import { useService } from '../../hooks/useService'
-import { nr1ResultadoService } from '../../services/nr1'
-import { NR1_DIMENSOES, NR1_PONTUACAO } from '../../data/nr1Mock'
-import type { Nr1LinhaMapa } from '../../types'
+import { NIVEL_RISCO, NIVEL_PROTEGIDO } from '../lib/nr1'
+import { NR1_DIMENSOES, NR1_PONTUACAO, nr1NivelPorMedia } from '../data/nr1Mock'
+import type { Nr1LinhaMapa, Nr1DimensaoId } from '../types'
 
-/* NR1-RH-02 — Mapa de calor de riscos psicossociais (RF-C01/02/03/05).
+/* Peças de resultado do módulo de Conformidade NR-1, compartilhadas entre a
+   Visão geral (`/rh/nr1`, sempre a campanha em campo) e a aba "Resultado" de
+   uma campanha específica (`/rh/nr1/campanha/:id`) — mesmo visual em
+   qualquer um dos dois lugares onde o risco (macro e por área) aparece. */
 
-   Dimensão × área, no padrão do heatmap do RH-13. Duas escolhas deliberadas:
+type DimensaoMedia = { dimensaoId: Nr1DimensaoId; nome: string; media: number; nivel: ReturnType<typeof nr1NivelPorMedia> }
 
-   · a cor nunca carrega o significado sozinha — cada célula traz a média e o
-     rótulo do nível, para leitura sem depender de percepção de cor;
-   · recortes abaixo de 4 respondentes aparecem explicitamente como protegidos,
-     em vez de sumirem da tabela. Ocultar sem dizer faria o RH achar que a área
-     não respondeu. */
-
-const K = NR1_PONTUACAO.kAnonimato
-
-export function NR1RhMapaCalor() {
-  const mapa = useService(() => nr1ResultadoService.mapaCalor(), [])
-
+/** Risco por dimensão (macro) — grade de 4 cards. */
+export function RiscoPorDimensaoGrid({ dimensoes }: { dimensoes: DimensaoMedia[] }) {
   return (
-    <div className="min-h-full bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
-      <div className={`mx-auto ${PAGE_MAX_W} px-5 lg:px-8 pt-0 lg:pt-9 pb-10`}>
-        <RhTopBar />
-
-        <Link to="/rh/nr1" className="mt-2 mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-secondary transition-colors hover:text-ink lg:mt-0">
-          <Icon icon="ph:arrow-left-bold" width={14} aria-hidden />
-          Conformidade NR-1
-        </Link>
-
-        <PageHeader
-          title="Mapa de calor"
-          subtitle="Onde o risco psicossocial está concentrado, por dimensão e por área."
-        />
-
-        {(mapa.status === 'idle' || mapa.status === 'loading') && <Skeleton className="h-80 w-full rounded-lg" />}
-        {mapa.status === 'error' && <ErrorState message={mapa.message} onRetry={mapa.reload} />}
-        {mapa.status === 'success' && <Mapa linhas={mapa.data} />}
-      </div>
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {dimensoes.map((d) => {
+        const meta = NR1_DIMENSOES.find((x) => x.id === d.dimensaoId)
+        const st = NIVEL_RISCO[d.nivel]
+        return (
+          <div key={d.dimensaoId} className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+            <Icon icon={meta?.icon ?? 'ph:list-bold'} width={18} className="text-primary dark:text-primary-300" aria-hidden />
+            <p className="text-[12.5px] font-medium leading-snug text-ink">{meta?.nome}</p>
+            <p className="text-[26px] font-bold leading-none tracking-[-0.02em] text-ink">{d.media.toFixed(1)}</p>
+            <span className={`inline-flex w-fit items-center rounded-pill px-2 py-0.5 text-[11px] font-semibold ${st.cls}`}>
+              {st.label}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-function Mapa({ linhas }: { linhas: Nr1LinhaMapa[] }) {
+/** Mapa de calor por dimensão × área, com legenda e nota de anonimato. */
+export function MapaCalorTable({ linhas }: { linhas: Nr1LinhaMapa[] }) {
+  const K = NR1_PONTUACAO.kAnonimato
   const protegidas = linhas.filter((l) => l.protegido)
 
   return (
     <>
-      {/* Tabela — rola horizontalmente dentro do próprio container */}
       <div className="overflow-x-auto rounded-lg border border-border bg-surface">
         <table className="w-full min-w-[680px] border-collapse">
           <caption className="sr-only">
@@ -105,7 +90,6 @@ function Mapa({ linhas }: { linhas: Nr1LinhaMapa[] }) {
         </table>
       </div>
 
-      {/* Legenda textual */}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
         {(['baixo', 'atencao', 'risco', 'critico'] as const).map((n) => (
           <span key={n} className="flex items-center gap-1.5 text-[12px] text-ink-secondary">
@@ -115,7 +99,6 @@ function Mapa({ linhas }: { linhas: Nr1LinhaMapa[] }) {
         ))}
       </div>
 
-      {/* Anonimato */}
       <div className="mt-5 flex gap-3 rounded-lg border border-border bg-surface p-4">
         <Icon icon="ph:lock-simple-bold" width={20} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
         <div>

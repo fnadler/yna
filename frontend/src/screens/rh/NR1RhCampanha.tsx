@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { RhTopBar } from '../../components/RhTopBar'
 import { PageHeader } from '../../components/PageHeader'
@@ -10,30 +10,40 @@ import { Modal } from '../../components/Modal'
 import { Select } from '../../components/Select'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
+import { RiscoPorDimensaoGrid, MapaCalorTable } from '../../components/Nr1Resultado'
 import { PAGE_MAX_W } from '../../lib/layout'
 import { fmtData, pct } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
-import { nr1CampanhaService, nr1ModeloService } from '../../services/nr1'
+import { nr1CampanhaService, nr1ModeloService, nr1ResultadoService } from '../../services/nr1'
 import type { Nr1Campanha, Nr1QuestionarioModelo } from '../../types'
 
-/* NR1-RH-01 — Campanha de avaliação (RF-B01/B04, RF-RH-NR1-10).
+/* NR1-RH-01 — Campanhas de avaliação (RF-B01/B04, RF-RH-NR1-10).
+
+   Antes era uma tela só, sempre da campanha em campo. Agora é uma lista de
+   todas as campanhas (a em campo em destaque) e, ao abrir uma, uma tela de
+   detalhe com duas abas: "Engajamento" (participação total e por área — o
+   que a tela antiga mostrava) e "Resultado" (risco por dimensão + mapa de
+   calor DAQUELA campanha, não sempre o retrato mais recente).
 
    O RH escolhe o modelo + versão a aplicar e acompanha a participação por
    área em tempo real. O que ele NÃO faz aqui: editar o questionário. Toda a
-   configuração do instrumento vive no backoffice da YNA.
-
-   A versão escolhida fica registrada na campanha e viaja com o inventário e o
-   relatório — é o que sustenta a defesa metodológica em fiscalização. */
+   configuração do instrumento vive no backoffice da YNA. */
 
 /** Abaixo disso a área entra na lista de lembrete sugerido. */
 const META_PARTICIPACAO = 60
 
 export function NR1RhCampanha() {
-  const campanha = useService(() => nr1CampanhaService.ativa(), [])
-  const modelos = useService(() => nr1ModeloService.list(), [])
-  const [trocarOpen, setTrocarOpen] = useState(false)
-  const [lembrete, setLembrete] = useState<{ areas: string[]; enviados?: number } | null>(null)
-  const [erro, setErro] = useState<string | null>(null)
+  const { campanhaId } = useParams<{ campanhaId?: string }>()
+  return campanhaId ? <CampanhaDetalheScreen campanhaId={campanhaId} /> : <CampanhaListaScreen />
+}
+
+/* ------------------------------------------------------------------
+   Lista de campanhas
+   ------------------------------------------------------------------ */
+
+function CampanhaListaScreen() {
+  const navigate = useNavigate()
+  const campanhas = useService(() => nr1CampanhaService.list(), [])
 
   return (
     <div className="min-h-full bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
@@ -43,6 +53,125 @@ export function NR1RhCampanha() {
         <Link to="/rh/nr1" className="mt-2 mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-secondary transition-colors hover:text-ink lg:mt-0">
           <Icon icon="ph:arrow-left-bold" width={14} aria-hidden />
           Conformidade NR-1
+        </Link>
+
+        <PageHeader
+          title="Campanhas de avaliação"
+          subtitle="Todas as campanhas de avaliação psicossocial, passadas e em campo."
+        />
+
+        {(campanhas.status === 'idle' || campanhas.status === 'loading') && (
+          <div className="flex flex-col gap-3"><Skeleton className="h-40 w-full rounded-lg" /><Skeleton className="h-24 w-full rounded-lg" /></div>
+        )}
+        {campanhas.status === 'error' && <ErrorState message={campanhas.message} onRetry={campanhas.reload} />}
+        {campanhas.status === 'success' && campanhas.data.length === 0 && (
+          <div className="rounded-lg border border-border bg-surface px-5 py-14 text-center">
+            <p className="text-[15px] font-semibold text-ink">Nenhuma campanha ainda</p>
+            <p className="mx-auto mt-1 max-w-sm text-[13px] leading-relaxed text-ink-secondary">
+              Fale com o seu contato na YNA para abrir o primeiro ciclo de avaliação.
+            </p>
+          </div>
+        )}
+        {campanhas.status === 'success' && campanhas.data.length > 0 && (
+          <ListaCampanhas campanhas={campanhas.data} onOpen={(id) => navigate(`/rh/nr1/campanha/${id}`)} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ListaCampanhas({ campanhas, onOpen }: { campanhas: Nr1Campanha[]; onOpen: (id: string) => void }) {
+  const ativa = campanhas.find((c) => c.status === 'em-campo')
+  const outras = [...campanhas.filter((c) => c.id !== ativa?.id)].sort((a, b) => b.inicio.localeCompare(a.inicio))
+
+  return (
+    <div className="flex flex-col gap-6">
+      {ativa && (
+        <section>
+          <h2 className="mb-3 text-[15px] font-semibold text-ink">Campanha em campo</h2>
+          <CampanhaCard campanha={ativa} destaque onClick={() => onOpen(ativa.id)} />
+        </section>
+      )}
+      <section>
+        <h2 className="mb-3 text-[15px] font-semibold text-ink">Histórico</h2>
+        {outras.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            {outras.map((c) => <CampanhaCard key={c.id} campanha={c} onClick={() => onOpen(c.id)} />)}
+          </div>
+        ) : (
+          <p className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-[13px] text-ink-secondary">
+            Nenhuma campanha anterior ainda.
+          </p>
+        )}
+      </section>
+    </div>
+  )
+}
+
+function CampanhaCard({ campanha, destaque, onClick }: { campanha: Nr1Campanha; destaque?: boolean; onClick: () => void }) {
+  const taxa = pct(campanha.respostas, campanha.elegiveis)
+  return (
+    <button
+      onClick={onClick}
+      className={`flex w-full flex-col gap-3 rounded-lg border p-5 text-left transition-colors ${
+        destaque
+          ? 'border-primary/40 bg-primary-50/40 hover:bg-primary-50/70 dark:border-primary-300/30 dark:bg-primary-50/10'
+          : 'border-border bg-surface hover:bg-surface-hover'
+      }`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <Badge tone={campanha.status === 'em-campo' ? 'success' : 'neutral'}>
+              {campanha.status === 'em-campo' ? 'Em campo' : campanha.status === 'rascunho' ? 'Rascunho' : 'Encerrada'}
+            </Badge>
+            <span className="font-mono text-[11px] text-ink-muted">{campanha.protocolo}</span>
+          </div>
+          <p className="mt-2 font-heading text-[15px] font-semibold text-ink">{campanha.nome}</p>
+          <p className="mt-0.5 text-[12.5px] text-ink-secondary">
+            {fmtData(campanha.inicio)} a {fmtData(campanha.fim)} · {campanha.modeloNome} v{campanha.versao}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-[26px] font-bold leading-none tracking-[-0.02em] text-ink">{taxa}%</p>
+          <p className="mt-0.5 text-[12px] text-ink-secondary">{campanha.respostas} de {campanha.elegiveis}</p>
+        </div>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-pill bg-surface-2">
+        <div
+          className="h-full rounded-pill bg-gradient-to-r from-primary to-pink transition-all duration-500"
+          style={{ width: `${taxa}%` }}
+        />
+      </div>
+    </button>
+  )
+}
+
+/* ------------------------------------------------------------------
+   Detalhe de uma campanha — abas Engajamento / Resultado
+   ------------------------------------------------------------------ */
+
+const TABS = [
+  { key: 'engajamento', label: 'Engajamento' },
+  { key: 'resultado', label: 'Resultado' },
+] as const
+type TabKey = (typeof TABS)[number]['key']
+
+function CampanhaDetalheScreen({ campanhaId }: { campanhaId: string }) {
+  const campanha = useService(() => nr1CampanhaService.get(campanhaId), [campanhaId])
+  const [tab, setTab] = useState<TabKey>('engajamento')
+  const [trocarOpen, setTrocarOpen] = useState(false)
+  const [lembrete, setLembrete] = useState<{ areas: string[]; enviados?: number } | null>(null)
+  const [erro, setErro] = useState<string | null>(null)
+
+  return (
+    <div className="min-h-full bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
+      <div className={`mx-auto ${PAGE_MAX_W} px-5 lg:px-8 pt-0 lg:pt-9 pb-10`}>
+        <RhTopBar />
+
+        <Link to="/rh/nr1/campanha" className="mt-2 mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-secondary transition-colors hover:text-ink lg:mt-0">
+          <Icon icon="ph:arrow-left-bold" width={14} aria-hidden />
+          Campanhas
         </Link>
 
         <PageHeader
@@ -62,35 +191,51 @@ export function NR1RhCampanha() {
         {campanha.status === 'error' && <ErrorState message={campanha.message} onRetry={campanha.reload} />}
         {campanha.status === 'success' && !campanha.data && (
           <div className="rounded-lg border border-border bg-surface px-5 py-14 text-center">
-            <p className="text-[15px] font-semibold text-ink">Nenhuma campanha em campo</p>
+            <p className="text-[15px] font-semibold text-ink">Campanha não encontrada</p>
             <p className="mx-auto mt-1 max-w-sm text-[13px] leading-relaxed text-ink-secondary">
-              Fale com o seu contato na YNA para abrir o próximo ciclo de avaliação.
+              Ela pode ter sido removida, ou o link está incorreto.
             </p>
           </div>
         )}
 
         {campanha.status === 'success' && campanha.data && (
-          <CampanhaDetalhe
-            campanha={campanha.data}
-            onTrocar={() => setTrocarOpen(true)}
-            onLembrar={(areas) => setLembrete({ areas })}
-          />
+          <>
+            <div className="mb-5 flex gap-1 rounded-lg bg-surface-2 p-1" role="tablist" aria-label="Seções da campanha">
+              {TABS.map((t) => (
+                <button
+                  key={t.key}
+                  role="tab"
+                  aria-selected={tab === t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`flex-1 rounded-lg px-3 py-2.5 font-heading text-sm font-semibold transition-all ${
+                    tab === t.key ? 'bg-surface text-ink shadow-xs' : 'text-ink-secondary hover:text-ink'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {tab === 'engajamento' && (
+              <CampanhaEngajamento
+                campanha={campanha.data}
+                onTrocar={() => setTrocarOpen(true)}
+                onLembrar={(areas) => setLembrete({ areas })}
+              />
+            )}
+            {tab === 'resultado' && <CampanhaResultado campanhaId={campanha.data.id} />}
+          </>
         )}
       </div>
 
       {/* Seleção de modelo + versão */}
-      <Sheet open={trocarOpen} onClose={() => setTrocarOpen(false)} title="Instrumento da campanha" icon="ph:seal-check-bold" size="md">
-        {campanha.status === 'success' && campanha.data && modelos.status === 'success' && (
-          <SelecionarInstrumento
-            campanha={campanha.data}
-            modelos={modelos.data}
-            onClose={() => setTrocarOpen(false)}
-            onSaved={() => { setTrocarOpen(false); campanha.reload() }}
-            onErro={(m) => { setTrocarOpen(false); setErro(m) }}
-          />
-        )}
-        {modelos.status === 'loading' && <div className="px-5 py-6"><Skeleton className="h-40 w-full rounded-lg" /></div>}
-      </Sheet>
+      <TrocarInstrumentoSheet
+        open={trocarOpen}
+        campanha={campanha.status === 'success' ? campanha.data : undefined}
+        onClose={() => setTrocarOpen(false)}
+        onSaved={() => { setTrocarOpen(false); campanha.reload() }}
+        onErro={(m) => { setTrocarOpen(false); setErro(m) }}
+      />
 
       <Modal open={lembrete !== null} title="Enviar lembrete" onClose={() => setLembrete(null)}>
         {lembrete && (
@@ -139,7 +284,33 @@ export function NR1RhCampanha() {
   )
 }
 
-function CampanhaDetalhe({ campanha, onTrocar, onLembrar }: {
+function TrocarInstrumentoSheet({ open, campanha, onClose, onSaved, onErro }: {
+  open: boolean
+  campanha?: Nr1Campanha
+  onClose: () => void
+  onSaved: () => void
+  onErro: (m: string) => void
+}) {
+  const modelos = useService(() => nr1ModeloService.list(), [])
+
+  return (
+    <Sheet open={open} onClose={onClose} title="Instrumento da campanha" icon="ph:seal-check-bold" size="md">
+      {campanha && modelos.status === 'success' && (
+        <SelecionarInstrumento
+          campanha={campanha}
+          modelos={modelos.data}
+          onClose={onClose}
+          onSaved={onSaved}
+          onErro={onErro}
+        />
+      )}
+      {modelos.status === 'loading' && <div className="px-5 py-6"><Skeleton className="h-40 w-full rounded-lg" /></div>}
+    </Sheet>
+  )
+}
+
+/* Aba "Engajamento" — participação total e por área (a tela original). */
+function CampanhaEngajamento({ campanha, onTrocar, onLembrar }: {
   campanha: Nr1Campanha
   onTrocar: () => void
   onLembrar: (areas: string[]) => void
@@ -263,6 +434,37 @@ function CampanhaDetalhe({ campanha, onTrocar, onLembrar }: {
             para toda a área: não existe lista de pendentes, e isso é proposital.
           </p>
         </div>
+      </section>
+    </>
+  )
+}
+
+/* Aba "Resultado" — risco por dimensão (macro) + mapa de calor por área,
+   ambos da campanha selecionada, não sempre o retrato mais recente. */
+function CampanhaResultado({ campanhaId }: { campanhaId: string }) {
+  const dimensoes = useService(() => nr1ResultadoService.mediaPorDimensao(campanhaId), [campanhaId])
+  const mapa = useService(() => nr1ResultadoService.mapaCalor(campanhaId), [campanhaId])
+
+  return (
+    <>
+      <section className="mb-6">
+        <h2 className="mb-3 text-[15px] font-semibold text-ink">Risco por dimensão</h2>
+        {(dimensoes.status === 'idle' || dimensoes.status === 'loading') && (
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}</div>
+        )}
+        {dimensoes.status === 'error' && <ErrorState message={dimensoes.message} onRetry={dimensoes.reload} />}
+        {dimensoes.status === 'success' && <RiscoPorDimensaoGrid dimensoes={dimensoes.data} />}
+        <p className="mt-2 text-[11px] text-ink-muted">
+          Média de 1 a 5, onde 5 é a situação desejável. Áreas com menos de 4 respondentes não
+          entram no cálculo.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-[15px] font-semibold text-ink">Mapa de calor por área</h2>
+        {(mapa.status === 'idle' || mapa.status === 'loading') && <Skeleton className="h-80 w-full rounded-lg" />}
+        {mapa.status === 'error' && <ErrorState message={mapa.message} onRetry={mapa.reload} />}
+        {mapa.status === 'success' && <MapaCalorTable linhas={mapa.data} />}
       </section>
     </>
   )

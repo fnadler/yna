@@ -68,7 +68,7 @@ export function RH10Home() {
             {campanha.status === 'error' && <ErrorState message={campanha.message} onRetry={campanha.reload} />}
             {campanha.status === 'success' && campanha.data && (
               <button
-                onClick={() => navigate('/rh/nr1/campanha')}
+                onClick={() => navigate(`/rh/nr1/campanha/${campanha.data!.id}`)}
                 className="flex w-full flex-col gap-3 rounded-lg border border-border bg-surface p-5 text-left transition-colors hover:border-border-strong"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -128,7 +128,7 @@ export function RH10Home() {
           <section>
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-[15px] font-semibold text-ink">Risco por dimensão</h2>
-              <button onClick={() => navigate('/rh/nr1/mapa-calor')} className="font-heading text-sm font-medium text-primary transition-colors hover:text-primary-600 dark:text-primary-300">
+              <button onClick={() => navigate('/rh/nr1')} className="font-heading text-sm font-medium text-primary transition-colors hover:text-primary-600 dark:text-primary-300">
                 Ver mapa de calor
               </button>
             </div>

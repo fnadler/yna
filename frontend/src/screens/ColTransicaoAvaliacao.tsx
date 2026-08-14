@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
-import { Button } from '../../components/Button'
+import { Button } from '../components/Button'
 
-/* RH-05 — Transição "Conta criada" (mesmo modelo do Ben08bTransicao).
-   Vai direto para o painel — sem onboarding de colaboradores neste ponto:
-   a empresa precisa configurar a pesquisa antes de cadastrar o time, então
-   isso acontece depois, dentro do painel (RH11Colaboradores), não aqui. */
-export function RH05ContaCriada() {
+/* Transição pós-LGPD (mesmo modelo do RH05ContaCriada/antigo Ben08bTransicao).
+   Fecha o ciclo de consentimento e abre o ciclo da avaliação: o colaborador
+   sai do "aceite" com a confirmação de que aquilo que ele vai responder
+   agora é a base da avaliação de riscos psicossociais da empresa — sem
+   nomear "NR-1" (jargão de conformidade não é vocabulário do colaborador). */
+export function ColTransicaoAvaliacao() {
   const [phase, setPhase] = useState<'celebrating' | 'leaving' | 'content'>('celebrating')
   const navigate = useNavigate()
 
@@ -37,20 +38,21 @@ export function RH05ContaCriada() {
 
           <div className="w-full rounded-2xl bg-surface border border-border shadow p-7 md:p-10 flex flex-col items-center gap-6 animate-yna-slide-up">
             <div className="flex flex-col gap-3">
-              <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink">Conta criada</p>
+              <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink">Tudo certo</p>
               <h1 className="text-[34px] font-heading font-extralight leading-[1.08] tracking-[-0.03em] text-ink">
-                Sua conta está<br />
-                <span className="font-extrabold text-primary">pronta.</span>
+                Agora vamos<br />
+                <span className="font-extrabold text-primary">começar.</span>
               </h1>
               <p className="text-[15px] leading-relaxed text-ink-secondary">
-                O próximo passo é configurar a sua pesquisa de riscos psicossociais. Depois disso,
-                você cadastra o seu time direto no painel.
+                A partir daqui você responde a uma avaliação sobre o seu dia a dia de trabalho.
+                O que você contar, somado ao de todo o time, é a base para a empresa entender e
+                agir sobre os riscos do ambiente de trabalho.
               </p>
             </div>
 
             <div className="w-full animate-yna-slide-up animate-yna-delay-250">
-              <Button variant="gradient" size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/rh/home')}>
-                Acessar painel da empresa
+              <Button variant="gradient" size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/avaliacao/intro')}>
+                Começar avaliação
               </Button>
             </div>
           </div>

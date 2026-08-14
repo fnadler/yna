@@ -56,8 +56,15 @@ export function AppLayout() {
         <main className="flex-1 overflow-y-auto">
           {/* Subtle per-route load animation, consistent with the onboarding screens.
               Keyed by pathname so it replays on each navigation. Uses animate-yna-enter
-              (no `forwards`) so no persistent transform breaks fixed children. */}
-          <div key={location.pathname} className="min-h-full animate-yna-enter">
+              (no `forwards`) so no persistent transform breaks fixed children.
+
+              flex flex-col (not just min-h-full) so the screen's own root can stretch
+              via flex-1 instead of a percentage height — min-h-full alone breaks one
+              level down, because this div's own `height` is never set (only achieved
+              via min-height), and CSS percentage-height needs a real `height` on the
+              ancestor to resolve against. Flex sidesteps that: flex-grow reads the
+              container's rendered size directly. */}
+          <div key={location.pathname} className="flex min-h-full flex-col animate-yna-enter">
             <Outlet context={outletContext} />
           </div>
         </main>

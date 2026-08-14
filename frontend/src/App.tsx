@@ -25,7 +25,6 @@ import { RH01Convite } from './screens/rh/RH01Convite'
 import { RH02LinkInvalido } from './screens/rh/RH02LinkInvalido'
 import { RH04CadastroConta } from './screens/rh/RH04CadastroConta'
 import { RH05ContaCriada } from './screens/rh/RH05ContaCriada'
-import { RH06Onboarding } from './screens/rh/RH06Onboarding'
 import { RH10Home } from './screens/rh/RH10Home'
 import { RH11Colaboradores } from './screens/rh/RH11Colaboradores'
 import { RH12Convites } from './screens/rh/RH12Convites'
@@ -35,7 +34,6 @@ import { RH16Conta } from './screens/rh/RH16Conta'
 import { RH17Mais } from './screens/rh/RH17Mais'
 import { NR1RhCockpit } from './screens/rh/NR1RhCockpit'
 import { NR1RhCampanha } from './screens/rh/NR1RhCampanha'
-import { NR1RhMapaCalor } from './screens/rh/NR1RhMapaCalor'
 import { NR1RhInventario } from './screens/rh/NR1RhInventario'
 import { NR1RhPlanoAcao } from './screens/rh/NR1RhPlanoAcao'
 import { NR1RhRelatorio } from './screens/rh/NR1RhRelatorio'
@@ -47,6 +45,7 @@ import { Ben02LinkInvalido } from './screens/Ben02LinkInvalido'
 import { Ben03Lgpd } from './screens/Ben03Lgpd'
 import { Ben05Despedida } from './screens/Ben05Despedida'
 import { Col03MeuEspaco } from './screens/Col03MeuEspaco'
+import { ColAvaliacoes } from './screens/ColAvaliacoes'
 import { Col05Apoio } from './screens/Col05Apoio'
 import { ColCriarConta } from './screens/ColCriarConta'
 import { Ben31MeusDados } from './screens/Ben31MeusDados'
@@ -55,6 +54,9 @@ import { NR1BenQuestionario } from './screens/NR1BenQuestionario'
 import { NR1BenConclusao } from './screens/NR1BenConclusao'
 import { NR1BenCanalEscuta } from './screens/NR1BenCanalEscuta'
 import { NR1BenEvolucao } from './screens/NR1BenEvolucao'
+import { ColTransicaoAvaliacao } from './screens/ColTransicaoAvaliacao'
+import { ColConviteConta } from './screens/ColConviteConta'
+import { ColContaCriada } from './screens/ColContaCriada'
 
 /* Raiz do fluxo do RH/Empresa: provê o RhContext (isolado dos demais perfis). */
 function RhRoot() {
@@ -92,15 +94,21 @@ export function App() {
               <Route path="/sigilo" element={<Ben03Lgpd />} />
             </Route>
 
+            {/* Transições "tudo certo"/"concluído" — fecham um ciclo e abrem o
+                próximo. Standalone/full-screen, como as demais transições de
+                onboarding (ver RH05ContaCriada): sem header do FocusLayout. */}
+            <Route path="/comecar" element={<ColTransicaoAvaliacao />} />
+            <Route path="/avaliacao/conclusao" element={<NR1BenConclusao />} />
+            <Route path="/conta-criada" element={<ColContaCriada />} />
+
             {/* Avaliação psicossocial NR-1 — respondida ANTES da criação de conta,
                 ainda anônima/tokenizada (reforça que a resposta não é vinculada a
                 uma identidade). O colaborador nunca vê jargão de conformidade:
                 para ele isto é uma conversa sobre o ambiente de trabalho. */}
             <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" exitTo="/despedida" />}>
-              <Route path="/avaliacao" element={<Navigate to="/avaliacao/intro" replace />} />
               <Route path="/avaliacao/intro" element={<NR1BenIntro />} />
-              <Route path="/avaliacao/conclusao" element={<NR1BenConclusao />} />
               <Route path="/avaliacao/:passo" element={<NR1BenQuestionario />} />
+              <Route path="/avaliacao/conta" element={<ColConviteConta />} />
             </Route>
 
             {/* Criação de conta leve — só depois da avaliação já enviada,
@@ -112,6 +120,7 @@ export function App() {
             {/* App principal (com sidebar/bottom-nav) */}
             <Route element={<AppLayout />}>
               <Route path="/meu-espaco" element={<Col03MeuEspaco />} />
+              <Route path="/avaliacao" element={<ColAvaliacoes />} />
               <Route path="/apoio" element={<Col05Apoio />} />
               <Route path="/canal-escuta" element={<NR1BenCanalEscuta />} />
               <Route path="/minha-evolucao" element={<NR1BenEvolucao />} />
@@ -133,13 +142,16 @@ export function App() {
               {/* Transição "Conta criada" — full-screen */}
               <Route path="/rh/conta-criada" element={<RH05ContaCriada />} />
 
-              {/* Entrada (convite) + Etapas 2 e 3 (Cadastro da conta e
-                  Onboarding) — layout de foco com barra inferior fixa. */}
+              {/* Entrada (convite) + Etapa 2 (Cadastro da conta) — layout de
+                  foco com barra inferior fixa. Sem onboarding de
+                  colaboradores aqui: a conta criada já cai direto no painel
+                  (RH05ContaCriada → /rh/home); cadastrar o time é uma ação
+                  de dentro do painel (RH11Colaboradores), depois que a
+                  empresa configura a pesquisa. */}
               <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" exitTo="/rh/convite/demo" />}>
                 <Route path="/rh/convite/invalido" element={<RH02LinkInvalido />} />
                 <Route path="/rh/convite/:token" element={<RH01Convite />} />
                 <Route path="/rh/cadastro" element={<RH04CadastroConta />} />
-                <Route path="/rh/onboarding" element={<RH06Onboarding />} />
               </Route>
 
               {/* Área logada do RH — sidebar/bottom-nav próprios */}
@@ -153,7 +165,7 @@ export function App() {
                     modelo/versão na campanha — nunca edita o questionário. */}
                 <Route path="/rh/nr1" element={<NR1RhCockpit />} />
                 <Route path="/rh/nr1/campanha" element={<NR1RhCampanha />} />
-                <Route path="/rh/nr1/mapa-calor" element={<NR1RhMapaCalor />} />
+                <Route path="/rh/nr1/campanha/:campanhaId" element={<NR1RhCampanha />} />
                 <Route path="/rh/nr1/inventario" element={<NR1RhInventario />} />
                 <Route path="/rh/nr1/plano-acao" element={<NR1RhPlanoAcao />} />
                 <Route path="/rh/nr1/relatorio" element={<NR1RhRelatorio />} />

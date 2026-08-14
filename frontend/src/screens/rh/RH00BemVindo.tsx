@@ -115,11 +115,11 @@ export function RH00BemVindo() {
             <LogoYna className="h-10 text-primary" />
           </div>
 
-          <div className="my-auto max-w-md">
+          <div className="my-auto max-w-lg">
             <p className="mb-2 font-heading text-xl md:text-2xl font-semibold tracking-[-0.015em] text-primary animate-yna-slide-up animate-yna-delay-100">
               Bem-vindo à YNA
             </p>
-            <h1 className="mb-5 text-[56px] font-heading font-light leading-[1.05] tracking-[-0.03em] text-ink animate-yna-slide-up animate-yna-delay-250">
+            <h1 className="mb-5 text-[42px] font-heading font-light leading-[1.1] tracking-[-0.03em] text-ink animate-yna-slide-up animate-yna-delay-250">
               A gestão de riscos psicossociais que a<br /><span className="font-extrabold bg-yna-gradient-button bg-clip-text text-transparent">NR-1 exige.</span>
             </h1>
             <p className="mb-10 max-w-sm text-[16px] leading-relaxed text-ink-secondary animate-yna-slide-up animate-yna-delay-400">

@@ -213,17 +213,19 @@ export const nr1CampanhaService = {
 }
 
 export const nr1ResultadoService = {
-  /** Mapa de calor por dimensão × área. Os recortes abaixo do k já chegam
-     com `protegido: true` e células nulas — a UI não tem como vazar. */
-  mapaCalor: async (): Promise<Nr1LinhaMapa[]> => {
+  /** Mapa de calor por dimensão × área de uma campanha (por padrão, a que
+     está em campo). Os recortes abaixo do k já chegam com `protegido: true`
+     e células nulas — a UI não tem como vazar. */
+  mapaCalor: async (campanhaId?: string): Promise<Nr1LinhaMapa[]> => {
     await delay(rand(350, 700))
-    return nr1MapaCalor()
+    return nr1MapaCalor(campanhaId)
   },
 
-  /** Média por dimensão no total da empresa (só áreas acima do k entram). */
-  mediaPorDimensao: async (): Promise<{ dimensaoId: Nr1DimensaoId; nome: string; media: number; nivel: ReturnType<typeof nr1NivelPorMedia> }[]> => {
+  /** Média por dimensão no total da empresa, para uma campanha (só áreas
+     acima do k entram). */
+  mediaPorDimensao: async (campanhaId?: string): Promise<{ dimensaoId: Nr1DimensaoId; nome: string; media: number; nivel: ReturnType<typeof nr1NivelPorMedia> }[]> => {
     await delay(rand(300, 600))
-    const linhas = nr1MapaCalor().filter((l) => !l.protegido)
+    const linhas = nr1MapaCalor(campanhaId).filter((l) => !l.protegido)
     return linhas[0]?.celulas.map((_, i) => {
       const vals = linhas.map((l) => l.celulas[i]?.media ?? 0)
       const media = Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1))

@@ -5,12 +5,12 @@ import { RhTopBar } from '../../components/RhTopBar'
 import { PageHeader } from '../../components/PageHeader'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
+import { RiscoPorDimensaoGrid, MapaCalorTable } from '../../components/Nr1Resultado'
 import { PAGE_MAX_W } from '../../lib/layout'
-import { NIVEL_RISCO, fmtData, pct } from '../../lib/nr1'
+import { fmtData, pct } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
 import { useRh } from '../../contexts/RhContext'
 import { nr1CampanhaService, nr1ResultadoService } from '../../services/nr1'
-import { NR1_DIMENSOES } from '../../data/nr1Mock'
 
 /* NR1-RH-06 — Visão geral da conformidade NR-1 (RF-I01).
 
@@ -20,12 +20,19 @@ import { NR1_DIMENSOES } from '../../data/nr1Mock'
    Agora cada uma dessas telas tem seu próprio item de primeira classe no
    sidebar (ver RhAppLayout), e esta tela volta a ser só o que o nome promete:
    um resumo de 10 segundos — a campanha está de pé? onde o risco está
-   concentrado? — sem virar menu. */
+   concentrado, no total e por área? — sem virar menu.
+
+   O mapa de calor por área, que antes era uma tela própria (`/rh/nr1/mapa-
+   calor`), passou a viver aqui (sempre da campanha em campo) e na aba
+   "Resultado" de cada campanha em `/rh/nr1/campanha/:id` — não faz mais
+   sentido como item de navegação à parte, já que os dois lugares que
+   importam agora o mostram direto. */
 
 export function NR1RhCockpit() {
   const { setInstrumentoNr1 } = useRh()
   const campanha = useService(() => nr1CampanhaService.ativa(), [])
   const dimensoes = useService(() => nr1ResultadoService.mediaPorDimensao(), [])
+  const mapa = useService(() => nr1ResultadoService.mapaCalor(), [])
 
   /* Publica o instrumento aplicado no contexto: inventário e relatório citam
      modelo + versão a partir daqui (RF-F02). */
@@ -68,7 +75,7 @@ export function NR1RhCockpit() {
         )}
 
         {campanha.status === 'success' && campanha.data && (
-          <Link to="/rh/nr1/campanha" className="mb-6 block rounded-lg border border-border bg-surface p-5 transition-colors hover:bg-surface-hover">
+          <Link to={`/rh/nr1/campanha/${campanha.data.id}`} className="mb-6 block rounded-lg border border-border bg-surface p-5 transition-colors hover:bg-surface-hover">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-muted">Campanha em campo</span>
@@ -101,42 +108,27 @@ export function NR1RhCockpit() {
           </Link>
         )}
 
-        {/* Risco por dimensão */}
-        <section>
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="text-[15px] font-semibold text-ink">Risco por dimensão</h2>
-            <Link to="/rh/nr1/mapa-calor" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-primary hover:underline dark:text-primary-300">
-              Ver por área
-              <Icon icon="ph:arrow-right-bold" width={12} aria-hidden />
-            </Link>
-          </div>
+        {/* Risco por dimensão (macro) */}
+        <section className="mb-6">
+          <h2 className="mb-3 text-[15px] font-semibold text-ink">Risco por dimensão</h2>
 
           {(dimensoes.status === 'idle' || dimensoes.status === 'loading') && (
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}</div>
           )}
           {dimensoes.status === 'error' && <ErrorState message={dimensoes.message} onRetry={dimensoes.reload} />}
-          {dimensoes.status === 'success' && (
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {dimensoes.data.map((d) => {
-                const meta = NR1_DIMENSOES.find((x) => x.id === d.dimensaoId)
-                const st = NIVEL_RISCO[d.nivel]
-                return (
-                  <div key={d.dimensaoId} className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
-                    <Icon icon={meta?.icon ?? 'ph:list-bold'} width={18} className="text-primary dark:text-primary-300" aria-hidden />
-                    <p className="text-[12.5px] font-medium leading-snug text-ink">{meta?.nome}</p>
-                    <p className="text-[26px] font-bold leading-none tracking-[-0.02em] text-ink">{d.media.toFixed(1)}</p>
-                    <span className={`inline-flex w-fit items-center rounded-pill px-2 py-0.5 text-[11px] font-semibold ${st.cls}`}>
-                      {st.label}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+          {dimensoes.status === 'success' && <RiscoPorDimensaoGrid dimensoes={dimensoes.data} />}
           <p className="mt-2 text-[11px] text-ink-muted">
             Média de 1 a 5, onde 5 é a situação desejável. Áreas com menos de 4 respondentes
             não entram no cálculo.
           </p>
+        </section>
+
+        {/* Mapa de calor por área */}
+        <section>
+          <h2 className="mb-3 text-[15px] font-semibold text-ink">Mapa de calor por área</h2>
+          {(mapa.status === 'idle' || mapa.status === 'loading') && <Skeleton className="h-80 w-full rounded-lg" />}
+          {mapa.status === 'error' && <ErrorState message={mapa.message} onRetry={mapa.reload} />}
+          {mapa.status === 'success' && <MapaCalorTable linhas={mapa.data} />}
         </section>
 
         <div className="mt-6 flex gap-3 rounded-lg border border-border bg-surface-2 p-4">

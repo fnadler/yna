@@ -67,7 +67,7 @@ export function Ben31MeusDados() {
   ]
 
   return (
-    <div className="min-h-full bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
+    <div className="flex-1 bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
     <div className={`mx-auto ${PAGE_MAX_W} px-5 lg:px-8 pt-0 lg:pt-9 pb-8`}>
       <MobileTopBar />
       <PageHeader

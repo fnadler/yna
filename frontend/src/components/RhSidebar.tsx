@@ -79,7 +79,7 @@ export function RhSidebar({ items }: { items: RhNavItem[] }) {
             )}
             <NavLink
               to={item.to}
-              end={item.to === '/rh/home'}
+              end={item.to === '/rh/home' || item.to === '/rh/nr1'}
               className={({ isActive }) =>
                 `relative flex min-h-[44px] items-center gap-3 rounded-sm px-3 py-2.5 font-heading text-sm font-medium transition-colors ${
                   isActive

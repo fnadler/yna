@@ -7,7 +7,7 @@ interface Props {
   exitTo?: string
 }
 
-export function FocusLayout({ bgClass = 'bg-page', exitTo = '/bem-vindo' }: Props) {
+export function FocusLayout({ bgClass = 'bg-page', exitTo = '/despedida' }: Props) {
   const navigate = useNavigate()
 
   return (

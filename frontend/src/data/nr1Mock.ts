@@ -278,8 +278,12 @@ export const nr1Campanhas: Nr1Campanha[] = [
    Mapa de calor — média por dimensão × área
    ------------------------------------------------------------------ */
 
-/** Médias por departamento na ordem de NR1_DIMENSOES. */
-const MEDIAS: Record<string, number[]> = {
+/** Médias por departamento na ordem de NR1_DIMENSOES, uma tabela por campanha
+   — para que o resultado de cada campanha na tela de Campanhas seja o dela
+   mesma, não sempre o retrato mais recente. A tabela de 2025 é derivada da
+   de 2026 escalada pela razão das médias por dimensão já usadas em
+   `nr1Ciclos`, para as duas fontes nunca discordarem. */
+const MEDIAS_2026_1S: Record<string, number[]> = {
   'd-trading': [2.1, 2.6, 3.8, 2.4],
   'd-tech': [3.1, 3.6, 3.4, 2.9],
   'd-ops': [2.7, 3.2, 2.8, 3.3],
@@ -288,9 +292,30 @@ const MEDIAS: Record<string, number[]> = {
   'd-diretoria': [0, 0, 0, 0],
 }
 
-export const nr1MapaCalor = (): Nr1LinhaMapa[] =>
-  rhDepartamentos.map((d) => {
-    const respondentes = PARTICIPACAO.find((p) => p.id === d.id)?.respostas ?? 0
+const MEDIAS_2025_2S: Record<string, number[]> = {
+  'd-trading': [1.7, 2.3, 3.6, 2.1],
+  'd-tech': [2.6, 3.2, 3.2, 2.5],
+  'd-ops': [2.2, 2.8, 2.6, 2.9],
+  'd-compliance': [2.8, 3.4, 3.9, 3.1],
+  'd-rh': [3.2, 3.7, 3.8, 3.4],
+  'd-diretoria': [0, 0, 0, 0],
+}
+
+const MEDIAS_POR_CAMPANHA: Record<string, Record<string, number[]>> = {
+  'camp-2026-1s': MEDIAS_2026_1S,
+  'camp-2025-2s': MEDIAS_2025_2S,
+}
+
+/** Mapa de calor de uma campanha específica — por padrão, a campanha em
+   campo (ou a mais recente, se nenhuma estiver em campo). */
+export const nr1MapaCalor = (campanhaId?: string): Nr1LinhaMapa[] => {
+  const porId = campanhaId ? nr1Campanhas.find((c) => c.id === campanhaId) : undefined
+  const campanha = porId ?? nr1Campanhas.find((c) => c.status === 'em-campo') ?? nr1Campanhas[0]
+  const tabela = (campanha && MEDIAS_POR_CAMPANHA[campanha.id]) ?? MEDIAS_2026_1S
+  const participacao = campanha?.participacao ?? participacaoAreas()
+
+  return rhDepartamentos.map((d) => {
+    const respondentes = participacao.find((p) => p.departamentoId === d.id)?.respostas ?? 0
     const protegido = respondentes < NR1_PONTUACAO.kAnonimato
     return {
       departamentoId: d.id,
@@ -298,13 +323,14 @@ export const nr1MapaCalor = (): Nr1LinhaMapa[] =>
       respondentes,
       protegido,
       celulas: NR1_DIMENSOES.map((dim, i) => {
-        const media = MEDIAS[d.id]?.[i] ?? 0
+        const media = tabela[d.id]?.[i] ?? 0
         return protegido
           ? { dimensaoId: dim.id, media: null, nivel: null }
           : { dimensaoId: dim.id, media, nivel: nr1NivelPorMedia(media) }
       }),
     }
   })
+}
 
 /* ------------------------------------------------------------------
    Inventário de riscos para o PGR (RF-D01)
