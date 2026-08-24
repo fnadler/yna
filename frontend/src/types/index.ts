@@ -175,6 +175,46 @@ export interface MngEmpresa {
   funil: MngFunilConvites
 }
 
+/** Departamento de uma empresa cliente, na visão do Manager — cadastro
+   simples (só o nome), independente da árvore de departamentos que o
+   próprio RH mantém (`RhDepartamento`). */
+export interface MngDepartamentoEmpresa {
+  id: string
+  empresaId: string
+  nome: string
+}
+
+/** Contato de um responsável na empresa cliente — pessoa de referência,
+   não necessariamente alguém com acesso à plataforma (isso é `MngUsuarioRh`).
+   `departamento` é texto livre, não um vínculo com `MngDepartamentoEmpresa`. */
+export interface MngContatoEmpresa {
+  id: string
+  empresaId: string
+  nome: string
+  cargo: string
+  departamento: string
+  telefone: string
+  email: string
+}
+
+/** Perfil de acesso de um usuário à área de RH da plataforma. */
+export type MngUsuarioRhPerfil = 'master' | 'operador'
+
+/** Usuário que acessa a área de RH da empresa cliente — visão do Manager
+   sobre a equipe RH de uma empresa (equivalente, do lado do Manager, ao
+   que `RhUsuario`/`RH15Equipe.tsx` mostra do lado de dentro da empresa). */
+export interface MngUsuarioRh {
+  id: string
+  empresaId: string
+  nome: string
+  departamento: string
+  cargo: string
+  email: string
+  perfil: MngUsuarioRhPerfil
+  initials: string
+  palette: 'lavender' | 'pink' | 'yellow'
+}
+
 /** União de tipos de campo de formulário flexível — usada pelo item do
    instrumento NR-1 (`Nr1Item.tipoCampo`). Sem "de profissional" no nome:
    não há mais tipo de profissional neste produto. */

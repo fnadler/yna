@@ -1,6 +1,10 @@
-import type { MngGestor, MngEmpresa, MngContatoMaster, MngTicket, MngCockpit } from '../types'
+import type {
+  MngGestor, MngEmpresa, MngContatoMaster, MngTicket, MngCockpit,
+  MngDepartamentoEmpresa, MngContatoEmpresa, MngUsuarioRh,
+} from '../types'
 import {
   mngGestores, mngEmpresas, mngTickets, mngCockpit, MNG_TODAY,
+  mngDepartamentosEmpresa, mngContatosEmpresa, mngUsuariosRh,
 } from '../data/mngMock'
 
 /* Camada de serviços do Manager / Backoffice YNA — mockada, com latência
@@ -93,6 +97,58 @@ export const mngEmpresaService = {
     const e = mngEmpresas.find((x) => x.id === empresaId)
     if (e) e.csmId = gestorId
     return { ok: true }
+  },
+}
+
+/** Departamentos de uma empresa cliente — cadastro simples (só nome),
+   gerido pelo Manager na aba "Departamentos" do detalhe da empresa. */
+export const mngDepartamentoEmpresaService = {
+  /** Só leitura — quem cadastra/edita/exclui departamentos é o RH da
+     empresa (`rhDepartamentoService`, do lado de dentro); o Manager só
+     lista, para referenciar o nome nos droplists de Contatos e Usuários. */
+  list: async (empresaId: string): Promise<MngDepartamentoEmpresa[]> => {
+    await delay(rand(200, 400))
+    return mngDepartamentosEmpresa.filter((d) => d.empresaId === empresaId)
+  },
+}
+
+/** Contatos de responsáveis na empresa cliente — pessoas de referência,
+   não necessariamente usuárias da plataforma (ver `mngUsuarioRhService`). */
+export const mngContatoEmpresaService = {
+  list: async (empresaId: string): Promise<MngContatoEmpresa[]> => {
+    await delay(rand(200, 400))
+    return mngContatosEmpresa.filter((c) => c.empresaId === empresaId)
+  },
+  create: async (empresaId: string, p: Omit<MngContatoEmpresa, 'id' | 'empresaId'>): Promise<MngContatoEmpresa> => {
+    await delay(rand(300, 600))
+    const c: MngContatoEmpresa = { id: `mce-${Date.now()}`, empresaId, ...p }
+    mngContatosEmpresa.push(c)
+    return c
+  },
+  update: async (id: string, p: Omit<MngContatoEmpresa, 'id' | 'empresaId'>): Promise<{ ok: boolean }> => {
+    await delay(rand(300, 600))
+    const c = mngContatosEmpresa.find((x) => x.id === id)
+    if (!c) return { ok: false }
+    Object.assign(c, p)
+    return { ok: true }
+  },
+  remove: async (id: string): Promise<{ ok: boolean }> => {
+    await delay(rand(300, 600))
+    const i = mngContatosEmpresa.findIndex((x) => x.id === id)
+    if (i < 0) return { ok: false }
+    mngContatosEmpresa.splice(i, 1)
+    return { ok: true }
+  },
+}
+
+/** Usuários que acessam a área de RH da empresa cliente — visão do Manager
+   sobre a equipe RH de cada empresa (Master/Operador). Só leitura: quem
+   cadastra/edita/exclui é o próprio RH da empresa, não o Manager (mesmo
+   critério de `mngDepartamentoEmpresaService`). */
+export const mngUsuarioRhService = {
+  list: async (empresaId: string): Promise<MngUsuarioRh[]> => {
+    await delay(rand(200, 400))
+    return mngUsuariosRh.filter((u) => u.empresaId === empresaId)
   },
 }
 

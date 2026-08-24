@@ -5,6 +5,9 @@ import type {
   MngTicket,
   MngCockpit,
   MngNotificacao,
+  MngDepartamentoEmpresa,
+  MngContatoEmpresa,
+  MngUsuarioRh,
 } from '../types'
 
 /* Dados mockados do Manager / Backoffice YNA (Fluxo 4). Isolados dos demais
@@ -118,6 +121,75 @@ export const mngEmpresas: MngEmpresa[] = [
 export const EMPRESA_STATUS_LABEL: Record<MngEmpresa['status'], string> = {
   ativa: 'Ativo', bloqueada: 'Bloqueado', inativa: 'Inativo',
 }
+
+/* Departamentos, contatos e usuários RH por empresa (detalhe da empresa no
+   Manager, aba a aba) — populado para todas as empresas de `mngEmpresas`,
+   pra aba nunca aparecer vazia no protótipo. Os departamentos de 'e-1'
+   (BCP Securities) espelham os mesmos nomes de `rhDepartamentos`
+   (rhMock.ts) — a mesma empresa, duas pontas (Manager vê de fora, RH vê de
+   dentro); as demais empresas têm departamentos plausíveis pro segmento,
+   sem uma contraparte no lado RH (só existe mock de colaborador/dept. para
+   a empresa "logada", BCP Securities). Master de cada empresa (`masters`
+   em `mngEmpresas`) aparece tanto em Contatos quanto em Usuários (perfil
+   Master) — a mesma pessoa, dois registros, mesmo critério de 'e-1'/'e-3'. */
+export const mngDepartamentosEmpresa: MngDepartamentoEmpresa[] = [
+  // e-1 · BCP Securities (Serviços financeiros)
+  { id: 'mde-1', empresaId: 'e-1', nome: 'Trading & Mercados' },
+  { id: 'mde-2', empresaId: 'e-1', nome: 'Tecnologia' },
+  { id: 'mde-3', empresaId: 'e-1', nome: 'Operações' },
+  { id: 'mde-4', empresaId: 'e-1', nome: 'Compliance & Risco' },
+  { id: 'mde-5', empresaId: 'e-1', nome: 'Pessoas & DHO' },
+  // e-2 · Nova Vita (Saúde)
+  { id: 'mde-8', empresaId: 'e-2', nome: 'Assistencial' },
+  { id: 'mde-9', empresaId: 'e-2', nome: 'Administrativo' },
+  { id: 'mde-10', empresaId: 'e-2', nome: 'Pessoas & RH' },
+  // e-3 · Atlas (Engenharia)
+  { id: 'mde-6', empresaId: 'e-3', nome: 'Engenharia de Obras' },
+  { id: 'mde-7', empresaId: 'e-3', nome: 'Segurança do Trabalho' },
+  { id: 'mde-11', empresaId: 'e-3', nome: 'Pessoas & DHO' },
+  // e-4 · Orla (Varejo)
+  { id: 'mde-12', empresaId: 'e-4', nome: 'Loja & Vendas' },
+  { id: 'mde-13', empresaId: 'e-4', nome: 'Logística' },
+  { id: 'mde-14', empresaId: 'e-4', nome: 'Marketing' },
+  { id: 'mde-15', empresaId: 'e-4', nome: 'Pessoas & RH' },
+  // e-5 · Vértice Tech (Tecnologia)
+  { id: 'mde-16', empresaId: 'e-5', nome: 'Engenharia de Software' },
+  { id: 'mde-17', empresaId: 'e-5', nome: 'Produto' },
+  { id: 'mde-18', empresaId: 'e-5', nome: 'Customer Success' },
+  { id: 'mde-19', empresaId: 'e-5', nome: 'Pessoas & RH' },
+  // e-6 · Meridiano Log (Logística)
+  { id: 'mde-20', empresaId: 'e-6', nome: 'Operações Logísticas' },
+  { id: 'mde-21', empresaId: 'e-6', nome: 'Frota & Manutenção' },
+  { id: 'mde-22', empresaId: 'e-6', nome: 'Pessoas & DHO' },
+  // e-7 · Solaris (Energia)
+  { id: 'mde-23', empresaId: 'e-7', nome: 'Engenharia' },
+  { id: 'mde-24', empresaId: 'e-7', nome: 'Operações de Campo' },
+  { id: 'mde-25', empresaId: 'e-7', nome: 'Pessoas & RH' },
+]
+
+export const mngContatosEmpresa: MngContatoEmpresa[] = [
+  { id: 'mce-1', empresaId: 'e-1', nome: 'Camila Risi', cargo: 'Head de DHO', departamento: 'Pessoas & DHO', telefone: '(11) 98812-4431', email: 'camila.risi@bcpsecurities.com' },
+  { id: 'mce-2', empresaId: 'e-1', nome: 'Ricardo Alencar', cargo: 'Head de Trading', departamento: 'Trading & Mercados', telefone: '(11) 98221-5567', email: 'ricardo.alencar@bcpsecurities.com' },
+  { id: 'mce-4', empresaId: 'e-2', nome: 'Rafael Lopes', cargo: 'Coordenador de RH', departamento: 'Pessoas & RH', telefone: '(21) 99120-8890', email: 'rafael.lopes@novavita.com.br' },
+  { id: 'mce-3', empresaId: 'e-3', nome: 'Sandra Muniz', cargo: 'Gerente de DHO', departamento: 'Pessoas & DHO', telefone: '(11) 97654-2201', email: 'sandra.muniz@atlaseng.com.br' },
+  { id: 'mce-5', empresaId: 'e-4', nome: 'Diego Antunes', cargo: 'Gerente de RH', departamento: 'Pessoas & RH', telefone: '(11) 96543-1120', email: 'diego.antunes@orlavarejo.com.br' },
+  { id: 'mce-6', empresaId: 'e-5', nome: 'Helena Marques', cargo: 'Head de Pessoas', departamento: 'Pessoas & RH', telefone: '(11) 98330-7742', email: 'helena.marques@verticetech.com.br' },
+  { id: 'mce-7', empresaId: 'e-6', nome: 'Paulo Ferraz', cargo: 'Head de DHO', departamento: 'Pessoas & DHO', telefone: '(11) 99887-3320', email: 'paulo.ferraz@meridianolog.com.br' },
+  { id: 'mce-8', empresaId: 'e-7', nome: 'Renata Lima', cargo: 'Gerente de RH', departamento: 'Pessoas & RH', telefone: '(11) 98221-0099', email: 'renata.lima@solarisenergia.com.br' },
+]
+
+export const mngUsuariosRh: MngUsuarioRh[] = [
+  { id: 'mur-1', empresaId: 'e-1', nome: 'Camila Risi', departamento: 'Pessoas & DHO', cargo: 'Head de DHO', email: 'camila.risi@bcpsecurities.com', perfil: 'master', initials: 'CR', palette: 'lavender' },
+  { id: 'mur-2', empresaId: 'e-1', nome: 'Bruno Salgado', departamento: 'Pessoas & DHO', cargo: 'Analista de RH', email: 'bruno.salgado@bcpsecurities.com', perfil: 'operador', initials: 'BS', palette: 'pink' },
+  { id: 'mur-4', empresaId: 'e-2', nome: 'Rafael Lopes', departamento: 'Pessoas & RH', cargo: 'Coordenador de RH', email: 'rafael.lopes@novavita.com.br', perfil: 'master', initials: 'RL', palette: 'lavender' },
+  { id: 'mur-3', empresaId: 'e-3', nome: 'Sandra Muniz', departamento: 'Pessoas & DHO', cargo: 'Gerente de DHO', email: 'sandra.muniz@atlaseng.com.br', perfil: 'master', initials: 'SM', palette: 'yellow' },
+  { id: 'mur-5', empresaId: 'e-3', nome: 'Tiago Ramos', departamento: 'Segurança do Trabalho', cargo: 'Técnico de Segurança', email: 'tiago.ramos@atlaseng.com.br', perfil: 'operador', initials: 'TR', palette: 'pink' },
+  { id: 'mur-6', empresaId: 'e-4', nome: 'Diego Antunes', departamento: 'Pessoas & RH', cargo: 'Gerente de RH', email: 'diego.antunes@orlavarejo.com.br', perfil: 'master', initials: 'DA', palette: 'yellow' },
+  { id: 'mur-7', empresaId: 'e-5', nome: 'Helena Marques', departamento: 'Pessoas & RH', cargo: 'Head de Pessoas', email: 'helena.marques@verticetech.com.br', perfil: 'master', initials: 'HM', palette: 'lavender' },
+  { id: 'mur-8', empresaId: 'e-5', nome: 'Felipe Costa', departamento: 'Pessoas & RH', cargo: 'Analista de Pessoas', email: 'felipe.costa@verticetech.com.br', perfil: 'operador', initials: 'FC', palette: 'pink' },
+  { id: 'mur-9', empresaId: 'e-6', nome: 'Paulo Ferraz', departamento: 'Pessoas & DHO', cargo: 'Head de DHO', email: 'paulo.ferraz@meridianolog.com.br', perfil: 'master', initials: 'PF', palette: 'yellow' },
+  { id: 'mur-10', empresaId: 'e-7', nome: 'Renata Lima', departamento: 'Pessoas & RH', cargo: 'Gerente de RH', email: 'renata.lima@solarisenergia.com.br', perfil: 'master', initials: 'RL', palette: 'lavender' },
+]
 
 /* Segmentos de mercado das empresas (select de cadastro/edição). */
 export const SEGMENTOS = [

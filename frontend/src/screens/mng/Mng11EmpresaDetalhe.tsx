@@ -2,17 +2,24 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { MngTopBar } from '../../components/MngTopBar'
+import { Avatar } from '../../components/Avatar'
 import { Badge } from '../../components/Badge'
 import { Button } from '../../components/Button'
+import { Input } from '../../components/Input'
+import { Select } from '../../components/Select'
 import { Modal } from '../../components/Modal'
 import { Sheet } from '../../components/Sheet'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
 import { PAGE_MAX_W } from '../../lib/layout'
 import { useService } from '../../hooks/useService'
-import { mngEmpresaService } from '../../services/mng'
+import {
+  mngEmpresaService, mngDepartamentoEmpresaService, mngContatoEmpresaService, mngUsuarioRhService,
+} from '../../services/mng'
 import { EMPRESA_STATUS_LABEL, mngGestores, mngCsms, PLANOS, SEGMENTOS } from '../../data/mngMock'
-import type { MngEmpresa, MngContrato } from '../../types'
+import type {
+  MngEmpresa, MngContrato, MngContatoEmpresa, MngUsuarioRhPerfil,
+} from '../../types'
 
 const fmtData = (iso: string) => { const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}` }
 const diasEntre = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000)
@@ -30,6 +37,8 @@ function andamento(inicio: string, fim: string) {
 }
 const FILL: Record<'success' | 'warning' | 'danger', string> = { success: 'bg-success', warning: 'bg-warning', danger: 'bg-danger' }
 const TEXT: Record<'success' | 'warning' | 'danger', string> = { success: 'text-success-ink', warning: 'text-warning-ink', danger: 'text-danger-ink' }
+
+type AbaEmpresa = 'visao-geral' | 'departamentos' | 'contatos' | 'usuarios'
 
 const STATUS_TONE: Record<MngEmpresa['status'], 'success' | 'danger' | 'neutral'> = { ativa: 'success', bloqueada: 'danger', inativa: 'neutral' }
 const CONTRATO_TONE: Record<MngContrato['status'], 'success' | 'neutral' | 'danger'> = { vigente: 'success', encerrado: 'neutral', cancelado: 'danger' }
@@ -71,7 +80,15 @@ function Linha({ label, value }: { label: string; value: string }) {
   )
 }
 
+const ABAS: { valor: AbaEmpresa; label: string }[] = [
+  { valor: 'visao-geral', label: 'Visão geral' },
+  { valor: 'departamentos', label: 'Departamentos' },
+  { valor: 'contatos', label: 'Contatos' },
+  { valor: 'usuarios', label: 'Usuários' },
+]
+
 function EmpresaConteudo({ empresa, reload }: { empresa: MngEmpresa; reload: () => void }) {
+  const [aba, setAba] = useState<AbaEmpresa>('visao-geral')
   const [csmId, setCsmId] = useState(empresa.csmId)
   const [verHistorico, setVerHistorico] = useState(false)
   const [novoContrato, setNovoContrato] = useState(false)
@@ -110,6 +127,31 @@ function EmpresaConteudo({ empresa, reload }: { empresa: MngEmpresa; reload: () 
         </div>
       </div>
 
+      {/* Abas — Visão geral / Departamentos / Contatos / Usuários. Quatro
+         itens não cabem bem num `flex-1` igualmente dividido em mobile
+         ("Visão geral" quebra linha) — mesmo padrão de scroll horizontal
+         usado no seletor de ciclo do cockpit NR-1 para mais de 2-3 abas. */}
+      <div className="mb-6 flex gap-1 overflow-x-auto rounded-lg bg-surface-2 p-1" role="tablist" aria-label="Seções da empresa">
+        {ABAS.map((a) => (
+          <button
+            key={a.valor}
+            role="tab"
+            aria-selected={aba === a.valor}
+            onClick={() => setAba(a.valor)}
+            className={`shrink-0 whitespace-nowrap rounded-lg px-3.5 py-2.5 font-heading text-[13.5px] font-semibold transition-all sm:text-sm ${
+              aba === a.valor ? 'bg-surface text-ink shadow-xs' : 'text-ink-secondary hover:text-ink'
+            }`}
+          >
+            {a.label}
+          </button>
+        ))}
+      </div>
+
+      {aba === 'departamentos' && <AbaDepartamentos empresaId={empresa.id} />}
+      {aba === 'contatos' && <AbaContatos empresaId={empresa.id} />}
+      {aba === 'usuarios' && <AbaUsuarios empresaId={empresa.id} />}
+
+      {aba === 'visao-geral' && (
       <div className="lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 lg:items-start">
         {/* Coluna esquerda */}
         <div className="flex flex-col gap-6">
@@ -226,53 +268,31 @@ function EmpresaConteudo({ empresa, reload }: { empresa: MngEmpresa; reload: () 
             </div>
           )}
 
-          {/* Contatos: Master + CSM */}
+          {/* Relacionamento: CSM responsável da YNA (o contato do RH da
+             empresa saiu daqui — agora vive na aba "Contatos", mais
+             completa: cargo, departamento e telefone além de nome/e-mail). */}
           <section>
-            <h2 className="mb-3 text-[15px] font-semibold text-ink">Contatos</h2>
-            <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
-              {/* Master(s) */}
-              <div>
-                <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-muted">{empresa.masters.length > 1 ? 'Masters · RH da empresa' : 'Master · RH da empresa'}</p>
-                <div className="flex flex-col gap-3">
-                  {empresa.masters.map((m, i) => (
-                    <div key={i} className={i > 0 ? 'border-t border-border pt-3' : undefined}>
-                      <p className="text-[14px] font-semibold text-ink">{m.nome}</p>
-                      <a href={`mailto:${m.email}`} className="mt-1 flex items-center gap-1.5 text-[12.5px] text-primary hover:underline dark:text-primary-300">
-                        <Icon icon="ph:envelope-bold" width={13} aria-hidden /> {m.email}
-                      </a>
-                      {m.telefone && (
-                        <p className="mt-1 flex items-center gap-1.5 text-[12.5px] text-ink-secondary">
-                          <Icon icon="ph:phone-bold" width={13} className="text-ink-muted" aria-hidden /> {m.telefone}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
+            <h2 className="mb-3 text-[15px] font-semibold text-ink">Relacionamento</h2>
+            <div className="rounded-lg border border-border bg-surface p-4">
+              <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-muted">CSM responsável · YNA</p>
+              <div className="relative">
+                <Icon icon="ph:headset-bold" width={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-primary dark:text-primary-300" aria-hidden />
+                <select value={csmId} onChange={(e) => trocarCsm(e.target.value)}
+                  className="w-full appearance-none rounded border-[1.5px] border-border bg-surface py-2.5 pl-9 pr-8 text-sm font-medium text-ink outline-none focus:border-primary">
+                  {csms.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
+                </select>
+                <Icon icon="ph:caret-down-bold" width={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted" aria-hidden />
               </div>
-
-              <div className="border-t border-border" />
-
-              {/* CSM */}
-              <div>
-                <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-muted">CSM responsável · YNA</p>
-                <div className="relative">
-                  <Icon icon="ph:headset-bold" width={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-primary dark:text-primary-300" aria-hidden />
-                  <select value={csmId} onChange={(e) => trocarCsm(e.target.value)}
-                    className="w-full appearance-none rounded border-[1.5px] border-border bg-surface py-2.5 pl-9 pr-8 text-sm font-medium text-ink outline-none focus:border-primary">
-                    {csms.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
-                  </select>
-                  <Icon icon="ph:caret-down-bold" width={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted" aria-hidden />
-                </div>
-                {(() => { const csm = mngGestores.find((g) => g.id === csmId); return csm ? (
-                  <a href={`mailto:${csm.email}`} className="mt-2 flex items-center gap-1.5 text-[12.5px] text-primary hover:underline dark:text-primary-300">
-                    <Icon icon="ph:envelope-bold" width={13} aria-hidden /> {csm.email}
-                  </a>
-                ) : null })()}
-              </div>
+              {(() => { const csm = mngGestores.find((g) => g.id === csmId); return csm ? (
+                <a href={`mailto:${csm.email}`} className="mt-2 flex items-center gap-1.5 text-[12.5px] text-primary hover:underline dark:text-primary-300">
+                  <Icon icon="ph:envelope-bold" width={13} aria-hidden /> {csm.email}
+                </a>
+              ) : null })()}
             </div>
           </section>
         </div>
       </div>
+      )}
 
       {/* Modal: histórico de contratos */}
       <Modal open={verHistorico} title="Histórico de contratos" onClose={() => setVerHistorico(false)}>
@@ -461,6 +481,237 @@ function NovoContratoForm({ empresa, onClose, onSaved }: { empresa: MngEmpresa; 
         <Button variant="ghost" onClick={onClose}>Cancelar</Button>
         <Button iconLeft="ph:check-bold" disabled={!valido || salvando} onClick={salvar}>{salvando ? 'Criando…' : 'Criar contrato'}</Button>
       </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------
+   Aba Departamentos — só listagem. Quem cria/edita/exclui é o próprio RH
+   da empresa (RH14Departamentos.tsx, do lado de dentro) — o Manager só
+   acompanha, para poder referenciar o departamento nas abas Contatos e
+   Usuários (dropdown). Sem ações aqui de propósito.
+   ------------------------------------------------------------------ */
+function AbaDepartamentos({ empresaId }: { empresaId: string }) {
+  const deps = useService(() => mngDepartamentoEmpresaService.list(empresaId), [empresaId])
+
+  return (
+    <div className="mb-6">
+      <div className="mb-3">
+        <h2 className="text-[15px] font-semibold text-ink">Departamentos</h2>
+        <p className="mt-0.5 text-[12px] text-ink-secondary">Gerenciados pelo RH da empresa — o Manager só acompanha.</p>
+      </div>
+
+      {deps.status === 'loading' && (
+        <div className="flex flex-col gap-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-[64px] w-full rounded-lg" />)}</div>
+      )}
+      {deps.status === 'error' && <ErrorState message={deps.message} onRetry={deps.reload} />}
+      {deps.status === 'success' && deps.data.length === 0 && (
+        <p className="rounded-lg border border-dashed border-border bg-surface px-4 py-8 text-center text-[13px] text-ink-muted">
+          Nenhum departamento cadastrado ainda.
+        </p>
+      )}
+      {deps.status === 'success' && deps.data.length > 0 && (
+        <ul className="flex flex-col gap-2">
+          {deps.data.map((d) => (
+            <li key={d.id} className="flex items-center gap-3 rounded-lg border border-border bg-surface p-4">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary dark:text-primary-300">
+                <Icon icon="ph:buildings-bold" width={20} aria-hidden />
+              </span>
+              <p className="min-w-0 flex-1 truncate font-heading text-sm font-semibold text-ink">{d.nome}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+/** Opções de departamento para os droplists de Contatos e Usuários — a
+   mesma lista da aba Departamentos (gerenciada pelo RH), aqui só como
+   fonte de opções. `departamento` continua sendo o nome (string), não um
+   id: nenhuma das duas telas guarda um vínculo com `MngDepartamentoEmpresa`,
+   só reaproveita os nomes já cadastrados como valores possíveis. */
+function useDepartamentosOpcoes(empresaId: string) {
+  const deps = useService(() => mngDepartamentoEmpresaService.list(empresaId), [empresaId])
+  return { opcoes: deps.status === 'success' ? deps.data.map((d) => ({ value: d.nome, label: d.nome })) : [] }
+}
+
+/* ------------------------------------------------------------------
+   Aba Contatos — pessoas de referência na empresa cliente (não
+   necessariamente usuárias da plataforma — isso é a aba Usuários).
+   Departamento é droplist (`useDepartamentosOpcoes`, a mesma lista da aba
+   Departamentos); os demais campos são texto livre.
+   ------------------------------------------------------------------ */
+function AbaContatos({ empresaId }: { empresaId: string }) {
+  const contatos = useService(() => mngContatoEmpresaService.list(empresaId), [empresaId])
+  const [form, setForm] = useState<{ inicial?: MngContatoEmpresa } | null>(null)
+
+  const remover = (id: string) => { void mngContatoEmpresaService.remove(id).then(() => contatos.reload()) }
+
+  return (
+    <div className="mb-6">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-[15px] font-semibold text-ink">Contatos</h2>
+        <Button size="sm" iconLeft="ph:plus-bold" onClick={() => setForm({})}>Novo contato</Button>
+      </div>
+
+      {contatos.status === 'loading' && (
+        <div className="flex flex-col gap-2">{[0, 1].map((i) => <Skeleton key={i} className="h-[92px] w-full rounded-lg" />)}</div>
+      )}
+      {contatos.status === 'error' && <ErrorState message={contatos.message} onRetry={contatos.reload} />}
+      {contatos.status === 'success' && contatos.data.length === 0 && (
+        <p className="rounded-lg border border-dashed border-border bg-surface px-4 py-8 text-center text-[13px] text-ink-muted">
+          Nenhum contato cadastrado ainda.
+        </p>
+      )}
+      {contatos.status === 'success' && contatos.data.length > 0 && (
+        <ul className="flex flex-col gap-2">
+          {contatos.data.map((c) => (
+            <li key={c.id} className="flex items-start gap-3 rounded-lg border border-border bg-surface p-4">
+              <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary dark:text-primary-300">
+                <Icon icon="ph:address-book-bold" width={20} aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-heading text-sm font-semibold text-ink">{c.nome}</p>
+                <p className="truncate text-[12px] text-ink-secondary">{c.cargo}{c.cargo && c.departamento ? ' · ' : ''}{c.departamento}</p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <a href={`mailto:${c.email}`} className="flex items-center gap-1.5 text-[12px] text-primary hover:underline dark:text-primary-300">
+                    <Icon icon="ph:envelope-bold" width={12} aria-hidden /> {c.email}
+                  </a>
+                  {c.telefone && (
+                    <a href={`tel:${c.telefone}`} className="flex items-center gap-1.5 text-[12px] text-ink-secondary hover:text-ink">
+                      <Icon icon="ph:phone-bold" width={12} className="text-ink-muted" aria-hidden /> {c.telefone}
+                    </a>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setForm({ inicial: c })}
+                aria-label={`Editar ${c.nome}`}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-pill text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
+              >
+                <Icon icon="ph:pencil-simple-bold" width={16} aria-hidden />
+              </button>
+              <button
+                onClick={() => remover(c.id)}
+                aria-label={`Remover ${c.nome}`}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-pill text-ink-muted transition-colors hover:bg-danger-bg hover:text-danger"
+              >
+                <Icon icon="ph:trash-bold" width={16} aria-hidden />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Sheet open={form !== null} onClose={() => setForm(null)} title={form?.inicial ? 'Editar contato' : 'Novo contato'} icon="ph:address-book-bold" size="md">
+        {form && (
+          <ContatoForm
+            empresaId={empresaId}
+            inicial={form.inicial}
+            onClose={() => setForm(null)}
+            onSaved={() => { setForm(null); contatos.reload() }}
+          />
+        )}
+      </Sheet>
+    </div>
+  )
+}
+
+function ContatoForm({ empresaId, inicial, onClose, onSaved }: {
+  empresaId: string; inicial?: MngContatoEmpresa; onClose: () => void; onSaved: () => void
+}) {
+  const [nome, setNome] = useState(inicial?.nome ?? '')
+  const [cargo, setCargo] = useState(inicial?.cargo ?? '')
+  const [departamento, setDepartamento] = useState(inicial?.departamento ?? '')
+  const [telefone, setTelefone] = useState(inicial?.telefone ?? '')
+  const [email, setEmail] = useState(inicial?.email ?? '')
+  const [salvando, setSalvando] = useState(false)
+  const departamentos = useDepartamentosOpcoes(empresaId)
+
+  const valido = nome.trim().length > 1 && /\S+@\S+\.\S+/.test(email)
+
+  const salvar = async () => {
+    if (!valido) return
+    setSalvando(true)
+    const p = { nome: nome.trim(), cargo: cargo.trim(), departamento, telefone: telefone.trim(), email: email.trim() }
+    if (inicial) await mngContatoEmpresaService.update(inicial.id, p)
+    else await mngContatoEmpresaService.create(empresaId, p)
+    onSaved()
+  }
+
+  return (
+    <div className="flex flex-col gap-4 px-5 py-6 lg:px-6">
+      <Input label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Input label="Cargo" value={cargo} onChange={(e) => setCargo(e.target.value)} placeholder="Ex.: Head de DHO" />
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-semibold text-ink">Departamento</label>
+          <Select
+            value={departamento}
+            onChange={setDepartamento}
+            ariaLabel="Departamento"
+            options={departamentos.opcoes}
+            className={departamentos.opcoes.length === 0 ? 'pointer-events-none opacity-50' : undefined}
+          />
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Input label="Telefone" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(11) 98812-4431" />
+        <Input label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      </div>
+      <div className="mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+        <Button iconLeft="ph:check-bold" disabled={!valido || salvando} onClick={salvar}>
+          {salvando ? 'Salvando…' : inicial ? 'Salvar alterações' : 'Adicionar contato'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------
+   Aba Usuários — só listagem, mesmo critério da aba Departamentos:
+   quem acessa a área de RH da empresa (Master/Operador) é cadastrado
+   pelo próprio RH, não pelo Manager. Aqui só se acompanha quem tem
+   acesso e com qual perfil.
+   ------------------------------------------------------------------ */
+const PERFIL_RH_LABEL: Record<MngUsuarioRhPerfil, string> = { master: 'Master', operador: 'Operador' }
+
+function AbaUsuarios({ empresaId }: { empresaId: string }) {
+  const usuarios = useService(() => mngUsuarioRhService.list(empresaId), [empresaId])
+
+  return (
+    <div className="mb-6">
+      <div className="mb-3">
+        <h2 className="text-[15px] font-semibold text-ink">Usuários</h2>
+        <p className="mt-0.5 text-[12px] text-ink-secondary">Gerenciados pelo RH da empresa — o Manager só acompanha.</p>
+      </div>
+
+      {usuarios.status === 'loading' && (
+        <div className="flex flex-col gap-2">{[0, 1].map((i) => <Skeleton key={i} className="h-[72px] w-full rounded-lg" />)}</div>
+      )}
+      {usuarios.status === 'error' && <ErrorState message={usuarios.message} onRetry={usuarios.reload} />}
+      {usuarios.status === 'success' && usuarios.data.length === 0 && (
+        <p className="rounded-lg border border-dashed border-border bg-surface px-4 py-8 text-center text-[13px] text-ink-muted">
+          Nenhum usuário cadastrado ainda.
+        </p>
+      )}
+      {usuarios.status === 'success' && usuarios.data.length > 0 && (
+        <ul className="flex flex-col gap-2">
+          {usuarios.data.map((u) => (
+            <li key={u.id} className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3">
+              <Avatar initials={u.initials} size={40} palette={u.palette} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-heading text-sm font-semibold text-ink">{u.nome}</p>
+                <p className="truncate text-[12px] text-ink-secondary">{u.cargo}{u.cargo && u.departamento ? ' · ' : ''}{u.departamento}</p>
+                <p className="truncate text-[12px] text-ink-muted">{u.email}</p>
+              </div>
+              <Badge tone={u.perfil === 'master' ? 'primary' : 'neutral'} className="shrink-0">{PERFIL_RH_LABEL[u.perfil]}</Badge>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

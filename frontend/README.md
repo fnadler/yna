@@ -1065,6 +1065,80 @@ para converter.
       inventário/plano, não um retrato histórico daquele ciclo — não existe snapshot histórico de
       inventário no mock).
 
+33. **Detalhe da empresa no Manager (`Mng11EmpresaDetalhe.tsx`) ganhou abas: Visão geral,
+    Departamentos, Contatos e Usuários.** Antes era uma tela só, sem seções — o card "Contatos"
+    (Master do RH + CSM) foi o único ponto de contato de fora da empresa que existia. Reorganizado
+    em 4 abas (mesmo padrão de abas por `role="tablist"` do resto do app, mas em scroll horizontal
+    — `overflow-x-auto` + `shrink-0 whitespace-nowrap` em vez de `flex-1` — porque com 4 itens
+    "Visão geral" quebrava linha em 390px; esse é o padrão que o próprio cockpit NR-1 já usa
+    quando tem mais de 2-3 abas, ver `NR1RhCockpit.tsx`):
+    - **Visão geral**: o conteúdo que já existia (dados cadastrais, contrato, funil de convites,
+      colaboradores), com uma mudança: o card "Contatos" virou **"Relacionamento"** e perdeu o
+      bloco de Master(s) — mostra só o CSM responsável da YNA. O Master do RH da empresa não
+      desapareceu do produto, só saiu desse card específico: agora é só mais um registro na aba
+      Contatos (nome, cargo, departamento, telefone, e-mail — mais completo do que o antigo
+      Master, que só tinha nome/e-mail/telefone).
+    - **Departamentos**: cadastro simples (só o nome), mesmo espírito de `RH14Departamentos.tsx`
+      do lado do RH, mas escopado por empresa (`MngDepartamentoEmpresa.empresaId`) e com edição —
+      aquela tela só tinha criar/excluir, o `rename` do serviço existia sem UI. Aqui adicionar,
+      editar e excluir todos funcionam.
+    - **Contatos**: pessoas de referência na empresa cliente (nome, cargo, departamento, telefone,
+      e-mail) — não são necessariamente usuárias da plataforma, só um ponto de contato. **Nenhum
+      campo é lista suspensa, por pedido explícito** — inclusive "departamento", que é texto livre,
+      sem vínculo com a lista da aba Departamentos (evita o problema de excluir um departamento
+      "órfão" de contatos que ainda o referenciam — o app não teria como avisar disso, então a
+      opção mais simples foi não criar o vínculo).
+    - **Usuários**: quem acessa a área de RH da empresa na plataforma (nome, departamento, cargo,
+      e-mail, perfil). Departamento continua texto livre, mesmo critério da aba Contatos; "Perfil"
+      é a única lista suspensa das três abas novas — só 2 valores fixos (Master/Operador) e é uma
+      permissão da própria plataforma, não um dado institucional da empresa, então o motivo que
+      levou a evitar droplist em Contatos não se aplica aqui.
+    - Três serviços novos em `services/mng.ts` (`mngDepartamentoEmpresaService`,
+      `mngContatoEmpresaService`, `mngUsuarioRhService`), com `list(empresaId)` +
+      create/update/remove em Contatos e Usuários (ver correção no item 34 — Departamentos
+      acabou só leitura), seguindo o mesmo padrão de latência mockada (`delay(rand(min,max))`) dos
+      serviços já existentes. Sem confirmação antes de excluir — mesmo critério de
+      `RH14Departamentos.tsx`/`RH15Equipe.tsx`, que também excluem direto no clique do ícone de
+      lixeira.
+    - Populado para 'e-1' (BCP Securities) com os mesmos nomes de departamento de
+      `rhDepartamentos` (`data/rhMock.ts`) — a mesma empresa, visão de fora (Manager) e de dentro
+      (RH) batendo.
+
+34. **Correção do item 33: Departamentos passou a ser só listagem, e Contatos/Usuários passaram a
+    referenciar essa lista num droplist, em vez de texto livre.**
+    - **Departamentos**: quem cadastra, edita e exclui é o RH da empresa (`RH14Departamentos.tsx`,
+      de dentro da própria empresa) — o Manager só acompanha. `create`/`rename`/`remove` saíram de
+      `mngDepartamentoEmpresaService` (ficou só `list`), e a aba perdeu o botão "Novo departamento"
+      e os ícones de editar/excluir por linha — agora é uma lista simples, com uma frase explicando
+      quem gerencia.
+    - **Contatos e Usuários**: o campo "Departamento", antes um `Input` de texto livre, virou um
+      `Select` com as opções vindas de `mngDepartamentoEmpresaService.list(empresaId)` — os mesmos
+      departamentos que aparecem na aba Departamentos. Um hook pequeno,
+      `useDepartamentosOpcoes(empresaId)`, busca essa lista e monta as opções do `Select`
+      (`value`/`label` = o nome do departamento); usado em `ContatoForm` (o formulário de
+      Usuários que também usava esse hook saiu no item 35, que removeu o cadastro de usuários).
+    - O campo continua guardando o **nome** do departamento como string simples (não um id/vínculo
+      com `MngDepartamentoEmpresa`) — só a UI de entrada mudou de texto livre pra droplist restrito
+      às opções existentes; o modelo de dados de `MngContatoEmpresa`/`MngUsuarioRh` não mudou.
+    - "Perfil" (Usuários) segue como estava: droplist de 2 valores fixos, sem relação com esta
+      mudança.
+
+35. **Usuários também virou só listagem (mesmo critério de Departamentos, item 34), e as três abas
+    novas (Departamentos/Contatos/Usuários) ganharam dados de exemplo para todas as 7 empresas do
+    mock, não só BCP Securities e Atlas.**
+    - `mngUsuarioRhService` perdeu `create`/`update`/`remove` (ficou só `list`, igual
+      `mngDepartamentoEmpresaService`) — quem cadastra/edita/exclui usuários com acesso à área de
+      RH é o próprio RH da empresa, não o Manager. A aba perdeu o botão "Novo usuário" e os ícones
+      de editar/excluir; ganhou a mesma frase da aba Departamentos explicando quem gerencia.
+      `UsuarioRhForm` foi removido (não tem mais chamador).
+    - **Dados de exemplo em `data/mngMock.ts`** para as 5 empresas que só tinham a aba vazia antes
+      (Nova Vita, Orla, Vértice Tech, Meridiano Log, Solaris): departamentos plausíveis pro
+      segmento de cada uma (ex.: "Assistencial"/"Administrativo" na Nova Vita, que é de Saúde;
+      "Loja & Vendas"/"Logística"/"Marketing" na Orla, que é Varejo), e o Master de cada empresa
+      (já existente em `MngEmpresa.masters`) replicado como um registro em Contatos e outro em
+      Usuários (perfil Master) — mesmo critério que 'e-1'/'e-3' já seguiam. Um par adicional de
+      usuário Operador em três das cinco, só pra mostrar as duas variações de perfil no protótipo.
+
 ---
 
 ## O que está mockado e como trocar
@@ -1074,6 +1148,7 @@ para converter.
 | Validação de convite do colaborador | `inviteService.validate` | `GET /invites/:token` |
 | Colaboradores, departamentos, equipe RH, convites | `data/rhMock.ts` via `services/rh.ts` | Endpoints REST do RH (mesma assinatura) |
 | Empresas clientes, suporte, gestores YNA, cockpit | `data/mngMock.ts` via `services/mng.ts` | Endpoints REST do backoffice |
+| Departamentos e usuários RH de uma empresa, só leitura; contatos, CRUD completo (aba a aba no detalhe da empresa no Manager) | `mngDepartamentoEmpresaService`/`mngUsuarioRhService` (só `list`) / `mngContatoEmpresaService` (CRUD completo), arrays em `data/mngMock.ts` filtrados por `empresaId` | `GET /mng/empresas/:id/{departamentos,usuarios}`; `GET/POST/PATCH/DELETE /mng/empresas/:id/contatos` |
 | Modelos e versões do questionário NR-1 | `nr1Modelos` em `data/nr1Mock.ts` via `nr1ModeloService` | `GET/POST /nr1/modelos`, `/nr1/modelos/:id/versoes` |
 | Campanha NR-1 e participação por área | `nr1Campanhas` via `nr1CampanhaService` | `GET /nr1/campanhas`, `POST /nr1/campanhas/:id/lembretes` |
 | Mapa de calor e médias por dimensão, por campanha | `nr1ResultadoService.mapaCalor(campanhaId?)` / `mediaPorDimensao(campanhaId?)` | `GET /nr1/campanhas/:id/mapa-calor` — **o k-anonimato deve ser aplicado no servidor**, não na tela |
