@@ -23,7 +23,7 @@ export function Ben01Convite() {
         setSessaoToken(token)
         setTimeout(() => {
           setStatus('valid')
-          navigate('/sigilo', { replace: true })
+          navigate('/bem-vindo', { replace: true })
         }, 500)
       } else {
         setErrorType(result.expired ? 'expired' : result.used ? 'used' : 'invalid')

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { RhTopBar } from '../../components/RhTopBar'
 import { PageHeader } from '../../components/PageHeader'
@@ -53,12 +52,7 @@ export function NR1RhKit() {
       <div className={`mx-auto ${PAGE_MAX_W} px-5 lg:px-8 pt-0 lg:pt-9 pb-10`}>
         <RhTopBar />
 
-        <Link to="/rh/nr1" className="mt-2 mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-secondary transition-colors hover:text-ink lg:mt-0">
-          <Icon icon="ph:arrow-left-bold" width={14} aria-hidden />
-          Conformidade NR-1
-        </Link>
-
-        <PageHeader title="Kit de comunicação" subtitle="Materiais prontos para convidar o time a participar." />
+        <PageHeader className="mt-2 lg:mt-0" title="Kit de comunicação" subtitle="Materiais prontos para convidar o time a participar." />
 
         {(materiais.status === 'idle' || materiais.status === 'loading') && (
           <div className="flex flex-col gap-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}</div>

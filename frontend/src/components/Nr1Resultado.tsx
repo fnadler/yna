@@ -5,27 +5,42 @@ import { NR1_DIMENSOES, NR1_PONTUACAO, nr1NivelPorMedia } from '../data/nr1Mock'
 import type { Nr1LinhaMapa, Nr1DimensaoId } from '../types'
 
 /* Peças de resultado do módulo de Conformidade NR-1, compartilhadas entre a
-   Visão geral (`/rh/nr1`, sempre a campanha em campo) e a aba "Resultado" de
-   uma campanha específica (`/rh/nr1/campanha/:id`) — mesmo visual em
-   qualquer um dos dois lugares onde o risco (macro e por área) aparece. */
+   Visão geral (`/rh/nr1`, sempre o ciclo em campo) e a aba "Resultado" de
+   um ciclo específico (`/rh/nr1/ciclos/:id`) — mesmo visual em qualquer um
+   dos dois lugares onde o risco (macro e por área) aparece. */
 
 type DimensaoMedia = { dimensaoId: Nr1DimensaoId; nome: string; media: number; nivel: ReturnType<typeof nr1NivelPorMedia> }
 
-/** Risco por dimensão (macro) — grade de 4 cards. */
-export function RiscoPorDimensaoGrid({ dimensoes }: { dimensoes: DimensaoMedia[] }) {
+/** Risco por dimensão (macro) — grade de 4 cards. Clicável quando
+   `onClickDimensao` é passado: abre a lista de perguntas daquela dimensão,
+   na visão da empresa inteira (quem chama decide o escopo). */
+export function RiscoPorDimensaoGrid({ dimensoes, onClickDimensao }: { dimensoes: DimensaoMedia[]; onClickDimensao?: (dimensaoId: Nr1DimensaoId) => void }) {
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {dimensoes.map((d) => {
         const meta = NR1_DIMENSOES.find((x) => x.id === d.dimensaoId)
         const st = NIVEL_RISCO[d.nivel]
-        return (
-          <div key={d.dimensaoId} className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+        const conteudo = (
+          <>
             <Icon icon={meta?.icon ?? 'ph:list-bold'} width={18} className="text-primary dark:text-primary-300" aria-hidden />
             <p className="text-[12.5px] font-medium leading-snug text-ink">{meta?.nome}</p>
             <p className="text-[26px] font-bold leading-none tracking-[-0.02em] text-ink">{d.media.toFixed(1)}</p>
             <span className={`inline-flex w-fit items-center rounded-pill px-2 py-0.5 text-[11px] font-semibold ${st.cls}`}>
               {st.label}
             </span>
+          </>
+        )
+        return onClickDimensao ? (
+          <button
+            key={d.dimensaoId}
+            onClick={() => onClickDimensao(d.dimensaoId)}
+            className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
+          >
+            {conteudo}
+          </button>
+        ) : (
+          <div key={d.dimensaoId} className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+            {conteudo}
           </div>
         )
       })}
@@ -33,8 +48,14 @@ export function RiscoPorDimensaoGrid({ dimensoes }: { dimensoes: DimensaoMedia[]
   )
 }
 
-/** Mapa de calor por dimensão × área, com legenda e nota de anonimato. */
-export function MapaCalorTable({ linhas }: { linhas: Nr1LinhaMapa[] }) {
+/** Mapa de calor por dimensão × área, com legenda e nota de anonimato.
+   Célula clicável quando `onClickCelula` é passado: abre a lista de
+   perguntas daquela dimensão, na visão da área da linha (nunca de uma
+   linha protegida — essas nem chegam a renderizar célula por dimensão). */
+export function MapaCalorTable({ linhas, onClickCelula }: {
+  linhas: Nr1LinhaMapa[]
+  onClickCelula?: (dimensaoId: Nr1DimensaoId, departamentoId: string, departamento: string) => void
+}) {
   const K = NR1_PONTUACAO.kAnonimato
   const protegidas = linhas.filter((l) => l.protegido)
 
@@ -74,12 +95,26 @@ export function MapaCalorTable({ linhas }: { linhas: Nr1LinhaMapa[] }) {
                 ) : (
                   l.celulas.map((c) => {
                     const st = c.nivel ? NIVEL_RISCO[c.nivel] : NIVEL_PROTEGIDO
+                    const conteudo = (
+                      <>
+                        <span className="font-mono text-[15px] font-bold leading-none">{c.media?.toFixed(1) ?? '—'}</span>
+                        <span className="text-[10.5px] font-semibold leading-none">{st.label}</span>
+                      </>
+                    )
                     return (
                       <td key={c.dimensaoId} className="px-2 py-2 text-center">
-                        <span className={`flex min-h-[52px] min-w-[64px] flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1 ${st.cls}`}>
-                          <span className="font-mono text-[15px] font-bold leading-none">{c.media?.toFixed(1) ?? '—'}</span>
-                          <span className="text-[10.5px] font-semibold leading-none">{st.label}</span>
-                        </span>
+                        {onClickCelula ? (
+                          <button
+                            onClick={() => onClickCelula(c.dimensaoId, l.departamentoId, l.departamento)}
+                            className={`flex min-h-[52px] w-full min-w-[64px] flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1 transition-transform hover:scale-[1.03] ${st.cls}`}
+                          >
+                            {conteudo}
+                          </button>
+                        ) : (
+                          <span className={`flex min-h-[52px] min-w-[64px] flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1 ${st.cls}`}>
+                            {conteudo}
+                          </span>
+                        )}
                       </td>
                     )
                   })

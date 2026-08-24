@@ -53,7 +53,7 @@ export function NR1RhRelatorio() {
 
   const riscos = inventario.status === 'success' ? inventario.data : []
   const listaAcoes = acoes.status === 'success' ? acoes.data : []
-  const comEvidencia = listaAcoes.filter((a) => a.evidencias.length > 0).length
+  const comEvidencia = listaAcoes.filter((a) => a.comentarios.some((c) => c.arquivos && c.arquivos.length > 0)).length
   const semAcao = riscos.filter((r) => !listaAcoes.some((a) => a.riscoId === r.id))
 
   return (
@@ -61,12 +61,8 @@ export function NR1RhRelatorio() {
       <div className={`mx-auto ${PAGE_MAX_W} px-5 lg:px-8 pt-0 lg:pt-9 pb-10`}>
         <RhTopBar />
 
-        <Link to="/rh/nr1" className="mt-2 mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-secondary transition-colors hover:text-ink lg:mt-0">
-          <Icon icon="ph:arrow-left-bold" width={14} aria-hidden />
-          Conformidade NR-1
-        </Link>
-
         <PageHeader
+          className="mt-2 lg:mt-0"
           title="Relatório de gestão"
           subtitle="A visão executiva e a trilha que sustenta a conformidade."
           action={

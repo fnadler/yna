@@ -38,9 +38,9 @@ export function RH17Mais() {
       titulo: 'Conformidade NR-1',
       items: [
         { icon: 'ph:squares-four-bold', label: 'Visão geral', to: '/rh/nr1' },
-        { icon: 'ph:calendar-check-bold', label: 'Campanhas', to: '/rh/nr1/campanha' },
+        { icon: 'ph:calendar-check-bold', label: 'Ciclos de avaliação', to: '/rh/nr1/ciclos' },
         { icon: 'ph:clipboard-text-bold', label: 'Inventário de riscos', to: '/rh/nr1/inventario' },
-        { icon: 'ph:list-checks-bold', label: 'Plano de ação', to: '/rh/nr1/plano-acao' },
+        { icon: 'ph:list-checks-bold', label: 'Planos de ação', to: '/rh/nr1/plano-acao' },
         { icon: 'ph:file-text-bold', label: 'Relatório e rastreabilidade', to: '/rh/nr1/relatorio' },
       ],
     },

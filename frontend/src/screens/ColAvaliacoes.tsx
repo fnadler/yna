@@ -12,8 +12,10 @@ import { useAvaliacaoAtiva } from '../hooks/useAvaliacaoAtiva'
    conteúdo próprio: é um portão que decide, a partir do mesmo estado que o
    NR1AvaliacaoCard usa (useAvaliacaoAtiva), para onde a pessoa vai —
 
-   - avaliação ativa e não respondida → segue direto para ela (/avaliacao/intro,
-     que já sabe retomar de onde parou);
+   - avaliação ativa e não respondida → segue direto para o questionário
+     (/avaliacao/1), sem tela de introdução própria: quem já tem conta já
+     passou pela apresentação e pelo sigilo num ciclo anterior, então não
+     há por que repetir aqueles argumentos de novo antes de cada reavaliação;
    - sem campanha em campo, ou já respondida → fica aqui, com um estado vazio
      explicando que as avaliações são periódicas e vão aparecer de novo.
 
@@ -23,7 +25,7 @@ export function ColAvaliacoes() {
   const { openNotifications, unread } = useOutletContext<AppLayoutContext>()
   const { status, ativa, message, reload } = useAvaliacaoAtiva()
 
-  if (status === 'success' && ativa) return <Navigate to="/avaliacao/intro" replace />
+  if (status === 'success' && ativa) return <Navigate to="/avaliacao/1" replace />
 
   return (
     <div className="flex-1 bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">

@@ -1,14 +1,17 @@
 import type {
   Nr1QuestionarioModelo, Nr1QuestionarioVersao, Nr1Campanha, Nr1LinhaMapa,
   Nr1RiscoInventario, Nr1Acao, Nr1Relato, Nr1Ciclo, Nr1ResponsavelTecnico,
-  Nr1MinhaAvaliacao, Nr1KitMaterial, Nr1Trilha, Nr1RelatoCategoria, Nr1Evidencia,
-  Nr1DimensaoId,
+  Nr1MinhaAvaliacao, Nr1KitMaterial, Nr1Trilha, Nr1RelatoCategoria, Nr1Comentario,
+  Nr1DimensaoId, Nr1RiscoCiclo, Nr1Severidade, Nr1NivelRisco, Nr1RiscoSugeridoLeitura,
 } from '../types'
 import {
   nr1Modelos, nr1Campanhas, nr1MapaCalor, nr1Inventario, nr1Acoes, nr1Relatos,
   nr1Ciclos, nr1ResponsavelTecnico, nr1MinhasAvaliacoes, nr1Kit, nr1DimensaoNome,
   nr1DimensoesBase, NR1_ESCALAS, NR1_PONTUACAO, NR1_TODAY, nr1NivelPorMedia,
+  nr1RiscosCiclos, RISCOS,
 } from '../data/nr1Mock'
+import { NR1_RISCOS_SUGERIDOS } from '../data/nr1RiscosSugeridosMock'
+import { nr1DistribuirPorItem, nr1NivelAtingeGatilho } from '../lib/nr1'
 
 /* Camada de serviços do Módulo de Conformidade NR-1 — mockada, com latência
    simulada. As assinaturas espelham a futura API REST; trocar o corpo por
@@ -239,6 +242,118 @@ export const nr1ResultadoService = {
     return nr1Inventario().sort((a, b) => b.nivelNum - a.nivelNum)
   },
 
+  /** Adiciona um risco ao inventário manualmente — por exemplo, identificado
+     por auditoria ou observação direta do SESMT, não pela pesquisa. Nasce
+     sem histórico de ciclos: `nr1Inventario()` computa status/tendência a
+     partir de `nr1RiscosCiclos`, que não tem pontos para um risco recém-
+     criado, então ele aparece como "Identificado", sem sugestão ainda. */
+  adicionarRisco: async (p: {
+    dimensaoId: Nr1DimensaoId
+    departamentoIds: string[]
+    fator: string
+    danos: string
+    probabilidade: number
+    severidade: Nr1Severidade
+    controles: string[]
+    /** Presente quando o cadastro vem da aba "Riscos sugeridos" — grava a
+       rastreabilidade de que este fator nasceu de uma leitura assistida do
+       questionário, não de auditoria/observação direta do SESMT. */
+    origemSugestaoId?: string
+  }): Promise<Nr1RiscoInventario> => {
+    await delay(rand(400, 700))
+    const id = `r-${RISCOS.length + 1}`
+    RISCOS.push({ id, ...p })
+    return nr1Inventario().find((r) => r.id === id)!
+  },
+
+  /** Histórico de um risco, ciclo a ciclo (nível, tendência, sugestão) — a
+     evolução de verdade, não só o último ponto que o card do inventário
+     mostra. Do mais antigo para o mais recente. */
+  riscoCiclos: async (riscoId: string): Promise<Nr1RiscoCiclo[]> => {
+    await delay(rand(250, 500))
+    return nr1RiscosCiclos.filter((c) => c.riscoId === riscoId)
+  },
+
+  /** Pontuação de cada pergunta de uma dimensão — de toda a empresa (sem
+     `departamentoId`) ou de uma área específica. Não existe resposta
+     individual por pergunta mockada: os valores são distribuídos de forma
+     determinística (`nr1DistribuirPorItem`) para que a média das perguntas
+     bata com a média já publicada — a mesma célula do mapa de calor ou o
+     mesmo card de "Risco por dimensão" que a pessoa clicou, nunca um
+     número à parte. */
+  itensPorDimensao: async (
+    campanhaId: string,
+    dimensaoId: Nr1DimensaoId,
+    departamentoId?: string,
+  ): Promise<{ itemId: string; texto: string; referencia: string; media: number; nivel: Nr1NivelRisco }[]> => {
+    await delay(rand(300, 600))
+    const campanha = nr1Campanhas.find((c) => c.id === campanhaId)
+    if (!campanha) return []
+    const modelo = nr1Modelos.find((m) => m.id === campanha.modeloId)
+    const versao = modelo?.versoes.find((v) => v.versao === campanha.versao)
+    const dimensao = versao?.dimensoes.find((d) => d.id === dimensaoId)
+    if (!dimensao || dimensao.itens.length === 0) return []
+
+    const linhas = nr1MapaCalor(campanhaId)
+    let media: number
+    if (departamentoId) {
+      const linha = linhas.find((l) => l.departamentoId === departamentoId)
+      media = linha?.celulas.find((c) => c.dimensaoId === dimensaoId)?.media ?? 3
+    } else {
+      const vals = linhas
+        .filter((l) => !l.protegido)
+        .map((l) => l.celulas.find((c) => c.dimensaoId === dimensaoId)?.media ?? 0)
+      media = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 3
+    }
+
+    const distrib = nr1DistribuirPorItem(
+      dimensao.itens.map((it) => it.id),
+      media,
+      `${campanhaId}-${dimensaoId}-${departamentoId ?? 'empresa'}`,
+    )
+    return dimensao.itens.map((it) => {
+      const d = distrib.find((x) => x.itemId === it.id)!
+      return { itemId: it.id, texto: it.texto, referencia: it.referencia, media: d.media, nivel: nr1NivelPorMedia(d.media) }
+    })
+  },
+
+  /** Leitura das 7 sugestões de risco psicossocial para um ciclo — ⚠️ é uma
+     TRIAGEM ASSISTIDA, nunca um diagnóstico automático (ver disclaimers em
+     `components/Nr1RiscosSugeridos.tsx`). `mediaEmpresa`/`nivelEmpresa` vêm
+     da mesma média que já aparece no "Risco por dimensão" do ciclo; os
+     departamentos envolvidos filtram as mesmas células do mapa de calor
+     (k-anonimato já aplicado) que atingem o gatilho da sugestão — nunca um
+     número à parte. Uma sugestão "dispara" tanto pela média da empresa
+     quanto por qualquer área isolada, porque um risco pode ser localizado
+     mesmo quando a média geral não preocupa. */
+  riscosSugeridos: async (campanhaId: string): Promise<Nr1RiscoSugeridoLeitura[]> => {
+    await delay(rand(350, 700))
+    const linhas = nr1MapaCalor(campanhaId).filter((l) => !l.protegido)
+    const inventario = nr1Inventario()
+
+    return NR1_RISCOS_SUGERIDOS.map((sugestao) => {
+      const vals = linhas.map((l) => l.celulas.find((c) => c.dimensaoId === sugestao.dimensaoId)?.media ?? 0)
+      const mediaEmpresa = vals.length ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1)) : 0
+      const nivelEmpresa = nr1NivelPorMedia(mediaEmpresa)
+
+      const departamentosEnvolvidos = linhas
+        .map((l) => {
+          const cel = l.celulas.find((c) => c.dimensaoId === sugestao.dimensaoId)
+          return cel?.media != null ? { departamentoId: l.departamentoId, departamento: l.departamento, media: cel.media, nivel: cel.nivel! } : null
+        })
+        .filter((d): d is NonNullable<typeof d> => d !== null)
+        .filter((d) => nr1NivelAtingeGatilho(d.nivel, sugestao.nivelGatilho))
+
+      const disparado = nr1NivelAtingeGatilho(nivelEmpresa, sugestao.nivelGatilho) || departamentosEnvolvidos.length > 0
+      const jaAdicionado = inventario.find((r) => r.origemSugestaoId === sugestao.id)
+
+      return {
+        sugestao, mediaEmpresa, nivelEmpresa, disparado, departamentosEnvolvidos,
+        jaNoInventario: !!jaAdicionado, riscoInventarioId: jaAdicionado?.id,
+      }
+    })
+  },
+
   /** Exportação do inventário para incorporação ao PGR (RF-D02). Mock: só
      confirma o "arquivo gerado" — a geração real é do backend. */
   exportarInventario: async (formato: 'pdf' | 'planilha'): Promise<{ ok: boolean; arquivo: string }> => {
@@ -282,12 +397,12 @@ export const nr1ResultadoService = {
           detalhe: `${a.quem} · prazo ${a.quando} · ${a.status}`,
           em: a.quando,
         })),
-        ...acoes.flatMap((a) => a.evidencias.map((e) => ({
+        ...acoes.flatMap((a) => a.comentarios.flatMap((c) => (c.arquivos ?? []).map((nome) => ({
           tipo: 'evidencia' as const,
-          titulo: `Evidência: ${e.nome}`,
-          detalhe: `Anexada à ação "${a.oQue}".`,
-          em: e.em,
-        }))),
+          titulo: `Evidência: ${nome}`,
+          detalhe: `Anexada à ação "${a.oQue}" por ${c.autor}.`,
+          em: c.em,
+        })))),
       ],
     }
   },
@@ -326,26 +441,81 @@ export const nr1AcaoService = {
     return saved
   },
 
-  /** Anexa a evidência de execução — o que a fiscalização verifica (RF-E02). */
-  anexarEvidencia: async (acaoId: string, nome: string): Promise<{ ok: boolean }> => {
+  /** Registra um comentário no diário de execução da ação — com ou sem
+     arquivo(s) anexado(s). Um comentário com arquivo conta como evidência
+     de execução (RF-E02); um comentário sem arquivo é só acompanhamento. */
+  comentar: async (acaoId: string, p: { autor: string; texto?: string; arquivos?: string[] }): Promise<{ ok: boolean; comentario?: Nr1Comentario }> => {
     await delay(rand(300, 600))
     const a = nr1Acoes.find((x) => x.id === acaoId)
     if (!a) return { ok: false }
-    const ev: Nr1Evidencia = { id: `ev-${acaoId}-${a.evidencias.length + 1}`, nome, em: NR1_TODAY }
-    a.evidencias.push(ev)
-    return { ok: true }
+    const comentario: Nr1Comentario = { id: `com-${acaoId}-${a.comentarios.length + 1}`, em: NR1_TODAY, ...p }
+    a.comentarios.push(comentario)
+    return { ok: true, comentario }
   },
 
   concluir: async (acaoId: string): Promise<{ ok: boolean; message?: string }> => {
     await delay(rand(300, 600))
     const a = nr1Acoes.find((x) => x.id === acaoId)
     if (!a) return { ok: false }
-    if (a.evidencias.length === 0) {
-      return { ok: false, message: 'Anexe ao menos uma evidência de execução antes de concluir a ação.' }
+    if (!a.comentarios.some((c) => c.arquivos && c.arquivos.length > 0)) {
+      return { ok: false, message: 'Anexe ao menos um arquivo de evidência (num comentário) antes de concluir a ação.' }
     }
     a.status = 'concluida'
     a.concluidaEm = NR1_TODAY
     return { ok: true }
+  },
+
+  /** A linhagem de versões de UMA ação — segue a cadeia real de
+     `versaoAnteriorId` a partir do id dado, da mais recente para a mais
+     antiga. Não é "toda ação deste risco": um risco pode ter várias ações
+     distintas, cada uma com sua própria linha de versões, e elas não se
+     misturam aqui. */
+  versoes: async (acaoId: string): Promise<Nr1Acao[]> => {
+    await delay(rand(250, 500))
+    const porId = new Map(nr1Acoes.map((a) => [a.id, a]))
+    const linhagem: Nr1Acao[] = []
+    let atual = porId.get(acaoId)
+    while (atual) {
+      linhagem.push(atual)
+      atual = atual.versaoAnteriorId ? porId.get(atual.versaoAnteriorId) : undefined
+    }
+    return linhagem
+  },
+
+  /** Marca a efetividade de uma versão — sempre um julgamento do RH/SST no
+     ciclo seguinte, nunca inferido automaticamente da variação do risco. */
+  avaliarEfetividade: async (acaoId: string, efetividade: Nr1Acao['efetividade']): Promise<{ ok: boolean }> => {
+    await delay(rand(250, 500))
+    const a = nr1Acoes.find((x) => x.id === acaoId)
+    if (!a) return { ok: false }
+    a.efetividade = efetividade
+    return { ok: true }
+  },
+
+  /** Cria uma nova versão do plano a partir da anterior. A versão anterior
+     nunca é editada nem apagada — vira histórico, com sua efetividade
+     preservada; a nova nasce com `versao` incrementada, `versaoAnteriorId`
+     e o motivo da revisão (RF-E01, rastreabilidade de mudança de plano). */
+  revisar: async (
+    acaoAnteriorId: string,
+    patch: Pick<Nr1Acao, 'oQue' | 'porQue' | 'quem' | 'quando' | 'onde' | 'como' | 'quanto'>,
+    motivoRevisao: string,
+  ): Promise<{ ok: boolean; acao?: Nr1Acao; message?: string }> => {
+    await delay(rand(350, 700))
+    const anterior = nr1Acoes.find((x) => x.id === acaoAnteriorId)
+    if (!anterior) return { ok: false, message: 'Versão anterior não encontrada.' }
+    const nova: Nr1Acao = {
+      ...patch,
+      id: `a-${nr1Acoes.length + 1}`,
+      riscoId: anterior.riscoId,
+      status: 'planejada',
+      comentarios: [],
+      versao: anterior.versao + 1,
+      versaoAnteriorId: anterior.id,
+      motivoRevisao,
+    }
+    nr1Acoes.push(nova)
+    return { ok: true, acao: nova }
   },
 }
 

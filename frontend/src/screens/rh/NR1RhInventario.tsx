@@ -1,19 +1,21 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { RhTopBar } from '../../components/RhTopBar'
 import { PageHeader } from '../../components/PageHeader'
 import { Button } from '../../components/Button'
+import { Badge } from '../../components/Badge'
 import { Sheet } from '../../components/Sheet'
 import { Modal } from '../../components/Modal'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
+import { Nr1AdicionarRiscoForm } from '../../components/Nr1AdicionarRiscoForm'
 import { PAGE_MAX_W } from '../../lib/layout'
-import { NIVEL_RISCO } from '../../lib/nr1'
+import { NIVEL_RISCO, STATUS_RISCO, ACAO_RECOMENDADA } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
 import { useRh } from '../../contexts/RhContext'
 import { nr1ResultadoService, nr1AcaoService } from '../../services/nr1'
-import type { Nr1RiscoInventario, Nr1Acao } from '../../types'
+import type { Nr1RiscoInventario, Nr1Acao, Nr1RiscoCiclo, Nr1Tendencia } from '../../types'
 
 /* NR1-RH-03 — Inventário de riscos psicossociais para o PGR (RF-D01/02/03).
 
@@ -22,15 +24,34 @@ import type { Nr1RiscoInventario, Nr1Acao } from '../../types'
    exposto, nível (probabilidade × severidade) e controles recomendados.
 
    A citação do instrumento (modelo + versão + protocolo) aparece no topo e vai
-   junto na exportação: sem ela o inventário não se sustenta em fiscalização. */
+   junto na exportação: sem ela o inventário não se sustenta em fiscalização.
+
+   "Adicionar risco" cobre o caso de um risco identificado fora da pesquisa
+   (auditoria, observação direta do SESMT) — nasce sem histórico de ciclos,
+   então aparece como "Identificado", sem tendência/sugestão ainda (essas só
+   existem a partir do 2º ciclo com dado, ver `nr1AnalisarEvolucao`). */
 
 export function NR1RhInventario() {
   const { instrumentoNr1 } = useRh()
+  const [params] = useSearchParams()
+  const detalheParam = params.get('detalhe')
   const inventario = useService(() => nr1ResultadoService.inventario(), [])
   const acoes = useService(() => nr1AcaoService.list(), [])
   const [detalhe, setDetalhe] = useState<Nr1RiscoInventario | null>(null)
+  const [novoRiscoOpen, setNovoRiscoOpen] = useState(false)
   const [exportando, setExportando] = useState<'pdf' | 'planilha' | null>(null)
   const [exportado, setExportado] = useState<string | null>(null)
+
+  /* Deep-link para abrir o detalhe de um risco específico direto (usado pela
+     coluna "Ação" do Plano de ação — clicar na dimensão/risco de uma ação
+     leva para aqui já com o detalhe aberto, em vez de deixar a pessoa achar
+     o risco na lista de novo). */
+  useEffect(() => {
+    if (!detalheParam || inventario.status !== 'success') return
+    const r = inventario.data.find((x) => x.id === detalheParam)
+    if (r) setDetalhe(r)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detalheParam, inventario.status])
 
   const exportar = async (formato: 'pdf' | 'planilha') => {
     setExportando(formato)
@@ -47,22 +68,23 @@ export function NR1RhInventario() {
       <div className={`mx-auto ${PAGE_MAX_W} px-5 lg:px-8 pt-0 lg:pt-9 pb-10`}>
         <RhTopBar />
 
-        <Link to="/rh/nr1" className="mt-2 mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-secondary transition-colors hover:text-ink lg:mt-0">
-          <Icon icon="ph:arrow-left-bold" width={14} aria-hidden />
-          Conformidade NR-1
-        </Link>
-
         <PageHeader
-          title="Inventário para o PGR"
+          className="mt-2 lg:mt-0"
+          title="Inventário de Riscos"
           subtitle="Os fatores de risco psicossocial, prontos para incorporar ao seu PGR."
           action={
-            <div className="hidden gap-2 sm:flex">
-              <Button variant="ghost" iconLeft="ph:file-xls-bold" disabled={exportando !== null} onClick={() => exportar('planilha')}>
-                {exportando === 'planilha' ? 'Gerando…' : 'Planilha'}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="primary" iconLeft="ph:plus-bold" onClick={() => setNovoRiscoOpen(true)}>
+                <span className="hidden sm:inline">Adicionar risco</span>
               </Button>
-              <Button variant="secondary" iconLeft="ph:file-pdf-bold" disabled={exportando !== null} onClick={() => exportar('pdf')}>
-                {exportando === 'pdf' ? 'Gerando…' : 'PDF'}
-              </Button>
+              <div className="hidden gap-2 sm:flex">
+                <Button variant="ghost" iconLeft="ph:file-xls-bold" disabled={exportando !== null} onClick={() => exportar('planilha')}>
+                  {exportando === 'planilha' ? 'Gerando…' : 'Planilha'}
+                </Button>
+                <Button variant="secondary" iconLeft="ph:file-pdf-bold" disabled={exportando !== null} onClick={() => exportar('pdf')}>
+                  {exportando === 'pdf' ? 'Gerando…' : 'PDF'}
+                </Button>
+              </div>
             </div>
           }
         />
@@ -117,12 +139,16 @@ export function NR1RhInventario() {
                       )}
                     </div>
 
+                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                      <EvolucaoBadges risco={r} />
+                    </div>
+
                     <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
                       <Button size="sm" variant="ghost" iconLeft="ph:eye-bold" onClick={() => setDetalhe(r)}>
                         Ver detalhe
                       </Button>
                       <Link to={`/rh/nr1/plano-acao?risco=${r.id}`}>
-                        <Button size="sm" variant="ghost" iconLeft="ph:plus-bold">
+                        <Button size="sm" variant="ghost" iconLeft={vinculadas.length > 0 ? 'ph:list-checks-bold' : 'ph:plus-bold'}>
                           {vinculadas.length > 0 ? 'Ver plano de ação' : 'Definir ação'}
                         </Button>
                       </Link>
@@ -157,6 +183,14 @@ export function NR1RhInventario() {
       {/* Detalhe do risco */}
       <Sheet open={detalhe !== null} onClose={() => setDetalhe(null)} title="Detalhe do risco" icon="ph:clipboard-text-bold" size="md">
         {detalhe && <RiscoDetalhe risco={detalhe} acoes={acoesDoRisco(detalhe.id)} />}
+      </Sheet>
+
+      {/* Adicionar risco */}
+      <Sheet open={novoRiscoOpen} onClose={() => setNovoRiscoOpen(false)} title="Adicionar risco" icon="ph:plus-bold" size="md">
+        <Nr1AdicionarRiscoForm
+          onClose={() => setNovoRiscoOpen(false)}
+          onSaved={() => { setNovoRiscoOpen(false); inventario.reload() }}
+        />
       </Sheet>
 
       <Modal open={exportado !== null} title="Arquivo gerado" onClose={() => setExportado(null)}>
@@ -201,6 +235,8 @@ function RiscoDetalhe({ risco, acoes }: { risco: Nr1RiscoInventario; acoes: Nr1A
           </div>
         </div>
       </div>
+
+      <EvolucaoHistorico riscoId={risco.id} />
 
       <div>
         <p className="mb-1.5 font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-muted">
@@ -248,3 +284,82 @@ function Campo({ label, children }: { label: string; children: React.ReactNode }
     </div>
   )
 }
+
+/* Status + tendência + sugestão do risco — sempre uma leitura calculada a
+   partir do histórico entre ciclos (ver nr1AnalisarEvolucao), nunca uma
+   conclusão. O card mostra a sugestão; quem decide o que fazer com ela é o
+   SST/RH. */
+function EvolucaoBadges({ risco }: { risco: Nr1RiscoInventario }) {
+  const st = STATUS_RISCO[risco.status]
+  return (
+    <>
+      <Badge tone={st.tone} icon={st.icon}>{st.label}</Badge>
+      {risco.tendencia && <TendenciaTag tendencia={risco.tendencia} variacaoPontos={risco.variacaoPontos} />}
+      {risco.acaoRecomendada && (
+        <span className="text-[11.5px] text-ink-secondary">
+          Sugestão: <span className="font-medium text-ink">{ACAO_RECOMENDADA[risco.acaoRecomendada].label}</span>
+        </span>
+      )}
+    </>
+  )
+}
+
+const TENDENCIA_VISUAL: Record<Nr1Tendencia, { icon: string; cls: string; label: string }> = {
+  melhorando: { icon: 'ph:trend-up-bold', cls: 'text-success-ink', label: 'Melhorando' },
+  estavel: { icon: 'ph:minus-bold', cls: 'text-ink-muted', label: 'Estável' },
+  piorando: { icon: 'ph:trend-down-bold', cls: 'text-danger-ink', label: 'Piorando' },
+}
+
+function TendenciaTag({ tendencia, variacaoPontos }: { tendencia: Nr1Tendencia; variacaoPontos?: number }) {
+  const v = TENDENCIA_VISUAL[tendencia]
+  return (
+    <span className={`inline-flex items-center gap-1 text-[11.5px] font-medium ${v.cls}`}>
+      <Icon icon={v.icon} width={13} aria-hidden />
+      {v.label}
+      {variacaoPontos !== undefined && ` (${variacaoPontos > 0 ? '+' : ''}${variacaoPontos.toFixed(1)})`}
+    </span>
+  )
+}
+
+/* Histórico ciclo a ciclo do risco — só aparece quando há 2+ pontos (antes
+   disso não há "evolução", só o primeiro registro). Cada ponto usa a MESMA
+   média/nível da célula correspondente no mapa de calor daquela campanha. */
+function EvolucaoHistorico({ riscoId }: { riscoId: string }) {
+  const historico = useService(() => nr1ResultadoService.riscoCiclos(riscoId), [riscoId])
+
+  if (historico.status !== 'success' || historico.data.length < 2) return null
+
+  return (
+    <div>
+      <p className="mb-1.5 font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-muted">
+        Evolução entre ciclos
+      </p>
+      <ul className="flex flex-col gap-1.5">
+        {historico.data.map((c: Nr1RiscoCiclo, i: number) => {
+          const st = NIVEL_RISCO[c.nivel]
+          return (
+            <li key={c.campanhaId} className="flex items-center justify-between gap-3 rounded-lg bg-surface-2 px-3.5 py-2.5">
+              <div className="min-w-0">
+                <p className="text-[12.5px] font-medium text-ink">{i + 1}º ciclo</p>
+                {c.acaoRecomendada && (
+                  <p className="mt-0.5 text-[11px] text-ink-secondary">Sugestão: {ACAO_RECOMENDADA[c.acaoRecomendada].label}</p>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {c.tendencia && <TendenciaTag tendencia={c.tendencia} variacaoPontos={c.variacaoPontos} />}
+                <span className={`rounded-pill px-2 py-0.5 font-mono text-[11px] font-semibold ${st.cls}`}>
+                  {c.media.toFixed(1)} · {st.label}
+                </span>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+/* O formulário "Adicionar risco" foi extraído para
+   `components/Nr1AdicionarRiscoForm.tsx` — reaproveitado também pela aba
+   "Riscos sugeridos" (`Nr1RiscosSugeridos.tsx`), com valores pré-preenchidos
+   a partir da leitura da sugestão. */

@@ -2,9 +2,10 @@ import type {
   Nr1QuestionarioModelo, Nr1QuestionarioVersao, Nr1Dimensao, Nr1Item, Nr1DimensaoId,
   Nr1EscalaConfig, Nr1PontuacaoConfig, Nr1NivelRisco, Nr1Campanha, Nr1LinhaMapa,
   Nr1RiscoInventario, Nr1Acao, Nr1Relato, Nr1Ciclo, Nr1ResponsavelTecnico,
-  Nr1MinhaAvaliacao, Nr1KitMaterial, Nr1Severidade,
+  Nr1MinhaAvaliacao, Nr1KitMaterial, Nr1Severidade, Nr1RiscoCiclo,
 } from '../types'
 import { rhDepartamentos, rhEmpresa } from './rhMock'
+import { nr1MontarHistoricoRisco } from '../lib/nr1'
 
 /* Dados mockados do Módulo de Conformidade NR-1.
 
@@ -336,15 +337,22 @@ export const nr1MapaCalor = (campanhaId?: string): Nr1LinhaMapa[] => {
    Inventário de riscos para o PGR (RF-D01)
    ------------------------------------------------------------------ */
 
-type RiscoSeed = {
-  id: string; dimensaoId: Nr1DimensaoId; departamentoId: string
+export type RiscoSeed = {
+  id: string; dimensaoId: Nr1DimensaoId; departamentoIds: string[]
   fator: string; danos: string; probabilidade: number; severidade: Nr1Severidade
   controles: string[]
+  /** Presente quando o risco nasceu da aba "Riscos sugeridos" (ver
+     `nr1RiscosSugeridosMock.ts`) — repassado a `Nr1RiscoInventario` via o
+     spread `...r` abaixo, sem lógica adicional aqui. */
+  origemSugestaoId?: string
 }
 
-const RISCOS: RiscoSeed[] = [
+/** Mutável de propósito: `nr1ResultadoService.adicionarRisco` empurra riscos
+   novos aqui, e `nr1Inventario()` já os inclui na próxima chamada (não há
+   cache — cada chamada remapeia `RISCOS` do zero). */
+export const RISCOS: RiscoSeed[] = [
   {
-    id: 'r-01', dimensaoId: 'organizacao', departamentoId: 'd-trading',
+    id: 'r-01', dimensaoId: 'organizacao', departamentoIds: ['d-trading'],
     fator: 'Ritmo de trabalho acelerado e prazos incompatíveis com a jornada, com baixa possibilidade de pausa durante o pregão.',
     danos: 'Fadiga crônica, esgotamento profissional (burnout), transtornos de ansiedade, erros operacionais por sobrecarga cognitiva.',
     probabilidade: 4, severidade: 4,
@@ -355,7 +363,7 @@ const RISCOS: RiscoSeed[] = [
     ],
   },
   {
-    id: 'r-02', dimensaoId: 'contexto', departamentoId: 'd-trading',
+    id: 'r-02', dimensaoId: 'contexto', departamentoIds: ['d-trading'],
     fator: 'Hiperconectividade: expectativa de disponibilidade fora do horário de trabalho em função da volatilidade de mercado.',
     danos: 'Privação de sono, dificuldade de recuperação, conflito trabalho-família, adoecimento mental.',
     probabilidade: 4, severidade: 3,
@@ -366,8 +374,8 @@ const RISCOS: RiscoSeed[] = [
     ],
   },
   {
-    id: 'r-03', dimensaoId: 'relacoes', departamentoId: 'd-trading',
-    fator: 'Tensão nas relações interpessoais e episódios de atrito recorrentes entre pares na operação.',
+    id: 'r-03', dimensaoId: 'relacoes', departamentoIds: ['d-trading', 'd-ops'],
+    fator: 'Tensão nas relações interpessoais e episódios de atrito recorrentes entre pares na operação, com reflexo direto na interface entre mesa e operações.',
     danos: 'Sofrimento psíquico, isolamento, absenteísmo, agravamento de quadros de ansiedade.',
     probabilidade: 3, severidade: 4,
     controles: [
@@ -377,7 +385,7 @@ const RISCOS: RiscoSeed[] = [
     ],
   },
   {
-    id: 'r-04', dimensaoId: 'contexto', departamentoId: 'd-tech',
+    id: 'r-04', dimensaoId: 'contexto', departamentoIds: ['d-tech'],
     fator: 'Isolamento percebido no trabalho remoto e híbrido, com baixa conexão com a equipe.',
     danos: 'Solidão, queda de engajamento, sintomas depressivos.',
     probabilidade: 3, severidade: 3,
@@ -387,7 +395,7 @@ const RISCOS: RiscoSeed[] = [
     ],
   },
   {
-    id: 'r-05', dimensaoId: 'ambiente', departamentoId: 'd-ops',
+    id: 'r-05', dimensaoId: 'ambiente', departamentoIds: ['d-ops'],
     fator: 'Instabilidade dos sistemas e insuficiência de recursos para a execução do trabalho.',
     danos: 'Frustração, estresse ocupacional, retrabalho e prolongamento de jornada.',
     probabilidade: 3, severidade: 2,
@@ -397,7 +405,7 @@ const RISCOS: RiscoSeed[] = [
     ],
   },
   {
-    id: 'r-06', dimensaoId: 'organizacao', departamentoId: 'd-ops',
+    id: 'r-06', dimensaoId: 'organizacao', departamentoIds: ['d-ops'],
     fator: 'Falta de clareza de papéis e responsabilidades após a reestruturação da área.',
     danos: 'Insegurança, conflito de demandas, sobrecarga percebida.',
     probabilidade: 3, severidade: 2,
@@ -408,18 +416,50 @@ const RISCOS: RiscoSeed[] = [
   },
 ]
 
+/** Ordem cronológica das campanhas — a mesma base do heatmap por campanha
+   (`MEDIAS_POR_CAMPANHA`), para o histórico de um risco nunca contar uma
+   história diferente da do mapa de calor daquela campanha. */
+const CAMPANHAS_CRONOLOGICAS = ['camp-2025-2s', 'camp-2026-1s']
+
+/** Histórico de cada risco do inventário, ciclo a ciclo — a média/nível vêm
+   da MESMA célula do mapa de calor (departamento × dimensão) da campanha em
+   questão, e a tendência/sugestão vêm de `nr1AnalisarEvolucao`. Nada aqui é
+   um número novo: é o dado que já existe, só lido na perspectiva do risco.
+
+   Quando o risco atravessa mais de um departamento (`departamentoIds` com
+   mais de um item), o ponto de cada ciclo é a média simples das células
+   daqueles departamentos naquela dimensão — mesmo espírito de
+   `mediaPorDimensao` (média das áreas, não um número à parte), só que
+   restrita aos departamentos do próprio risco em vez de todos. */
+export const nr1RiscosCiclos: Nr1RiscoCiclo[] = RISCOS.flatMap((r) => {
+  const dimIdx = NR1_DIMENSOES.findIndex((d) => d.id === r.dimensaoId)
+  const pontos = CAMPANHAS_CRONOLOGICAS.map((campanhaId) => {
+    const tabela = MEDIAS_POR_CAMPANHA[campanhaId] ?? MEDIAS_2026_1S
+    const vals = r.departamentoIds.map((depId) => tabela[depId]?.[dimIdx] ?? 0)
+    const media = vals.reduce((s, v) => s + v, 0) / vals.length
+    return { campanhaId, media, nivel: nr1NivelPorMedia(media) }
+  })
+  return nr1MontarHistoricoRisco(r.id, pontos)
+})
+
 export const nr1Inventario = (): Nr1RiscoInventario[] =>
   RISCOS.map((r) => {
-    const dep = rhDepartamentos.find((d) => d.id === r.departamentoId)
+    const deps = r.departamentoIds.map((id) => rhDepartamentos.find((d) => d.id === id))
     const nivelNum = r.probabilidade * r.severidade
+    const historico = nr1RiscosCiclos.filter((c) => c.riscoId === r.id)
+    const ultimo = historico[historico.length - 1]
     return {
       ...r,
       dimensao: nr1DimensaoNome(r.dimensaoId),
-      grupoExposto: dep?.nome ?? r.departamentoId,
-      respondentes: PARTICIPACAO.find((p) => p.id === r.departamentoId)?.respostas ?? 0,
+      grupoExposto: deps.map((d, i) => d?.nome ?? r.departamentoIds[i]).join(', '),
+      respondentes: r.departamentoIds.reduce((soma, id) => soma + (PARTICIPACAO.find((p) => p.id === id)?.respostas ?? 0), 0),
       nivelNum,
       nivel: nr1NivelPorProduto(nivelNum),
       campanhaId: 'camp-2026-1s',
+      status: ultimo?.status ?? 'identificado',
+      tendencia: ultimo?.tendencia,
+      variacaoPontos: ultimo?.variacaoPontos,
+      acaoRecomendada: ultimo?.acaoRecomendada,
     }
   })
 
@@ -447,7 +487,27 @@ export const nr1Acoes: Nr1Acao[] = [
     como: 'Escala de revezamento em dois blocos de 20 minutos, com cobertura cruzada entre duplas.',
     quanto: 'Sem custo direto, só reorganização de escala',
     status: 'em-andamento',
-    evidencias: [{ id: 'ev-01', nome: 'escala-revezamento-pregao-jul26.pdf', em: '2026-06-19' }],
+    comentarios: [
+      { id: 'com-01', autor: 'Ricardo Alencar', texto: 'Escala publicada e já rodando desde a semana passada.', arquivos: ['escala-revezamento-pregao-jul26.pdf'], em: '2026-06-19' },
+    ],
+    versao: 1,
+    /* O risco saiu de crítico para risco entre os dois ciclos — melhorou,
+       mas não o bastante para sair da faixa grave. Daí a v2 abaixo. */
+    efetividade: 'parcialmente-efetiva',
+  },
+  {
+    id: 'a-01-v2', riscoId: 'r-01',
+    oQue: 'Instituir pausa obrigatória escalonada + limitar concorrência de posições por trader',
+    porQue: 'A escala de pausas ajudou (crítico → risco no último ciclo), mas o risco ainda está na faixa grave — o ritmo em si segue alto.',
+    quem: 'Ricardo Alencar · Head de Trading',
+    quando: '2026-12-15', onde: 'Trading & Mercados',
+    como: 'Mantém a escala de revezamento da v1 e acrescenta um teto de posições simultâneas por trader nos horários de pico.',
+    quanto: 'Sem custo direto, só reorganização de escala e limites operacionais',
+    status: 'planejada',
+    comentarios: [],
+    versao: 2,
+    versaoAnteriorId: 'a-01',
+    motivoRevisao: 'Risco seguiu na faixa grave no ciclo mais recente (recomendação: revisar plano) — a v1 reduziu a intensidade, mas não o suficiente sozinha.',
   },
   {
     id: 'a-02', riscoId: 'r-01',
@@ -458,7 +518,8 @@ export const nr1Acoes: Nr1Acao[] = [
     como: 'Estudo de carga por faixa horária e proposta de duas contratações.',
     quanto: 'R$ 28.000/mês (estimativa)',
     status: 'planejada',
-    evidencias: [],
+    comentarios: [],
+    versao: 1,
   },
   {
     id: 'a-03', riscoId: 'r-02',
@@ -469,7 +530,8 @@ export const nr1Acoes: Nr1Acao[] = [
     como: 'Política aprovada pelo jurídico, comunicada por e-mail e treinamento de liderança.',
     quanto: 'Sem custo direto',
     status: 'atrasada',
-    evidencias: [],
+    comentarios: [],
+    versao: 1,
   },
   {
     id: 'a-04', riscoId: 'r-03',
@@ -480,7 +542,8 @@ export const nr1Acoes: Nr1Acao[] = [
     como: 'Trilha de 3 encontros com facilitação externa.',
     quanto: 'R$ 18.500',
     status: 'planejada',
-    evidencias: [],
+    comentarios: [],
+    versao: 1,
   },
   {
     id: 'a-05', riscoId: 'r-04',
@@ -492,10 +555,11 @@ export const nr1Acoes: Nr1Acao[] = [
     quanto: 'Sem custo direto',
     status: 'concluida',
     concluidaEm: '2026-06-12',
-    evidencias: [
-      { id: 'ev-02', nome: 'modelo-pauta-1a1.pdf', em: '2026-06-10' },
-      { id: 'ev-03', nome: 'print-agendas-recorrentes.png', em: '2026-06-12' },
+    comentarios: [
+      { id: 'com-02', autor: 'Marcos Tavares', texto: 'Modelo de pauta enviado para o time, todo mundo já está usando.', arquivos: ['modelo-pauta-1a1.pdf'], em: '2026-06-10' },
+      { id: 'com-03', autor: 'Marcos Tavares', texto: 'Prints confirmando as agendas recorrentes criadas para o time inteiro.', arquivos: ['print-agendas-recorrentes.png'], em: '2026-06-12' },
     ],
+    versao: 1,
   },
   {
     id: 'a-06', riscoId: 'r-05',
@@ -506,7 +570,8 @@ export const nr1Acoes: Nr1Acao[] = [
     como: 'Bloco fixo de capacidade por sprint para estabilidade.',
     quanto: 'Realocação de 15% da capacidade do time',
     status: 'em-andamento',
-    evidencias: [],
+    versao: 1,
+    comentarios: [],
   },
 ]
 

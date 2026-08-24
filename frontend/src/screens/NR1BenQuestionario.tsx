@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { Button } from '../components/Button'
@@ -9,7 +9,8 @@ import { ErrorState } from '../components/ErrorState'
 import { useService } from '../hooks/useService'
 import { useApp } from '../contexts/AppContext'
 import { nr1ColaboradorService } from '../services/nr1'
-import type { Nr1Item, Nr1QuestionarioVersao, Nr1EscalaConfig } from '../types'
+import { NR1_DIMENSOES } from '../data/nr1Mock'
+import type { Nr1Item, Nr1QuestionarioVersao, Nr1EscalaConfig, Nr1DimensaoId } from '../types'
 
 /* NR1-BEN-03 — Questionário renderizado dinamicamente a partir do
    modelo/versão atribuído à campanha (RF-A01, RF-CO-NR1-01).
@@ -24,11 +25,38 @@ import type { Nr1Item, Nr1QuestionarioVersao, Nr1EscalaConfig } from '../types'
    aplicável — não entra na média da dimensão. */
 const NAO_SE_APLICA = 'na'
 
+/** Destaca o nome da dimensão em negrito + gradiente, no mesmo padrão de
+   título das telas de apresentação/sigilo (`Ben00Apresentacao.tsx`,
+   `Ben03Lgpd.tsx`). Usa o `curto` já curado em `NR1_DIMENSOES` (o mesmo
+   texto dos eixos do radar/chips) como o trecho a destacar, sempre que ele
+   for de fato o prefixo do nome completo. */
+function tituloDimensao(nome: string, dimensaoId: Nr1DimensaoId) {
+  const curto = NR1_DIMENSOES.find((d) => d.id === dimensaoId)?.curto
+  if (!curto || !nome.startsWith(curto)) return nome
+  return (
+    <>
+      <span className="font-extrabold bg-yna-gradient-button bg-clip-text text-transparent">{curto}</span>
+      {nome.slice(curto.length)}
+    </>
+  )
+}
+
 export function NR1BenQuestionario() {
   const { passo } = useParams<{ passo: string }>()
   const navigate = useNavigate()
-  const { nr1, nr1Responder } = useApp()
+  const { nr1, nr1Responder, nr1Iniciar } = useApp()
   const instrumento = useService(() => nr1ColaboradorService.instrumentoDaCampanha(), [])
+
+  /* Mantém `nr1.campanhaId` sincronizado com a campanha que está de fato em
+     campo. No primeiro ciclo isso já vem setado desde o LGPD (`Ben03Lgpd`),
+     mas numa reavaliação (`ColAvaliacoes` manda direto para cá, sem passar
+     pelo LGPD de novo) esta é a única chance de trocar da campanha antiga
+     para a nova antes do envio em `NR1BenConclusao`. */
+  const campanhaAtivaId = instrumento.status === 'success' ? instrumento.data?.campanha.id : undefined
+  useEffect(() => {
+    if (campanhaAtivaId) nr1Iniciar(campanhaAtivaId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campanhaAtivaId])
 
   if (instrumento.status === 'idle' || instrumento.status === 'loading') {
     return (
@@ -103,6 +131,55 @@ function Wizard({ versao, passo, respostas, onResponder, campanhaId }: {
   const obrigatorios = itens.filter((i) => !i.condicional)
   const completo = atual.tipo === 'abertas' || obrigatorios.every((i) => respostas[i.id] !== undefined)
 
+  /* Quantas perguntas da dimensão já podem ser vistas: a primeira ainda não
+     respondida entra (é a que a pessoa está respondendo agora), e a lista
+     para aí — as próximas só aparecem depois. Numa pergunta condicional, o
+     botão "Não se aplica a mim" é o gatilho para destravar a próxima quando
+     ela não se aplica — ele grava um valor (`NAO_SE_APLICA`) como qualquer
+     outra resposta, então já entra na mesma verificação, sem regra especial.
+     (O botão "Continuar" da dimensão continua não exigindo essa resposta —
+     isso só importa quando há uma pergunta depois dela para destravar.)
+     Reabrir um passo já respondido antes recalcula isso já com tudo visível,
+     não reinicia a revelação do zero. */
+  const visiveis = useMemo(() => {
+    let n = 0
+    for (let i = 0; i < itens.length; i++) {
+      n = i + 1
+      if (respostas[itens[i]!.id] === undefined) break
+    }
+    return n
+  }, [itens, respostas])
+
+  /* Rola sozinho até a pergunta recém-liberada (ou até o botão de avançar,
+     quando a última pergunta da dimensão acaba de ser respondida) — assim a
+     pessoa nunca precisa procurar manualmente a próxima pergunta, e não tem
+     como "pular" uma sem querer, porque ela simplesmente ainda não existe na
+     tela. Guarda de `idx`: ao trocar de passo, só sincroniza as referências,
+     sem disparar rolagem (a rolagem para o topo do passo já é feita acima). */
+  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const continuarRef = useRef<HTMLDivElement | null>(null)
+  const ultimoIdxRef = useRef(idx)
+  const ultimoVisiveisRef = useRef(visiveis)
+  const ultimoCompletoRef = useRef(completo)
+
+  useEffect(() => {
+    const trocouDePasso = ultimoIdxRef.current !== idx
+    ultimoIdxRef.current = idx
+
+    if (!trocouDePasso) {
+      if (visiveis > ultimoVisiveisRef.current) {
+        const proximo = itens[visiveis - 1]
+        const alvo = proximo && itemRefs.current[proximo.id]
+        if (alvo) requestAnimationFrame(() => alvo.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+      } else if (!ultimoCompletoRef.current && completo) {
+        requestAnimationFrame(() => continuarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }))
+      }
+    }
+
+    ultimoVisiveisRef.current = visiveis
+    ultimoCompletoRef.current = completo
+  }, [idx, visiveis, completo, itens])
+
   const avancar = async () => {
     setSalvando(true)
     await nr1ColaboradorService.salvarParcial(campanhaId, respostas)
@@ -113,7 +190,7 @@ function Wizard({ versao, passo, respostas, onResponder, campanhaId }: {
 
   const voltar = () => {
     if (idx > 0) navigate(`/avaliacao/${numero - 1}`)
-    else navigate('/avaliacao/intro')
+    else navigate(-1)
   }
 
   return (
@@ -148,28 +225,52 @@ function Wizard({ versao, passo, respostas, onResponder, campanhaId }: {
           {atual.tipo === 'dimensao' ? (
             <>
               <h1 className="text-[24px] font-extralight leading-[1.15] tracking-[-0.02em] text-ink lg:text-[32px]">
-                {atual.dimensao.nome}
+                {tituloDimensao(atual.dimensao.nome, atual.dimensao.id)}
               </h1>
               <p className="mt-2 text-[14px] leading-relaxed text-ink-secondary">
                 Pensando nas últimas semanas, o quanto cada frase combina com o seu dia a dia?
               </p>
+              {numero === 1 && (
+                <p className="mt-3 flex items-start gap-2 text-[12.5px] leading-relaxed text-ink-muted">
+                  <Icon icon="ph:heart-bold" width={13} className="mt-0.5 shrink-0" aria-hidden />
+                  Leva cerca de 8 minutos. Não existe resposta certa aqui, só a sua, do jeito que tem sido de verdade.
+                </p>
+              )}
 
               <div className="mt-7 flex flex-col gap-4">
-                {itens.map((item) => (
-                  <ItemCard
+                {itens.slice(0, visiveis).map((item, i) => (
+                  <div
                     key={item.id}
-                    item={item}
-                    escalas={versao.escala}
-                    valor={respostas[item.id]}
-                    onChange={(v) => onResponder(item.id, v)}
-                  />
+                    ref={(el) => { itemRefs.current[item.id] = el }}
+                    className={i === visiveis - 1 ? 'animate-yna-slide-up' : undefined}
+                  >
+                    <ItemCard
+                      item={item}
+                      escalas={versao.escala}
+                      valor={respostas[item.id]}
+                      onChange={(v) => onResponder(item.id, v)}
+                    />
+                  </div>
                 ))}
+                {/* Ponta do próximo card, só para avisar que vem mais uma pergunta
+                   depois desta — sem revelar o conteúdo dela. */}
+                {visiveis < itens.length && (
+                  <div
+                    aria-hidden
+                    className="-mt-2 h-7 rounded-t-lg border border-b-0 border-border bg-surface"
+                    style={{
+                      maskImage: 'linear-gradient(to bottom, black, transparent)',
+                      WebkitMaskImage: 'linear-gradient(to bottom, black, transparent)',
+                    }}
+                  />
+                )}
               </div>
             </>
           ) : (
             <>
               <h1 className="text-[24px] font-extralight leading-[1.15] tracking-[-0.02em] text-ink lg:text-[32px]">
-                Quer contar mais alguma coisa?
+                Quer contar mais{' '}
+                <span className="font-extrabold bg-yna-gradient-button bg-clip-text text-transparent">alguma coisa?</span>
               </h1>
               <p className="mt-2 text-[14px] leading-relaxed text-ink-secondary">
                 Estas são opcionais. Escreva só se fizer sentido para você. Continua tudo anônimo.
@@ -198,7 +299,7 @@ function Wizard({ versao, passo, respostas, onResponder, campanhaId }: {
             </>
           )}
 
-          <div className="mt-9 flex flex-col gap-2 lg:hidden">
+          <div ref={continuarRef} className="mt-9 flex flex-col gap-2 lg:hidden">
             <Button size="lg" fullWidth iconRight="ph:arrow-right-bold" disabled={!completo || salvando} onClick={avancar}>
               {salvando ? 'Salvando…' : ultimo ? 'Finalizar' : 'Continuar'}
             </Button>
@@ -299,12 +400,14 @@ function ItemCard({ item, escalas, valor, onChange }: {
             <span>{escala.opcoes[0]?.rotulo}</span>
             <span>{escala.opcoes[escala.opcoes.length - 1]?.rotulo}</span>
           </div>
-          {/* Rótulo da opção escolhida — confirma a leitura sem depender da cor */}
-          {typeof valor === 'number' && (
-            <div className="mt-3 flex justify-center">
+          {/* Rótulo da opção escolhida — confirma a leitura sem depender da cor.
+             O espaço é sempre reservado (mesmo vazio) para o card não crescer
+             ao responder e empurrar o resto da tela para baixo. */}
+          <div className="mt-3 flex h-[26px] items-center justify-center">
+            {typeof valor === 'number' && (
               <Badge tone="primary">{escala.opcoes.find((o) => o.valor === valor)?.rotulo}</Badge>
-            </div>
-          )}
+            )}
+          </div>
         </>
       )}
 
@@ -335,13 +438,13 @@ function ItemCard({ item, escalas, valor, onChange }: {
           type="button"
           aria-pressed={naoSeAplica}
           onClick={() => onChange(naoSeAplica ? '' : NAO_SE_APLICA)}
-          className={`mt-3 inline-flex items-center gap-1.5 rounded-pill border-[1.5px] px-3 py-1.5 text-[12px] font-medium transition-colors ${
+          className={`mt-3 inline-flex items-center gap-2 rounded-pill border-[1.5px] px-4 py-2 text-[13px] font-semibold transition-colors ${
             naoSeAplica
               ? 'border-primary bg-primary-50 text-primary dark:text-primary-300'
-              : 'border-border text-ink-secondary hover:border-border-strong hover:text-ink'
+              : 'border-border-strong bg-surface-2 text-ink-secondary hover:border-primary hover:text-primary dark:hover:text-primary-300'
           }`}
         >
-          {naoSeAplica && <Icon icon="ph:check-bold" width={11} aria-hidden />}
+          <Icon icon={naoSeAplica ? 'ph:check-circle-bold' : 'ph:circle-dashed-bold'} width={15} aria-hidden />
           Não se aplica a mim
         </button>
       )}

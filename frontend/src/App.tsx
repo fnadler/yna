@@ -33,13 +33,14 @@ import { RH15Equipe } from './screens/rh/RH15Equipe'
 import { RH16Conta } from './screens/rh/RH16Conta'
 import { RH17Mais } from './screens/rh/RH17Mais'
 import { NR1RhCockpit } from './screens/rh/NR1RhCockpit'
-import { NR1RhCampanha } from './screens/rh/NR1RhCampanha'
 import { NR1RhInventario } from './screens/rh/NR1RhInventario'
 import { NR1RhPlanoAcao } from './screens/rh/NR1RhPlanoAcao'
 import { NR1RhRelatorio } from './screens/rh/NR1RhRelatorio'
 import { NR1RhCiclos } from './screens/rh/NR1RhCiclos'
 import { NR1RhCanal } from './screens/rh/NR1RhCanal'
 import { NR1RhKit } from './screens/rh/NR1RhKit'
+import { Ben00BemVindo } from './screens/Ben00BemVindo'
+import { Ben00Apresentacao } from './screens/Ben00Apresentacao'
 import { Ben01Convite } from './screens/Ben01Convite'
 import { Ben02LinkInvalido } from './screens/Ben02LinkInvalido'
 import { Ben03Lgpd } from './screens/Ben03Lgpd'
@@ -49,7 +50,6 @@ import { ColAvaliacoes } from './screens/ColAvaliacoes'
 import { Col05Apoio } from './screens/Col05Apoio'
 import { ColCriarConta } from './screens/ColCriarConta'
 import { Ben31MeusDados } from './screens/Ben31MeusDados'
-import { NR1BenIntro } from './screens/NR1BenIntro'
 import { NR1BenQuestionario } from './screens/NR1BenQuestionario'
 import { NR1BenConclusao } from './screens/NR1BenConclusao'
 import { NR1BenCanalEscuta } from './screens/NR1BenCanalEscuta'
@@ -89,6 +89,12 @@ export function App() {
               <Route path="/despedida" element={<Ben05Despedida />} />
             </Route>
 
+            {/* Apresentação da YNA — depois do convite validado, antes do
+                LGPD/sigilo. Full-bleed, layout/composição próprios (mesmo
+                padrão do RH00BemVindo/RH00Apresentacao). */}
+            <Route path="/bem-vindo" element={<Ben00BemVindo />} />
+            <Route path="/apresentacao/:passo" element={<Ben00Apresentacao />} />
+
             {/* Fluxo LGPD — gradient-soft como fundo de página */}
             <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" />}>
               <Route path="/sigilo" element={<Ben03Lgpd />} />
@@ -104,9 +110,17 @@ export function App() {
             {/* Avaliação psicossocial NR-1 — respondida ANTES da criação de conta,
                 ainda anônima/tokenizada (reforça que a resposta não é vinculada a
                 uma identidade). O colaborador nunca vê jargão de conformidade:
-                para ele isto é uma conversa sobre o ambiente de trabalho. */}
+                para ele isto é uma conversa sobre o ambiente de trabalho.
+
+                Não existe mais uma tela "/avaliacao/intro" própria: apresentação
+                (`/apresentacao`) e sigilo (`/sigilo`) já cobrem o consentimento e as
+                garantias de anonimato antes de chegar aqui, então uma terceira tela
+                repetindo os mesmos argumentos só antes do questionário virou
+                redundância. `ColTransicaoAvaliacao`/`ColAvaliacoes` mandam direto
+                para `/avaliacao/1`, e a reasseguração prática que só existia na
+                intro (duração, "não há resposta certa") migrou para dentro do
+                primeiro passo do próprio questionário. */}
             <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" exitTo="/despedida" />}>
-              <Route path="/avaliacao/intro" element={<NR1BenIntro />} />
               <Route path="/avaliacao/:passo" element={<NR1BenQuestionario />} />
               <Route path="/avaliacao/conta" element={<ColConviteConta />} />
             </Route>
@@ -164,12 +178,11 @@ export function App() {
                 {/* Cockpit de conformidade NR-1. O RH seleciona e aplica um
                     modelo/versão na campanha — nunca edita o questionário. */}
                 <Route path="/rh/nr1" element={<NR1RhCockpit />} />
-                <Route path="/rh/nr1/campanha" element={<NR1RhCampanha />} />
-                <Route path="/rh/nr1/campanha/:campanhaId" element={<NR1RhCampanha />} />
+                <Route path="/rh/nr1/ciclos" element={<NR1RhCiclos />} />
+                <Route path="/rh/nr1/ciclos/:campanhaId" element={<NR1RhCiclos />} />
                 <Route path="/rh/nr1/inventario" element={<NR1RhInventario />} />
                 <Route path="/rh/nr1/plano-acao" element={<NR1RhPlanoAcao />} />
                 <Route path="/rh/nr1/relatorio" element={<NR1RhRelatorio />} />
-                <Route path="/rh/nr1/ciclos" element={<NR1RhCiclos />} />
                 <Route path="/rh/nr1/canal" element={<NR1RhCanal />} />
                 <Route path="/rh/nr1/kit" element={<NR1RhKit />} />
 

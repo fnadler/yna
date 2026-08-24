@@ -6,8 +6,13 @@ import { Button } from '../components/Button'
 /* Transição pós-LGPD (mesmo modelo do RH05ContaCriada/antigo Ben08bTransicao).
    Fecha o ciclo de consentimento e abre o ciclo da avaliação: o colaborador
    sai do "aceite" com a confirmação de que aquilo que ele vai responder
-   agora é a base da avaliação de riscos psicossociais da empresa — sem
-   nomear "NR-1" (jargão de conformidade não é vocabulário do colaborador). */
+   agora é a base da avaliação de riscos psicossociais da empresa, sem
+   nomear "NR-1" (jargão de conformidade não é vocabulário do colaborador).
+
+   "Começar avaliação" leva direto para `/avaliacao/1`, sem passar por uma
+   tela de introdução própria: apresentação e sigilo já garantiram anonimato
+   e consentimento antes desta tela, então repetir os mesmos argumentos de
+   novo aqui só alongaria o fluxo sem acrescentar nada. */
 export function ColTransicaoAvaliacao() {
   const [phase, setPhase] = useState<'celebrating' | 'leaving' | 'content'>('celebrating')
   const navigate = useNavigate()
@@ -51,7 +56,7 @@ export function ColTransicaoAvaliacao() {
             </div>
 
             <div className="w-full animate-yna-slide-up animate-yna-delay-250">
-              <Button variant="gradient" size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/avaliacao/intro')}>
+              <Button variant="gradient" size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/avaliacao/1')}>
                 Começar avaliação
               </Button>
             </div>

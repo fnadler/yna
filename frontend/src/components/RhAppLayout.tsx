@@ -11,8 +11,8 @@ import type { NavItem } from './BottomNav'
    hub cheio de links (`NR1RhCockpit`) e virou uma seção própria de telas de
    primeira classe — mapeamento, planejamento e controle/rastreabilidade
    com peso equivalente na navegação, em vez de espremidos atrás de um único
-   painel. Ciclos e Kit viraram abas dentro de Relatório/Campanha (não somem,
-   só não ficam soltos no menu).
+   painel. Kit virou aba dentro de Ciclos (não some, só não fica solto no
+   menu).
 
    "Canal de escuta" saiu da sidebar (item fixo de navegação) por pedido
    explícito, mas a tela (`NR1RhCanal.tsx`, rota `/rh/nr1/canal`) continua
@@ -21,25 +21,41 @@ import type { NavItem } from './BottomNav'
    também não foi removida do produto.
 
    "Mapa de calor" também saiu da sidebar como item próprio — deixou de ser
-   uma tela isolada e passou a viver dentro de "Visão geral" (sempre a
-   campanha em campo) e na aba "Resultado" de cada campanha em "Campanhas"
-   (`NR1RhCampanha.tsx`, rota `/rh/nr1/campanha/:campanhaId`), que também
-   passou a listar todas as campanhas em vez de mostrar sempre só a ativa.
+   uma tela isolada e passou a viver dentro de "Visão geral" (sempre o ciclo
+   em campo) e na aba "Resultado" de cada ciclo em "Ciclos de avaliação".
+
+   "Campanhas" foi renomeada para "Ciclos de avaliação" e absorveu a antiga
+   tela "Ciclos e reavaliação" (comparação de dimensões entre campanhas, que
+   vivia sozinha em `/rh/nr1/ciclos`) — as duas eram a mesma pergunta em
+   dois lugares do menu. Agora é uma única tela (`NR1RhCiclos.tsx`, rota
+   `/rh/nr1/ciclos` → lista; `/rh/nr1/ciclos/:campanhaId` → detalhe com
+   abas Engajamento/Resultado) que lista todos os ciclos, não só o ativo.
 
    A bottom-nav (mobile) é limitada a 5 itens; as demais seções ficam
-   acessíveis pelo item "Mais". */
+   acessíveis pelo item "Mais".
+
+   "Visão geral" da Conformidade NR-1 (`/rh/nr1`) é o primeiro item da
+   sidebar, sem seção — fora dos agrupamentos, à frente até do agrupamento
+   "Conformidade NR-1" a que pertence. É o item mais importante do menu (a
+   conformidade NR-1 é o produto), então não fica com o mesmo peso visual de
+   Ciclos/Inventário/Planos/Relatório.
+
+   O agrupamento "Empresa" perdeu o item "Visão geral" (`/rh/home`) por
+   pedido explícito — a tela continua existindo (ainda é o destino do item
+   "Visão" da bottom-nav mobile e de deep-links como RH05ContaCriada), só
+   não tem mais entrada na sidebar desktop. */
 const rhSidebarItems: RhNavItem[] = [
-  { icon: 'ph:squares-four-bold', label: 'Visão geral', to: '/rh/home', section: 'Empresa' },
+  { icon: 'ph:squares-four-bold', label: 'Visão geral', to: '/rh/nr1' },
+
+  { icon: 'ph:calendar-check-bold', label: 'Ciclos de avaliação', to: '/rh/nr1/ciclos', section: 'Conformidade NR-1' },
+  { icon: 'ph:clipboard-text-bold', label: 'Inventário de riscos', to: '/rh/nr1/inventario', section: 'Conformidade NR-1' },
+  { icon: 'ph:list-checks-bold', label: 'Planos de ação', to: '/rh/nr1/plano-acao', section: 'Conformidade NR-1' },
+  { icon: 'ph:file-text-bold', label: 'Relatório e rastreabilidade', to: '/rh/nr1/relatorio', section: 'Conformidade NR-1' },
+
   { icon: 'ph:users-three-bold', label: 'Colaboradores', to: '/rh/colaboradores', section: 'Empresa' },
   { icon: 'ph:paper-plane-tilt-bold', label: 'Convites', to: '/rh/convites', section: 'Empresa' },
   { icon: 'ph:tree-structure-bold', label: 'Departamentos', to: '/rh/departamentos', section: 'Empresa' },
   { icon: 'ph:user-gear-bold', label: 'Equipe RH', to: '/rh/equipe', section: 'Empresa' },
-
-  { icon: 'ph:squares-four-bold', label: 'Visão geral', to: '/rh/nr1', section: 'Conformidade NR-1' },
-  { icon: 'ph:calendar-check-bold', label: 'Campanhas', to: '/rh/nr1/campanha', section: 'Conformidade NR-1' },
-  { icon: 'ph:clipboard-text-bold', label: 'Inventário de riscos', to: '/rh/nr1/inventario', section: 'Conformidade NR-1' },
-  { icon: 'ph:list-checks-bold', label: 'Plano de ação', to: '/rh/nr1/plano-acao', section: 'Conformidade NR-1' },
-  { icon: 'ph:file-text-bold', label: 'Relatório e rastreabilidade', to: '/rh/nr1/relatorio', section: 'Conformidade NR-1' },
 ]
 
 const rhBottomItems: NavItem[] = [

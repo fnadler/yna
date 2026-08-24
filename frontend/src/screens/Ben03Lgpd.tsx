@@ -52,7 +52,7 @@ export function Ben03Lgpd() {
 
   return (
     <>
-      {/* Header: back button + progress bar — hidden on desktop (layout provides top bar) */}
+      {/* Header: back button + progress bar (hidden on desktop, layout provides top bar) */}
       <header className="flex lg:hidden items-center gap-3 px-5 pb-2 pt-8">
         <button
           onClick={handleBack}

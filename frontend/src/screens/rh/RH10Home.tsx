@@ -3,6 +3,7 @@ import { Icon } from '@iconify/react'
 import { RhTopBar } from '../../components/RhTopBar'
 import { Button } from '../../components/Button'
 import { OptionCard } from '../../components/OptionCard'
+import { Nr1CicloStatusCard } from '../../components/Nr1CicloStatusCard'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
 import { PAGE_MAX_W } from '../../lib/layout'
@@ -11,8 +12,6 @@ import { useRh } from '../../contexts/RhContext'
 import { rhColaboradorService } from '../../services/rh'
 import { nr1CampanhaService, nr1ResultadoService, nr1AcaoService, nr1CanalService } from '../../services/nr1'
 import { NIVEL_RISCO } from '../../lib/nr1'
-
-const fmtData = (iso: string) => { const [, m, d] = iso.split('-'); return `${d}/${m}` }
 
 /* RH-02 — Home: estado do ciclo de conformidade (§5.3). Uma pergunta só:
    onde estamos no ciclo? Substitui a antiga home de adesão ao benefício —
@@ -67,31 +66,10 @@ export function RH10Home() {
             {campanha.status === 'loading' && <Skeleton className="h-32 w-full rounded-lg" />}
             {campanha.status === 'error' && <ErrorState message={campanha.message} onRetry={campanha.reload} />}
             {campanha.status === 'success' && campanha.data && (
-              <button
-                onClick={() => navigate(`/rh/nr1/campanha/${campanha.data!.id}`)}
-                className="flex w-full flex-col gap-3 rounded-lg border border-border bg-surface p-5 text-left transition-colors hover:border-border-strong"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-muted">Campanha em campo</span>
-                  <span className="inline-flex items-center gap-1 rounded-pill bg-primary-50 px-2.5 py-1 text-[11px] font-semibold text-primary dark:text-primary-300">
-                    {campanha.data.modeloNome} · v{campanha.data.versao}
-                  </span>
-                </div>
-                <div className="flex items-end justify-between gap-4">
-                  <div>
-                    <p className="text-[40px] font-bold leading-none tracking-[-0.02em] text-ink">
-                      {Math.round((campanha.data.respostas / Math.max(1, campanha.data.elegiveis)) * 100)}%
-                    </p>
-                    <p className="mt-2 text-[13px] text-ink-secondary">
-                      {campanha.data.respostas} de {campanha.data.elegiveis} colaboradores responderam
-                    </p>
-                  </div>
-                  <span className="text-right text-[12.5px] text-ink-secondary">até {fmtData(campanha.data.fim)}</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-pill bg-surface-2">
-                  <div className="h-full rounded-pill bg-primary transition-all" style={{ width: `${Math.round((campanha.data.respostas / Math.max(1, campanha.data.elegiveis)) * 100)}%` }} />
-                </div>
-              </button>
+              <Nr1CicloStatusCard
+                campanha={campanha.data}
+                onClick={() => navigate(`/rh/nr1/ciclos/${campanha.data!.id}`)}
+              />
             )}
             {campanha.status === 'success' && !campanha.data && (
               <div className="flex flex-col items-center gap-4 rounded-lg border border-border bg-surface px-5 py-10 text-center">
@@ -104,7 +82,7 @@ export function RH10Home() {
                     Abra a próxima avaliação para manter o ciclo de conformidade em dia.
                   </p>
                 </div>
-                <Button iconRight="ph:arrow-right-bold" onClick={() => navigate('/rh/nr1/campanha')}>Abrir campanha</Button>
+                <Button iconRight="ph:arrow-right-bold" onClick={() => navigate('/rh/nr1/ciclos')}>Abrir ciclo</Button>
               </div>
             )}
           </section>
@@ -157,14 +135,14 @@ export function RH10Home() {
               <OptionCard
                 layout="horizontal"
                 icon="ph:clipboard-text-bold"
-                label="Inventário para o PGR"
+                label="Inventário de Riscos"
                 desc={inventario.status === 'success' ? `${inventario.data.length} risco(s) mapeado(s)` : '—'}
                 to="/rh/nr1/inventario"
               />
               <OptionCard
                 layout="horizontal"
                 icon="ph:list-checks-bold"
-                label="Plano de ação"
+                label="Planos de ação"
                 desc={acoes.status === 'success' ? `${acoesConcluidas} de ${totalAcoes} ações concluídas` : '—'}
                 to="/rh/nr1/plano-acao"
               />

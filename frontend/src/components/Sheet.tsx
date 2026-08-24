@@ -8,11 +8,15 @@ interface SheetProps {
   title: string
   icon?: string
   iconColor?: string
+  /** Ações secundárias no cabeçalho, entre o título e o botão de fechar
+     (ex.: editar/concluir no detalhe de uma ação) — opcional, a maioria
+     dos usos do Sheet não precisa. */
+  headerActions?: React.ReactNode
   children: React.ReactNode
   size?: 'md' | 'lg'
 }
 
-export function Sheet({ open, onClose, title, icon, iconColor, children, size = 'lg' }: SheetProps) {
+export function Sheet({ open, onClose, title, icon, iconColor, headerActions, children, size = 'lg' }: SheetProps) {
   const [mounted, setMounted] = useState(false)
   const [visible, setVisible] = useState(false)
 
@@ -56,13 +60,16 @@ export function Sheet({ open, onClose, title, icon, iconColor, children, size = 
         )}
         <h2 className="truncate text-base font-semibold text-ink">{title}</h2>
       </div>
-      <button
-        onClick={onClose}
-        aria-label="Fechar"
-        className="ml-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-surface-hover"
-      >
-        <Icon icon="ph:x-bold" width={16} aria-hidden />
-      </button>
+      <div className="ml-3 flex shrink-0 items-center gap-1.5">
+        {headerActions}
+        <button
+          onClick={onClose}
+          aria-label="Fechar"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-surface-hover"
+        >
+          <Icon icon="ph:x-bold" width={16} aria-hidden />
+        </button>
+      </div>
     </div>
   )
 
