@@ -1,15 +1,17 @@
 import type {
   Nr1QuestionarioModelo, Nr1QuestionarioVersao, Nr1Campanha, Nr1LinhaMapa,
   Nr1RiscoInventario, Nr1Acao, Nr1Relato, Nr1Ciclo, Nr1ResponsavelTecnico,
-  Nr1MinhaAvaliacao, Nr1KitMaterial, Nr1Trilha, Nr1RelatoCategoria, Nr1Comentario,
+  Nr1MinhaAvaliacao, Nr1Trilha, Nr1RelatoCategoria, Nr1Comentario,
   Nr1DimensaoId, Nr1RiscoCiclo, Nr1Severidade, Nr1NivelRisco, Nr1RiscoSugeridoLeitura,
+  Nr1RiscoStatus,
 } from '../types'
 import {
   nr1Modelos, nr1Campanhas, nr1MapaCalor, nr1Inventario, nr1Acoes, nr1Relatos,
-  nr1Ciclos, nr1ResponsavelTecnico, nr1MinhasAvaliacoes, nr1Kit, nr1DimensaoNome,
+  nr1Ciclos, nr1ResponsavelTecnico, nr1MinhasAvaliacoes, nr1DimensaoNome,
   nr1DimensoesBase, NR1_ESCALAS, NR1_PONTUACAO, NR1_TODAY, nr1NivelPorMedia,
-  nr1RiscosCiclos, RISCOS,
+  nr1RiscosCiclos, RISCOS, totalElegiveis, participacaoVazia,
 } from '../data/nr1Mock'
+import { rhEmpresa } from '../data/rhMock'
 import { NR1_RISCOS_SUGERIDOS } from '../data/nr1RiscosSugeridosMock'
 import { nr1DistribuirPorItem, nr1NivelAtingeGatilho } from '../lib/nr1'
 
@@ -206,6 +208,46 @@ export const nr1CampanhaService = {
     return { enviados: departamentoIds.length }
   },
 
+  /** Envia o link único do ciclo por e-mail para todos os colaboradores com
+     e-mail cadastrado, de uma vez (não é um disparo por pessoa). */
+  enviarConvitesLink: async (campanhaId: string, quantidade: number): Promise<{ enviados: number }> => {
+    await delay(rand(400, 800))
+    return { enviados: campanhaId ? quantidade : 0 }
+  },
+
+  /** Inicia um novo ciclo — direto em campo (não passa por rascunho: o
+     fluxo simplificado de criação já entrega tudo que um ciclo em campo
+     precisa, então não há motivo pra um estado intermediário). Só é
+     possível quando não há outro ciclo em campo (checado na tela, não
+     aqui — o serviço mockado confia em quem chama). */
+  criar: async (p: { nome: string; modeloId: string; versao: string; inicio: string; fim: string }): Promise<Nr1Campanha> => {
+    await delay(rand(500, 900))
+    const modelo = nr1Modelos.find((m) => m.id === p.modeloId)
+    const numeros = nr1Campanhas
+      .map((c) => parseInt(c.protocolo.split('-').pop() ?? '', 10))
+      .filter((n) => !Number.isNaN(n))
+    const sequencial = (numeros.length > 0 ? Math.max(...numeros) : 0) + 1
+    const prefixoEmpresa = rhEmpresa.nomeFantasia.split(' ')[0]!.toUpperCase()
+    const ano = p.inicio.slice(0, 4)
+    const nova: Nr1Campanha = {
+      id: `camp-${Date.now()}`,
+      nome: p.nome,
+      protocolo: `NR1-${prefixoEmpresa}-${ano}-${String(sequencial).padStart(3, '0')}`,
+      status: 'em-campo',
+      modeloId: p.modeloId,
+      modeloNome: modelo?.nome ?? '',
+      versao: p.versao,
+      inicio: p.inicio,
+      fim: p.fim,
+      elegiveis: totalElegiveis,
+      respostas: 0,
+      participacao: participacaoVazia(),
+      criadaEm: NR1_TODAY,
+    }
+    nr1Campanhas.unshift(nova)
+    return nova
+  },
+
   /** Encerra a coleta e consolida o ciclo. */
   encerrar: async (campanhaId: string): Promise<{ ok: boolean }> => {
     await delay(rand(500, 900))
@@ -264,6 +306,66 @@ export const nr1ResultadoService = {
     const id = `r-${RISCOS.length + 1}`
     RISCOS.push({ id, ...p })
     return nr1Inventario().find((r) => r.id === id)!
+  },
+
+  /** Edita os campos do GRO de um risco já existente, mais o campo "Status"
+     (`status`, opcional) — grava em `RiscoSeed.statusManual`, não num campo
+     `status` (que não existe em `RiscoSeed`: o status só existe no formato
+     de leitura `Nr1RiscoInventario`, calculado por `nr1Inventario()`). A
+     partir daqui esse status vence o que a evolução entre ciclos calcularia,
+     até uma nova edição mudar de novo (ver `RiscoSeed.statusManual`,
+     `data/nr1Mock.ts`). */
+  editarRisco: async (id: string, p: {
+    dimensaoId: Nr1DimensaoId
+    departamentoIds: string[]
+    fator: string
+    danos: string
+    probabilidade: number
+    severidade: Nr1Severidade
+    controles: string[]
+    status?: Nr1RiscoStatus
+  }): Promise<Nr1RiscoInventario | undefined> => {
+    await delay(rand(400, 700))
+    const r = RISCOS.find((x) => x.id === id)
+    if (!r) return undefined
+    const { status, ...patch } = p
+    Object.assign(r, patch)
+    if (status) r.statusManual = status
+    return nr1Inventario().find((x) => x.id === id)
+  },
+
+  /** Exclui um risco do inventário — bloqueado enquanto houver ações do
+     plano de ação vinculadas a ele (excluir apagaria o vínculo que a
+     rastreabilidade do PGR depende, deixando ações "órfãs"). Como o app
+     ainda não tem como remover uma ação, na prática isso significa: só dá
+     para excluir um risco que nunca teve ação registrada. */
+  excluirRisco: async (id: string): Promise<{ ok: boolean; message?: string }> => {
+    await delay(rand(300, 600))
+    const vinculadas = nr1Acoes.filter((a) => a.riscoId === id)
+    if (vinculadas.length > 0) {
+      return {
+        ok: false,
+        message: `Este risco tem ${vinculadas.length} ${vinculadas.length === 1 ? 'ação vinculada' : 'ações vinculadas'} no plano de ação. Não é possível excluir um risco com ações registradas.`,
+      }
+    }
+    const i = RISCOS.findIndex((x) => x.id === id)
+    if (i < 0) return { ok: false }
+    RISCOS.splice(i, 1)
+    return { ok: true }
+  },
+
+  /** "Concluir risco" — atalho de um clique para o mesmo mecanismo do campo
+     "Status" em "Editar risco" (`RiscoSeed.statusManual`), fixado em
+     "Eliminado": julgamento do RH/SST de que o risco foi resolvido,
+     independente do que a evolução entre ciclos diria sozinha. Não é um
+     status novo — a evolução automática também pode chegar em "Eliminado"
+     sozinha; isto só é mais um caminho até lá. */
+  concluirRisco: async (id: string): Promise<{ ok: boolean }> => {
+    await delay(rand(300, 600))
+    const r = RISCOS.find((x) => x.id === id)
+    if (!r) return { ok: false }
+    r.statusManual = 'eliminado'
+    return { ok: true }
   },
 
   /** Histórico de um risco, ciclo a ciclo (nível, tendência, sugestão) — a
@@ -374,35 +476,59 @@ export const nr1ResultadoService = {
     if (!risco) return undefined
     const campanha = nr1Campanhas.find((c) => c.id === risco.campanhaId)
     const acoes = nr1Acoes.filter((a) => a.riscoId === riscoId)
+
+    /* Ordem da trilha: quatro blocos fixos pela posição na cadeia causal,
+       nunca por data (um sort só por `em` misturava datas com significados
+       diferentes — prazo de ação vs. data de comentário — e a ordem parecia
+       arbitrária). De cima para baixo, do mais recente na cadeia pro mais
+       antigo: evidências (o elo mais recente, o que fecha o ciclo) → planos
+       de ação → risco identificado → ciclo de avaliação (a origem). Ou,
+       lendo de baixo pra cima, a ordem em que a cadeia realmente acontece:
+       ciclo → risco → ações → evidências.
+
+       Dentro de cada bloco, o mais recente primeiro: evidências por data do
+       comentário (`em`), ações por prazo (`quando`) — os únicos dois campos
+       de data que cada tipo realmente tem. */
+    const evidencias = acoes
+      .flatMap((a) => a.comentarios.flatMap((c) => (c.arquivos ?? []).map((nome) => ({
+        tipo: 'evidencia' as const,
+        titulo: `Evidência: ${nome}`,
+        detalhe: `Anexada à ação "${a.oQue}" por ${c.autor}.`,
+        em: c.em,
+      }))))
+      .sort((a, b) => b.em.localeCompare(a.em))
+
+    const acoesOrdenadas = [...acoes]
+      .sort((a, b) => b.quando.localeCompare(a.quando))
+      .map((a) => ({
+        tipo: 'acao' as const,
+        titulo: a.oQue,
+        detalhe: `${a.quem} · prazo ${a.quando} · ${a.status}`,
+        em: a.quando,
+        status: a.status,
+      }))
+
     return {
       riscoId,
       fator: risco.fator,
       grupoExposto: risco.grupoExposto,
       etapas: [
+        ...evidencias,
+        ...acoesOrdenadas,
         {
-          tipo: 'avaliacao',
-          titulo: `Avaliação · protocolo ${campanha?.protocolo ?? '—'}`,
-          detalhe: `${campanha?.modeloNome ?? 'Instrumento'} · versão ${campanha?.versao ?? '—'} · ${risco.respondentes} respondentes em ${risco.grupoExposto}.`,
-          em: campanha?.fim ?? NR1_TODAY,
-        },
-        {
-          tipo: 'inventario',
+          tipo: 'inventario' as const,
           titulo: 'Inventário de riscos psicossociais (PGR)',
           detalhe: `Probabilidade ${risco.probabilidade} × severidade ${risco.severidade} = ${risco.nivelNum}. Classificado como ${risco.nivel}.`,
           em: campanha?.fim ?? NR1_TODAY,
+          nivel: risco.nivel,
         },
-        ...acoes.map((a) => ({
-          tipo: 'acao' as const,
-          titulo: a.oQue,
-          detalhe: `${a.quem} · prazo ${a.quando} · ${a.status}`,
-          em: a.quando,
-        })),
-        ...acoes.flatMap((a) => a.comentarios.flatMap((c) => (c.arquivos ?? []).map((nome) => ({
-          tipo: 'evidencia' as const,
-          titulo: `Evidência: ${nome}`,
-          detalhe: `Anexada à ação "${a.oQue}" por ${c.autor}.`,
-          em: c.em,
-        })))),
+        {
+          tipo: 'avaliacao' as const,
+          titulo: `Avaliação · protocolo ${campanha?.protocolo ?? '—'}`,
+          detalhe: `${campanha?.modeloNome ?? 'Instrumento'} · versão ${campanha?.versao ?? '—'} · ${risco.respondentes} respondentes em ${risco.grupoExposto}.`,
+          em: campanha?.fim ?? NR1_TODAY,
+          campanhaId: campanha?.id,
+        },
       ],
     }
   },
@@ -492,31 +618,6 @@ export const nr1AcaoService = {
     return { ok: true }
   },
 
-  /** Cria uma nova versão do plano a partir da anterior. A versão anterior
-     nunca é editada nem apagada — vira histórico, com sua efetividade
-     preservada; a nova nasce com `versao` incrementada, `versaoAnteriorId`
-     e o motivo da revisão (RF-E01, rastreabilidade de mudança de plano). */
-  revisar: async (
-    acaoAnteriorId: string,
-    patch: Pick<Nr1Acao, 'oQue' | 'porQue' | 'quem' | 'quando' | 'onde' | 'como' | 'quanto'>,
-    motivoRevisao: string,
-  ): Promise<{ ok: boolean; acao?: Nr1Acao; message?: string }> => {
-    await delay(rand(350, 700))
-    const anterior = nr1Acoes.find((x) => x.id === acaoAnteriorId)
-    if (!anterior) return { ok: false, message: 'Versão anterior não encontrada.' }
-    const nova: Nr1Acao = {
-      ...patch,
-      id: `a-${nr1Acoes.length + 1}`,
-      riscoId: anterior.riscoId,
-      status: 'planejada',
-      comentarios: [],
-      versao: anterior.versao + 1,
-      versaoAnteriorId: anterior.id,
-      motivoRevisao,
-    }
-    nr1Acoes.push(nova)
-    return { ok: true, acao: nova }
-  },
 }
 
 export const nr1CanalService = {
@@ -556,6 +657,18 @@ export const nr1CanalService = {
 }
 
 export const nr1ColaboradorService = {
+  /** "Login" do colaborador em `/bem-vindo` — CPF + data de nascimento, sem
+     senha. Sempre bem-sucedido no mock: não existe checagem contra uma
+     matrícula real de colaboradores nem persistência de identidade a
+     partir daqui (a avaliação segue anônima, ver `Ben03Lgpd`) — os dois
+     campos servem só para dar à pessoa a sensação de ter "entrado" antes de
+     assumir um compromisso (responder o questionário), não para autenticar
+     de verdade num backend que este protótipo não tem. */
+  entrar: async (_p: { cpf: string; nascimento: string }): Promise<{ ok: boolean }> => {
+    await delay(rand(400, 700))
+    return { ok: true }
+  },
+
   /** Instrumento que o colaborador vai responder: a versão registrada na
      campanha ativa — nunca um formulário fixo no código (RF-CO-NR1-01). */
   instrumentoDaCampanha: async (): Promise<{ campanha: Nr1Campanha; versao: Nr1QuestionarioVersao } | undefined> => {
@@ -587,12 +700,5 @@ export const nr1ColaboradorService = {
   minhasAvaliacoes: async (): Promise<Nr1MinhaAvaliacao[]> => {
     await delay(rand(300, 600))
     return nr1MinhasAvaliacoes
-  },
-}
-
-export const nr1KitService = {
-  list: async (): Promise<Nr1KitMaterial[]> => {
-    await delay(rand(250, 500))
-    return nr1Kit
   },
 }

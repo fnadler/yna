@@ -62,7 +62,7 @@ export function RH01Convite() {
             <Button size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/rh/bem-vindo')}>
               Conhecer a YNA
             </Button>
-            <Button variant="ghost" fullWidth onClick={() => navigate('/rh/home')}>
+            <Button variant="ghost" fullWidth onClick={() => navigate('/rh/nr1')}>
               Já tenho conta
             </Button>
           </div>

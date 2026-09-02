@@ -27,10 +27,6 @@ export interface PerfilInteresseCuidado {
 interface AppContextValue {
   user: UserProfile
   setUser: (u: UserProfile) => void
-  /** Token do convite, guardado desde /convite/:token até a criação da conta
-     em /criar-conta — nunca lido por services/rh.ts nem exposto ao RH. */
-  sessaoToken: string | null
-  setSessaoToken: (token: string) => void
   contaCriada: boolean
   perfilInteresse: PerfilInteresseCuidado | null
   criarConta: (dados: { nome: string; apelido: string; email?: string } & PerfilInteresseCuidado) => void
@@ -49,7 +45,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<UserProfile>(mockUser)
   const setUser = (u: UserProfile) => setUserState(u)
 
-  const [sessaoToken, setSessaoToken] = useState<string | null>(null)
   const [contaCriada, setContaCriada] = useState(false)
   const [perfilInteresse, setPerfilInteresse] = useState<PerfilInteresseCuidado | null>(null)
 
@@ -82,7 +77,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AppContext.Provider
       value={{
-        user, setUser, sessaoToken, setSessaoToken, contaCriada, perfilInteresse, criarConta,
+        user, setUser, contaCriada, perfilInteresse, criarConta,
         nr1, nr1Iniciar, nr1Consentir, nr1Responder, nr1Concluir, nr1Limpar,
       }}
     >

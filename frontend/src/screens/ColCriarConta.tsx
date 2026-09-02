@@ -10,8 +10,7 @@ import type { PerfilInteresseCuidado } from '../contexts/AppContext'
    cadastro do colaborador (wizard com barra de progresso, footer mobile e
    barra inferior fixa no desktop; ver RH04CadastroConta, que segue o mesmo
    padrão no lado do RH). Só é alcançada depois que a avaliação já foi
-   enviada de forma anônima (ver NR1BenConclusao/ColConviteConta) — vincula
-   a conta ao token guardado em /convite/:token.
+   enviada de forma anônima (ver NR1BenConclusao/ColConviteConta).
 
    Passo 3 substitui a antiga etapa de foto: são as duas perguntas opcionais
    de interesse em cuidado futuro, retiradas da tela de conclusão para não

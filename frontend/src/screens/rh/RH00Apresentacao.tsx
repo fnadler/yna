@@ -4,8 +4,7 @@ import { OnboardingSplit } from '../../components/OnboardingSplit'
 import { LogoYna } from '../../components/YnaLogo'
 
 /* RH-00 — Apresentação da plataforma (3 slides conceituais + argumentos
-   comerciais B2B). Replica o layout/imagens do Ben00Apresentacao, com copy
-   calibrada para RH/DHO (Sábio + Herói coletivo). */
+   comerciais B2B), com copy calibrada para RH/DHO (Sábio + Herói coletivo). */
 
 const slides = [
   {

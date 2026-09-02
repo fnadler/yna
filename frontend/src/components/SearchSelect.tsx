@@ -8,8 +8,18 @@ export interface SearchSelectOption { value: string; label: string }
    item ativo em primary-50 + check. Ordene as opções no chamador. */
 const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 
+/** Tamanho do trigger — `sm` é o padrão histórico (campos dentro de
+   formulário, ex. "Quem" em `AcaoForm`). `md` iguala a altura/tipografia do
+   `Select` comum (`components/Select.tsx`), para um `SearchSelect` conviver
+   lado a lado com `Select`s numa mesma barra de filtros sem destoar. */
+const TRIGGER_CLS: Record<'sm' | 'md', string> = {
+  sm: 'rounded border-[1.5px] border-border px-2.5 py-1.5 text-[13px]',
+  md: 'rounded-lg border border-border px-3 py-2.5 text-sm font-medium',
+}
+const CARET_WIDTH: Record<'sm' | 'md', number> = { sm: 13, md: 14 }
+
 export function SearchSelect({
-  value, onChange, options, placeholder = 'Selecionar', searchPlaceholder = 'Buscar…', className = '',
+  value, onChange, options, placeholder = 'Selecionar', searchPlaceholder = 'Buscar…', className = '', size = 'sm',
 }: {
   value: string
   onChange: (v: string) => void
@@ -17,6 +27,7 @@ export function SearchSelect({
   placeholder?: string
   searchPlaceholder?: string
   className?: string
+  size?: 'sm' | 'md'
 }) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
@@ -49,10 +60,10 @@ export function SearchSelect({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-2 rounded border-[1.5px] border-border bg-surface px-2.5 py-1.5 text-[13px] outline-none transition-colors hover:border-border-strong focus:border-primary"
+        className={`flex w-full items-center justify-between gap-2 bg-surface outline-none transition-colors hover:border-border-strong focus:border-primary ${TRIGGER_CLS[size]}`}
       >
         <span className={`truncate ${selected ? 'text-ink' : 'text-ink-muted'}`}>{selected ? selected.label : placeholder}</span>
-        <Icon icon="ph:caret-down-bold" width={13} className="shrink-0 text-ink-muted" aria-hidden />
+        <Icon icon="ph:caret-down-bold" width={CARET_WIDTH[size]} className="shrink-0 text-ink-muted" aria-hidden />
       </button>
 
       {open && (

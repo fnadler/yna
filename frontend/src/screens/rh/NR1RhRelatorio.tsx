@@ -10,11 +10,11 @@ import { Input } from '../../components/Input'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
 import { PAGE_MAX_W } from '../../lib/layout'
-import { NIVEL_RISCO, fmtData, pct } from '../../lib/nr1'
+import { NIVEL_RISCO, ACAO_STATUS, fmtData, pct } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
 import { useRh } from '../../contexts/RhContext'
 import { nr1ResultadoService, nr1CampanhaService, nr1AcaoService } from '../../services/nr1'
-import type { Nr1ResponsavelTecnico, Nr1RiscoInventario, Nr1TrilhaEtapaTipo } from '../../types'
+import type { Nr1ResponsavelTecnico, Nr1RiscoInventario, Nr1TrilhaEtapa, Nr1TrilhaEtapaTipo } from '../../types'
 
 /* NR1-RH-05 — Relatório de gestão e rastreabilidade (RF-F01/02/03/04).
 
@@ -25,11 +25,41 @@ import type { Nr1ResponsavelTecnico, Nr1RiscoInventario, Nr1TrilhaEtapaTipo } fr
    O campo de responsável técnico existe porque a YNA fornece o insumo
    qualificado — quem assina o PGR é o SESMT ou a consultoria do cliente. */
 
-const ETAPA_ICON: Record<Nr1TrilhaEtapaTipo, string> = {
-  avaliacao: 'ph:chart-bar-bold',
-  inventario: 'ph:clipboard-text-bold',
-  acao: 'ph:list-checks-bold',
-  evidencia: 'ph:paperclip-bold',
+/** Categoria de cada elo da trilha — ícone, rótulo e cor de base, para os
+   quatro tipos ficarem reconhecíveis à primeira vista (antes, todo elo
+   usava o mesmo círculo neutro, e só o ícone mudava). A cor de base é
+   sobrescrita quando a etapa carrega um sinal de criticidade próprio: nível
+   do risco (`inventario`) e status da ação (`acao`), ver `etapaCor`. */
+const ETAPA_META: Record<Nr1TrilhaEtapaTipo, { label: string; icon: string; cls: string }> = {
+  avaliacao: { label: 'Ciclo de avaliação', icon: 'ph:chart-bar-bold', cls: 'bg-primary-50 text-primary dark:text-primary-300' },
+  inventario: { label: 'Risco identificado', icon: 'ph:clipboard-text-bold', cls: 'bg-surface-2 text-ink-secondary' },
+  acao: { label: 'Plano de ação', icon: 'ph:list-checks-bold', cls: 'bg-surface-2 text-ink-secondary' },
+  evidencia: { label: 'Evidência', icon: 'ph:paperclip-bold', cls: 'bg-success-bg text-success-ink' },
+}
+
+/** Cor do círculo de uma etapa — a de base da categoria (`ETAPA_META`), a
+   não ser que a própria etapa carregue um sinal mais crítico: o nível do
+   risco identificado (crítico/risco ganham a cor de alerta do resto do
+   produto, `NIVEL_RISCO`), ou uma ação atrasada (vermelho, mesma leitura de
+   `ACAO_STATUS.atrasada`). Nunca inferido do texto de `detalhe` — sempre de
+   um campo estruturado (`nivel`/`status`, ver `Nr1TrilhaEtapa`). */
+function etapaCor(e: Nr1TrilhaEtapa): string {
+  if (e.tipo === 'inventario' && e.nivel) return NIVEL_RISCO[e.nivel].cls
+  if (e.tipo === 'acao' && e.status === 'atrasada') return 'bg-danger-bg text-danger-ink'
+  return ETAPA_META[e.tipo].cls
+}
+
+/** Destino de "Ver X" de uma etapa — ciclo, risco no inventário ou plano de
+   ação, cada um levando à página de detalhe correspondente. `riscoId` vem
+   da trilha (mesmo risco em toda a lista de etapas, ver `Nr1Trilha`), não
+   da etapa — só `avaliacao` precisa do próprio `campanhaId`, porque é o
+   único dado que não é "este risco", é "o ciclo que o originou". Evidência
+   não tem link: é um comentário dentro de uma ação, sem página própria. */
+function etapaLink(e: Nr1TrilhaEtapa, riscoId: string): { to: string; label: string } | null {
+  if (e.tipo === 'avaliacao') return e.campanhaId ? { to: `/rh/nr1/ciclos/${e.campanhaId}`, label: 'Ver ciclo' } : null
+  if (e.tipo === 'inventario') return { to: `/rh/nr1/inventario?detalhe=${riscoId}`, label: 'Ver risco no inventário' }
+  if (e.tipo === 'acao') return { to: `/rh/nr1/plano-acao?risco=${riscoId}`, label: 'Ver plano de ação' }
+  return null
 }
 
 export function NR1RhRelatorio() {
@@ -229,19 +259,54 @@ function TrilhaView({ riscoId }: { riscoId: string }) {
             <p className="mt-1 text-[11.5px] text-ink-muted">{trilha.data.grupoExposto}</p>
           </div>
 
-          <ol className="relative flex flex-col gap-4 pl-7">
-            {/* Linha do tempo */}
+          <ol className="relative flex flex-col gap-5 pl-7">
+            {/* Linha do tempo — a trilha já chega na ordem certa do serviço
+               (ver `nr1ResultadoService.trilha`): de cima pra baixo,
+               evidências → planos de ação → risco identificado → ciclo de
+               avaliação (a origem, sempre no fim) — ou, lendo de baixo pra
+               cima, a ordem em que a cadeia realmente acontece. Dentro de
+               cada bloco, o mais recente primeiro. */}
             <span className="absolute bottom-2 left-[11px] top-2 w-px bg-border" aria-hidden />
-            {trilha.data.etapas.map((e, i) => (
-              <li key={i} className="relative">
-                <span className="absolute -left-7 flex h-6 w-6 items-center justify-center rounded-pill border border-border bg-surface text-primary dark:text-primary-300">
-                  <Icon icon={ETAPA_ICON[e.tipo]} width={12} aria-hidden />
-                </span>
-                <p className="text-[13.5px] font-semibold leading-snug text-ink">{e.titulo}</p>
-                <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-secondary">{e.detalhe}</p>
-                <p className="mt-0.5 font-mono text-[11px] text-ink-muted">{fmtData(e.em)}</p>
-              </li>
-            ))}
+            {trilha.data.etapas.map((e, i) => {
+              const meta = ETAPA_META[e.tipo]
+              const critico = (e.tipo === 'inventario' && (e.nivel === 'critico' || e.nivel === 'risco'))
+                || (e.tipo === 'acao' && e.status === 'atrasada')
+              const link = etapaLink(e, trilha.data!.riscoId)
+              return (
+                <li key={i} className="relative">
+                  <span className={`absolute -left-7 flex h-6 w-6 items-center justify-center rounded-pill ${etapaCor(e)}`}>
+                    <Icon icon={meta.icon} width={12} aria-hidden />
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted">
+                      {meta.label}
+                    </span>
+                    {e.tipo === 'inventario' && e.nivel && (e.nivel === 'critico' || e.nivel === 'risco') && (
+                      <span className={`rounded-pill px-2 py-0.5 text-[10.5px] font-semibold ${NIVEL_RISCO[e.nivel].cls}`}>
+                        {NIVEL_RISCO[e.nivel].label}
+                      </span>
+                    )}
+                    {e.tipo === 'acao' && e.status === 'atrasada' && (
+                      <span className="rounded-pill bg-danger-bg px-2 py-0.5 text-[10.5px] font-semibold text-danger-ink">
+                        {ACAO_STATUS.atrasada.label}
+                      </span>
+                    )}
+                  </div>
+                  <p className={`mt-1 text-[13.5px] leading-snug text-ink ${critico ? 'font-bold' : 'font-semibold'}`}>{e.titulo}</p>
+                  <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-secondary">{e.detalhe}</p>
+                  <p className="mt-0.5 font-mono text-[11px] text-ink-muted">{fmtData(e.em)}</p>
+                  {link && (
+                    <Link
+                      to={link.to}
+                      className="mt-1 inline-flex items-center gap-1 text-[11.5px] font-medium text-primary hover:underline dark:text-primary-300"
+                    >
+                      {link.label}
+                      <Icon icon="ph:arrow-right-bold" width={10} aria-hidden />
+                    </Link>
+                  )}
+                </li>
+              )
+            })}
           </ol>
 
           {trilha.data.etapas.every((e) => e.tipo !== 'evidencia') && (

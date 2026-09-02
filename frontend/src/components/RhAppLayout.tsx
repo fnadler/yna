@@ -11,14 +11,16 @@ import type { NavItem } from './BottomNav'
    hub cheio de links (`NR1RhCockpit`) e virou uma seção própria de telas de
    primeira classe — mapeamento, planejamento e controle/rastreabilidade
    com peso equivalente na navegação, em vez de espremidos atrás de um único
-   painel. Kit virou aba dentro de Ciclos (não some, só não fica solto no
-   menu).
+   painel. O Kit de comunicação (materiais prontos pra divulgar a campanha)
+   foi removido depois — o único link pra ele era um atalho sem uso no
+   detalhe do ciclo, substituído pelo link único da avaliação (ver
+   `NR1RhCiclos.tsx`).
 
    "Canal de escuta" saiu da sidebar (item fixo de navegação) por pedido
    explícito, mas a tela (`NR1RhCanal.tsx`, rota `/rh/nr1/canal`) continua
-   viva e acessível pelo deep-link contextual em "Casos abertos no canal de
-   escuta", na Home (RH10Home.tsx) — não é um item de menu permanente, mas
-   também não foi removida do produto.
+   viva e acessível por deep-link contextual (ex.: a partir de um caso citado
+   em outra tela) — não é um item de menu permanente, mas também não foi
+   removida do produto.
 
    "Mapa de calor" também saiu da sidebar como item próprio — deixou de ser
    uma tela isolada e passou a viver dentro de "Visão geral" (sempre o ciclo
@@ -40,10 +42,13 @@ import type { NavItem } from './BottomNav'
    conformidade NR-1 é o produto), então não fica com o mesmo peso visual de
    Ciclos/Inventário/Planos/Relatório.
 
-   O agrupamento "Empresa" perdeu o item "Visão geral" (`/rh/home`) por
-   pedido explícito — a tela continua existindo (ainda é o destino do item
-   "Visão" da bottom-nav mobile e de deep-links como RH05ContaCriada), só
-   não tem mais entrada na sidebar desktop. */
+   A antiga Home (`RH10Home.tsx`, rota `/rh/home`) foi removida — duplicava
+   a Visão geral (saudação + estado do ciclo + risco por dimensão, ambas)
+   sem motivo pra existirem as duas. `/rh` agora redireciona direto pra
+   `/rh/nr1`, e a bottom-nav mobile perdeu o item solto "Visão" (que
+   apontava pra Home): "NR-1" já cobria o mesmo destino, então virou o
+   único item, renomeado para "Visão geral" pra bater com o rótulo da
+   sidebar. */
 const rhSidebarItems: RhNavItem[] = [
   { icon: 'ph:squares-four-bold', label: 'Visão geral', to: '/rh/nr1' },
 
@@ -59,9 +64,8 @@ const rhSidebarItems: RhNavItem[] = [
 ]
 
 const rhBottomItems: NavItem[] = [
-  { icon: 'ph:squares-four-bold', label: 'Visão', to: '/rh/home' },
+  { icon: 'ph:squares-four-bold', label: 'Visão geral', to: '/rh/nr1' },
   { icon: 'ph:users-three-bold', label: 'Equipe', to: '/rh/colaboradores' },
-  { icon: 'ph:shield-check-bold', label: 'NR-1', to: '/rh/nr1' },
   { icon: 'ph:paper-plane-tilt-bold', label: 'Convites', to: '/rh/convites' },
   { icon: 'ph:dots-three-circle-bold', label: 'Mais', to: '/rh/mais' },
 ]

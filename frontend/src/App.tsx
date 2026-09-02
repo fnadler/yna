@@ -25,7 +25,6 @@ import { RH01Convite } from './screens/rh/RH01Convite'
 import { RH02LinkInvalido } from './screens/rh/RH02LinkInvalido'
 import { RH04CadastroConta } from './screens/rh/RH04CadastroConta'
 import { RH05ContaCriada } from './screens/rh/RH05ContaCriada'
-import { RH10Home } from './screens/rh/RH10Home'
 import { RH11Colaboradores } from './screens/rh/RH11Colaboradores'
 import { RH12Convites } from './screens/rh/RH12Convites'
 import { RH14Departamentos } from './screens/rh/RH14Departamentos'
@@ -38,11 +37,7 @@ import { NR1RhPlanoAcao } from './screens/rh/NR1RhPlanoAcao'
 import { NR1RhRelatorio } from './screens/rh/NR1RhRelatorio'
 import { NR1RhCiclos } from './screens/rh/NR1RhCiclos'
 import { NR1RhCanal } from './screens/rh/NR1RhCanal'
-import { NR1RhKit } from './screens/rh/NR1RhKit'
 import { Ben00BemVindo } from './screens/Ben00BemVindo'
-import { Ben00Apresentacao } from './screens/Ben00Apresentacao'
-import { Ben01Convite } from './screens/Ben01Convite'
-import { Ben02LinkInvalido } from './screens/Ben02LinkInvalido'
 import { Ben03Lgpd } from './screens/Ben03Lgpd'
 import { Ben05Despedida } from './screens/Ben05Despedida'
 import { Col03MeuEspaco } from './screens/Col03MeuEspaco'
@@ -82,18 +77,18 @@ export function App() {
       <AppProvider>
         <BrowserRouter>
           <Routes>
-            {/* Telas de convite e despedida (focus, max-w-xl, sem sidebar) */}
+            {/* Tela de despedida (focus, max-w-xl, sem sidebar) */}
             <Route element={<FocusLayout />}>
-              <Route path="/convite/:token" element={<Ben01Convite />} />
-              <Route path="/convite/invalido" element={<Ben02LinkInvalido />} />
               <Route path="/despedida" element={<Ben05Despedida />} />
             </Route>
 
-            {/* Apresentação da YNA — depois do convite validado, antes do
-                LGPD/sigilo. Full-bleed, layout/composição próprios (mesmo
-                padrão do RH00BemVindo/RH00Apresentacao). */}
+            {/* Bem-vindo — único ponto de entrada do colaborador. Não há mais
+                convite por token nem apresentação em slides (ver
+                `Ben00BemVindo.tsx`): a pessoa chega aqui, clica em "Iniciar
+                avaliação", se identifica por CPF + data de nascimento num
+                modal, e cai direto no LGPD/sigilo abaixo. Full-bleed,
+                layout/composição próprios (mesmo padrão do RH00BemVindo). */}
             <Route path="/bem-vindo" element={<Ben00BemVindo />} />
-            <Route path="/apresentacao/:passo" element={<Ben00Apresentacao />} />
 
             {/* Fluxo LGPD — gradient-soft como fundo de página */}
             <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" />}>
@@ -112,21 +107,26 @@ export function App() {
                 uma identidade). O colaborador nunca vê jargão de conformidade:
                 para ele isto é uma conversa sobre o ambiente de trabalho.
 
-                Não existe mais uma tela "/avaliacao/intro" própria: apresentação
-                (`/apresentacao`) e sigilo (`/sigilo`) já cobrem o consentimento e as
-                garantias de anonimato antes de chegar aqui, então uma terceira tela
-                repetindo os mesmos argumentos só antes do questionário virou
-                redundância. `ColTransicaoAvaliacao`/`ColAvaliacoes` mandam direto
+                Não existe mais uma tela "/avaliacao/intro" própria: o sigilo
+                (`/sigilo`) já cobre o consentimento e as garantias de anonimato antes
+                de chegar aqui, então uma segunda tela repetindo os mesmos argumentos
+                só antes do questionário virou redundância. `ColTransicaoAvaliacao`/
+                `ColAvaliacoes` mandam direto
                 para `/avaliacao/1`, e a reasseguração prática que só existia na
                 intro (duração, "não há resposta certa") migrou para dentro do
-                primeiro passo do próprio questionário. */}
+                primeiro passo do próprio questionário.
+
+                `/avaliacao/:passo` (uma pergunta por vez) é standalone, sem
+                FocusLayout: mesma composição full-bleed de `ColTransicaoAvaliacao`
+                (gradiente + card centralizado), não a barra/fundo-soft que as
+                demais telas de foco usam. */}
+            <Route path="/avaliacao/:passo" element={<NR1BenQuestionario />} />
+
             <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" exitTo="/despedida" />}>
-              <Route path="/avaliacao/:passo" element={<NR1BenQuestionario />} />
               <Route path="/avaliacao/conta" element={<ColConviteConta />} />
             </Route>
 
-            {/* Criação de conta leve — só depois da avaliação já enviada,
-                vincula a conta ao token/sessão anônima da avaliação. */}
+            {/* Criação de conta leve — só depois da avaliação já enviada. */}
             <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" exitTo="/despedida" />}>
               <Route path="/criar-conta" element={<ColCriarConta />} />
             </Route>
@@ -159,9 +159,9 @@ export function App() {
               {/* Entrada (convite) + Etapa 2 (Cadastro da conta) — layout de
                   foco com barra inferior fixa. Sem onboarding de
                   colaboradores aqui: a conta criada já cai direto no painel
-                  (RH05ContaCriada → /rh/home); cadastrar o time é uma ação
-                  de dentro do painel (RH11Colaboradores), depois que a
-                  empresa configura a pesquisa. */}
+                  (RH05ContaCriada → /rh/nr1, a Visão geral); cadastrar o time
+                  é uma ação de dentro do painel (RH11Colaboradores), depois
+                  que a empresa configura a pesquisa. */}
               <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" exitTo="/rh/convite/demo" />}>
                 <Route path="/rh/convite/invalido" element={<RH02LinkInvalido />} />
                 <Route path="/rh/convite/:token" element={<RH01Convite />} />
@@ -170,7 +170,6 @@ export function App() {
 
               {/* Área logada do RH — sidebar/bottom-nav próprios */}
               <Route element={<RhAppLayout />}>
-                <Route path="/rh/home" element={<RH10Home />} />
                 <Route path="/rh/colaboradores" element={<RH11Colaboradores />} />
                 <Route path="/rh/convites" element={<RH12Convites />} />
                 <Route path="/rh/departamentos" element={<RH14Departamentos />} />
@@ -184,14 +183,15 @@ export function App() {
                 <Route path="/rh/nr1/plano-acao" element={<NR1RhPlanoAcao />} />
                 <Route path="/rh/nr1/relatorio" element={<NR1RhRelatorio />} />
                 <Route path="/rh/nr1/canal" element={<NR1RhCanal />} />
-                <Route path="/rh/nr1/kit" element={<NR1RhKit />} />
 
                 <Route path="/rh/equipe" element={<RH15Equipe />} />
                 <Route path="/rh/conta" element={<RH16Conta />} />
                 <Route path="/rh/mais" element={<RH17Mais />} />
               </Route>
 
-              <Route path="/rh" element={<Navigate to="/rh/home" replace />} />
+              {/* Padrão de /rh: Visão geral (NR1RhCockpit) — a antiga Home
+                  (RH10Home.tsx) foi removida por duplicar esse conteúdo. */}
+              <Route path="/rh" element={<Navigate to="/rh/nr1" replace />} />
             </Route>
 
             {/* ====================================================

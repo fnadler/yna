@@ -107,6 +107,12 @@ const STATUS_CICLO: RhColaboradorStatus[] = [
   'nao_convidado', 'ativo', 'nao_convidado', 'ativo', 'convidado', 'ativo',
 ]
 
+/* Índices sem e-mail cadastrado — linha incompleta na importação por
+   planilha (situação real, não um erro de mock): dá pra ver, no envio de
+   convites do link único, a contagem de quem fica de fora por falta de
+   e-mail. */
+const SEM_EMAIL = new Set([6, 17])
+
 export const rhColaboradores: RhColaborador[] = NOMES.map((nome, i) => {
   const partes = nome.split(' ')
   const initials = (partes[0][0] + (partes[1]?.[0] ?? '')).toUpperCase()
@@ -118,7 +124,7 @@ export const rhColaboradores: RhColaborador[] = NOMES.map((nome, i) => {
     id: `b-${i + 1}`,
     nomeCompleto: nome,
     cpfMascarado: `***.***.${String(100 + i).slice(-3)}-${String(10 + (i % 89)).slice(-2)}`,
-    emailCorporativo: `${primeiroNome}.${sobrenome}@bcpsecurities.com`,
+    emailCorporativo: SEM_EMAIL.has(i) ? '' : `${primeiroNome}.${sobrenome}@bcpsecurities.com`,
     departamentoId: dep.id,
     status,
     convidadoEm: status === 'nao_convidado' ? undefined : '2026-06-12',

@@ -5,11 +5,11 @@ import type { Nr1Campanha } from '../types'
 
 /* Card de estado do ciclo — participação, meta e prazo (ciclo em campo) ou
    participação final e data de encerramento (ciclo encerrado). Usado nos
-   três lugares que mostram isso: a Home da área logada (`RH10Home.tsx`,
-   sempre o ciclo em campo), a lista de Ciclos de avaliação
-   (`NR1RhCiclos.tsx`, um card por ciclo) e a aba "Engajamento" do detalhe
-   de um ciclo (mesmo arquivo, o ciclo que estiver aberto — em campo ou
-   encerrado). Mesmo componente, não duplicado, para as três telas nunca
+   três lugares que mostram isso: a Visão geral da área logada
+   (`NR1RhCockpit.tsx`, sempre o ciclo em campo), a lista de Ciclos de
+   avaliação (`NR1RhCiclos.tsx`, um card por ciclo) e a aba "Engajamento" do
+   detalhe de um ciclo (mesmo arquivo, o ciclo que estiver aberto — em campo
+   ou encerrado). Mesmo componente, não duplicado, para as três telas nunca
    discordarem sobre o mesmo ciclo.
 
    A linha de meta (75%) aparece nas duas variantes — em campo e encerrado

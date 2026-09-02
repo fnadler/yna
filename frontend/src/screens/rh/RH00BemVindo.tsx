@@ -96,7 +96,7 @@ export function RH00BemVindo() {
             <Icon icon="ph:arrow-right-bold" width={18} aria-hidden />
           </button>
           <button
-            onClick={() => navigate('/rh/home')}
+            onClick={() => navigate('/rh/nr1')}
             className="mt-3 flex min-h-[44px] w-full items-center justify-center text-sm font-medium text-ink-secondary hover:text-ink animate-yna-slide-up animate-yna-delay-550"
           >
             Já tenho conta
@@ -137,7 +137,7 @@ export function RH00BemVindo() {
                 Conhecer a YNA
               </Button>
               <button
-                onClick={() => navigate('/rh/home')}
+                onClick={() => navigate('/rh/nr1')}
                 className="text-sm font-medium text-ink-secondary hover:text-ink"
               >
                 Já tenho conta

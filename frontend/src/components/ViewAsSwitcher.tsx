@@ -18,7 +18,7 @@ interface Opcao {
 }
 
 const OPCOES: Opcao[] = [
-  { id: 'admin', label: 'RH / Empresa', desc: 'Painel do RH', icon: 'ph:buildings-bold', to: '/rh/home' },
+  { id: 'admin', label: 'RH / Empresa', desc: 'Painel do RH', icon: 'ph:buildings-bold', to: '/rh/nr1' },
   { id: 'colaborador', label: 'Colaborador', desc: 'Meu espaço', icon: 'ph:user-bold', to: '/meu-espaco' },
   { id: 'manager', label: 'Manager YNA', desc: 'Backoffice / operação', icon: 'ph:shield-star-bold', to: '/mng/home' },
 ]

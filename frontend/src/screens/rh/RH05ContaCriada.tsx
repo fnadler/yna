@@ -49,7 +49,7 @@ export function RH05ContaCriada() {
             </div>
 
             <div className="w-full animate-yna-slide-up animate-yna-delay-250">
-              <Button variant="gradient" size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/rh/home')}>
+              <Button variant="gradient" size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/rh/nr1')}>
                 Acessar painel da empresa
               </Button>
             </div>

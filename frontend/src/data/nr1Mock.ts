@@ -2,7 +2,7 @@ import type {
   Nr1QuestionarioModelo, Nr1QuestionarioVersao, Nr1Dimensao, Nr1Item, Nr1DimensaoId,
   Nr1EscalaConfig, Nr1PontuacaoConfig, Nr1NivelRisco, Nr1Campanha, Nr1LinhaMapa,
   Nr1RiscoInventario, Nr1Acao, Nr1Relato, Nr1Ciclo, Nr1ResponsavelTecnico,
-  Nr1MinhaAvaliacao, Nr1KitMaterial, Nr1Severidade, Nr1RiscoCiclo,
+  Nr1MinhaAvaliacao, Nr1Severidade, Nr1RiscoCiclo, Nr1RiscoStatus,
 } from '../types'
 import { rhDepartamentos, rhEmpresa } from './rhMock'
 import { nr1MontarHistoricoRisco } from '../lib/nr1'
@@ -238,8 +238,18 @@ const participacaoAreas = () =>
     respostas: PARTICIPACAO.find((p) => p.id === d.id)?.respostas ?? 0,
   }))
 
+/** Participação zerada — o formato inicial de um ciclo recém-criado, antes
+   de qualquer resposta chegar. */
+export const participacaoVazia = () =>
+  rhDepartamentos.map((d) => ({
+    departamentoId: d.id,
+    departamento: d.nome,
+    elegiveis: d.colaboradores,
+    respostas: 0,
+  }))
+
 const totalRespostas = PARTICIPACAO.reduce((s, p) => s + p.respostas, 0)
-const totalElegiveis = rhDepartamentos.reduce((s, d) => s + d.colaboradores, 0)
+export const totalElegiveis = rhDepartamentos.reduce((s, d) => s + d.colaboradores, 0)
 
 export const nr1Campanhas: Nr1Campanha[] = [
   {
@@ -345,6 +355,14 @@ export type RiscoSeed = {
      `nr1RiscosSugeridosMock.ts`) — repassado a `Nr1RiscoInventario` via o
      spread `...r` abaixo, sem lógica adicional aqui. */
   origemSugestaoId?: string
+  /** Override manual do status (RH/SST, à mão) — a ÚNICA exceção à regra de
+     que `Nr1RiscoStatus` nunca é digitado manualmente (ver o tipo em
+     `types/index.ts`). Definido pelo campo "Status" em "Editar risco" ou
+     pelo botão "Concluir risco" (que grava `'eliminado'`); enquanto
+     presente, vence o que a evolução entre ciclos calcularia em
+     `nr1Inventario()` — porque o RH decidiu essa leitura, não porque o
+     produto inferiu sozinho. */
+  statusManual?: Nr1RiscoStatus
 }
 
 /** Mutável de propósito: `nr1ResultadoService.adicionarRisco` empurra riscos
@@ -456,7 +474,7 @@ export const nr1Inventario = (): Nr1RiscoInventario[] =>
       nivelNum,
       nivel: nr1NivelPorProduto(nivelNum),
       campanhaId: 'camp-2026-1s',
-      status: ultimo?.status ?? 'identificado',
+      status: r.statusManual ?? (ultimo?.status ?? 'identificado'),
       tendencia: ultimo?.tendencia,
       variacaoPontos: ultimo?.variacaoPontos,
       acaoRecomendada: ultimo?.acaoRecomendada,
@@ -679,59 +697,3 @@ export const nr1MinhasAvaliacoes: Nr1MinhaAvaliacao[] = [
   },
 ]
 
-export const nr1Kit: Nr1KitMaterial[] = [
-  {
-    id: 'kit-01', tipo: 'email', titulo: 'E-mail de abertura da campanha',
-    descricao: 'Primeiro contato com o time. Explica o porquê, o sigilo e o tempo de resposta.',
-    conteudo:
-      'Assunto: Um espaço seguro para você falar sobre o seu trabalho\n\n' +
-      'Oi, tudo bem?\n\n' +
-      'Nas próximas semanas você vai receber um convite para responder algumas perguntas sobre o seu dia a dia de trabalho. ' +
-      'São cerca de 8 minutos, e as respostas são anônimas: ninguém aqui vê o que você respondeu individualmente.\n\n' +
-      'O que a gente enxerga é o retrato do time: onde o trabalho está pesando e o que precisa mudar. ' +
-      'É a partir daí que conseguimos agir.\n\n' +
-      'Contamos com você. E se em algum momento quiser conversar com alguém, o cuidado da YNA está disponível para você.',
-  },
-  {
-    id: 'kit-02', tipo: 'email', titulo: 'E-mail de lembrete',
-    descricao: 'Reforço a meio caminho da janela, sem pressão e sem constranger quem não respondeu.',
-    conteudo:
-      'Assunto: Ainda dá tempo de contar como tem sido\n\n' +
-      'A pesquisa sobre o ambiente de trabalho fica aberta até {{data_fim}}.\n\n' +
-      'Se você já respondeu, obrigado de verdade. Se ainda não, são 8 minutos e continua tudo anônimo.\n\n' +
-      'Quanto mais gente participa, mais fiel é o retrato. E mais acertadas são as mudanças que vêm depois.',
-  },
-  {
-    id: 'kit-03', tipo: 'cartaz', titulo: 'Cartaz para áreas comuns',
-    descricao: 'Peça para copa, elevador e mural. Texto curto com QR Code da campanha.',
-    conteudo:
-      'COMO ANDA O SEU TRABALHO?\n\n' +
-      '8 minutos. Anônimo. Sem resposta certa ou errada.\n\n' +
-      'O que você contar aqui ajuda a cuidar do ambiente de todo mundo.\n\n' +
-      '[QR Code da campanha]\n\n' +
-      'Disponível até {{data_fim}}',
-  },
-  {
-    id: 'kit-04', tipo: 'roteiro', titulo: 'Roteiro para a liderança',
-    descricao: 'O que a liderança deve (e não deve) dizer ao apresentar a campanha ao time.',
-    conteudo:
-      'ABERTURA (2 minutos, na reunião semanal)\n\n' +
-      '· Diga o porquê: entender onde o trabalho está pesando para poder agir.\n' +
-      '· Garanta o sigilo: as respostas são anônimas e nenhuma liderança vê resposta individual.\n' +
-      '· Dê o tempo: são cerca de 8 minutos, dentro do expediente.\n\n' +
-      'O QUE NÃO FAZER\n\n' +
-      '· Não cobre participação nominalmente nem acompanhe quem respondeu.\n' +
-      '· Não prometa mudanças específicas antes do resultado.\n' +
-      '· Não peça para alguém "responder pensando no lado bom".\n\n' +
-      'DEPOIS DO RESULTADO\n\n' +
-      '· Compartilhe o retrato da área e o plano de ação. Silêncio depois da pesquisa corrói a confiança.',
-  },
-  {
-    id: 'kit-05', tipo: 'post', titulo: 'Post para o canal interno',
-    descricao: 'Mensagem curta para Slack, Teams ou mural digital.',
-    conteudo:
-      'A pesquisa sobre riscos psicossociais está no ar 🌱\n\n' +
-      '8 minutos, anônima, e o resultado vira plano de ação.\n' +
-      'Responda quando fizer sentido para você. O link fica aberto até {{data_fim}}.',
-  },
-]

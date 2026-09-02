@@ -5,8 +5,8 @@ profissionais, agendamento, sessões, check-ins) e passa a ser **exclusivamente 
 com a NR-1** (gestão de riscos psicossociais). Três jornadas enxutas, organizadas em volta de uma
 única promessa: *inventário de riscos psicossociais no PGR, com rastreabilidade*.
 
-- **Colaborador** — responde à avaliação anônima e acompanha sua evolução (raiz `/`, entra por
-  `/convite/:token`).
+- **Colaborador** — responde à avaliação anônima e acompanha sua evolução (entra por
+  `/bem-vindo`, se identificando por CPF + data de nascimento — ver item 50 do changelog).
 - **RH / Empresa** — cadastra colaboradores, aplica campanhas e opera o cockpit NR-1 (`/rh/*`).
 - **Backoffice YNA** — governa o instrumento (modelos, versões, núcleo) e a operação multiempresa
   (`/mng/*`).
@@ -62,7 +62,7 @@ demonstração começa.
 | Contexto | Responsabilidade |
 |---|---|
 | `ThemeContext` | Tema light/dark **compartilhado** pelas três jornadas. Persiste em `localStorage`. |
-| `AppContext` | Sessão do **colaborador**: token da sessão anônima (`sessaoToken`), se a conta já foi criada (`contaCriada`), e a avaliação NR-1 em andamento (`nr1` — consentimento, respostas, interesse opcional em cuidado futuro). |
+| `AppContext` | Sessão do **colaborador**: se a conta já foi criada (`contaCriada`), e a avaliação NR-1 em andamento (`nr1` — consentimento, respostas, interesse opcional em cuidado futuro). |
 | `RhContext` | Sessão do **RH/Empresa**: empresa, usuário logado (Master/Operador), instrumento NR-1 aplicado na campanha corrente. Isolado do `AppContext`. |
 | `MngContext` | Sessão do **backoffice YNA**: gestor logado, notificações. Isolado dos demais perfis. |
 
@@ -99,16 +99,15 @@ têm estados loading (skeleton), success e error com microcopy da marca.
 
 ## Mapa rota → tela → RF — Colaborador
 
-O acesso é sempre por link/token (RF-B01), sem senha complexa. **A avaliação é respondida antes de
-existir qualquer conta**: isso reforça que a resposta é anônima. A conta leve só é oferecida depois,
-para quem quiser acompanhar a própria evolução.
+O acesso é pelo link único da campanha (RF-B01), sem senha complexa — `/bem-vindo` é o único ponto
+de entrada, e a pessoa se identifica por CPF + data de nascimento no modal "Iniciar avaliação"
+(ver item 50 do changelog). **A avaliação é respondida antes de existir qualquer conta**: isso
+reforça que a resposta é anônima. A conta leve só é oferecida depois, para quem quiser acompanhar
+a própria evolução.
 
 | Rota | Tela | RF principal |
 |---|---|---|
-| `/convite/:token` | COL-01 Convite | RF-B01 |
-| `/convite/invalido` | COL-01 Link inválido | RF-B01 |
-| `/bem-vindo` | COL-00 Boas-vindas — apresentação da YNA, antes do LGPD | — |
-| `/apresentacao/:passo` | COL-00 Apresentação (3 slides) | — |
+| `/bem-vindo` | COL-00 Boas-vindas — um botão, "Iniciar avaliação", abre o modal de CPF + nascimento | — |
 | `/sigilo` | COL-02 Consentimento LGPD | RNF-01 |
 | `/comecar` | Transição "tudo certo" — fecha o consentimento, abre a avaliação | — |
 | `/avaliacao` | COL-06 Portão: segue para `/avaliacao/1` se há campanha ativa e não respondida, senão mostra estado vazio | RF-A02 |
@@ -1139,6 +1138,471 @@ para converter.
       Usuários (perfil Master) — mesmo critério que 'e-1'/'e-3' já seguiam. Um par adicional de
       usuário Operador em três das cinco, só pra mostrar as duas variações de perfil no protótipo.
 
+36. **`/rh` passou a redirecionar pra Visão geral (`/rh/nr1`), não mais pra uma Home própria — a
+    antiga Home (`RH10Home.tsx`, rota `/rh/home`) foi removida.** A sidebar já promovia "Visão
+    geral" (`NR1RhCockpit.tsx`) a primeiro item, sem seção, desde uma revisão anterior — mas
+    `/rh`/`/rh/home` continuavam levando pra uma tela à parte que dizia praticamente a mesma coisa
+    (saudação + estado do ciclo + risco por dimensão), e a bottom-nav mobile tinha dois botões pro
+    que virou o mesmo destino ("Visão" → Home, "NR-1" → Visão geral). Ambas as telas já tinham
+    esse desencontro registrado em comentário no próprio código, apontado como pendência pra uma
+    revisão futura — esta é essa revisão.
+    - `RH10Home.tsx` apagado; rota `/rh/home` removida de `App.tsx`; `/rh` agora redireciona direto
+      pra `/rh/nr1`.
+    - Todo link que apontava pra `/rh/home` (RH00BemVindo "Já tenho conta" ×2, RH01Convite,
+      RH05ContaCriada pós-cadastro, `ViewAsSwitcher`) passou a apontar pra `/rh/nr1`.
+    - Bottom-nav mobile (`RhAppLayout.tsx`): os dois itens "Visão"/"NR-1" viraram um só, "Visão
+      geral" → `/rh/nr1` (mesmo rótulo da sidebar) — 4 itens em vez de 5.
+    - A Home tinha dois blocos que a Visão geral não tem: "Suas pendências" (contagens agregadas
+      da empresa toda — riscos sem ação, ações vencidas, casos abertos no canal, colaboradores não
+      convidados) e "A cadeia" (atalhos pra Inventário/Plano de ação/Relatório). Não portei esse
+      conteúdo pra Visão geral — não foi pedido, e a Visão geral já tem "Seus planos de ação"
+      (pendências da própria pessoa, não da empresa toda), que cobre uma pergunta parecida de um
+      jeito diferente. Se as contagens agregadas da Home fizerem falta, é um pedido à parte.
+
+37. **Detalhe do ciclo de avaliação (aba Engajamento) ganhou um bloco "Link da avaliação", com um
+    botão "Compartilhar" (copiar link / QR Code / e-mail) no lugar do antigo link "Kit de
+    comunicação".**
+    - **O link em si**: reaproveita o `protocolo` que a campanha já tem (formato
+      `NR1-{empresa}-{ano}-{sequencial}`, ex. `NR1-BCP-2026-001`) — já único por empresa e por
+      ciclo, então não precisei de um campo novo só pra isso. Montado como
+      `https://app.yna.com.br/a/{protocolo}` (`nr1LinkAvaliacao`, local a `NR1RhCiclos.tsx`).
+      Puramente de exibição neste protótipo: não existe ainda uma rota `/a/:protocolo` que
+      resolva esse link numa sessão anônima de verdade — isso ficaria por conta de uma issue à
+      parte (hoje só `/convite/:token`, por pessoa, faz esse papel).
+    - **Botão "Compartilhar"** abre um menu com três ações: copiar link (`navigator.clipboard`,
+      com confirmação visual por 2s), mostrar QR Code (gerado no cliente com a biblioteca
+      `qrcode`, nova dependência de ~30KB, sem chamada de rede) e enviar por e-mail (mesmo padrão
+      de dois estados — pedir e-mail → confirmar — do modal "Enviar lembrete" na mesma tela;
+      `nr1CampanhaService.enviarLinkAvaliacao`, novo método mockado, sem envio real).
+    - Não modifiquei o fluxo de Convites (`RH12Convites.tsx`, convite por pessoa) — os dois
+      caminhos convivem: convite individual (rastreia funil de adesão por pessoa) e link único
+      compartilhável (sem rastreio, pra quem prefere divulgar num canal interno em vez de uma
+      lista de e-mails).
+
+38. **Kit de comunicação removido do produto por completo** (`NR1RhKit.tsx`, rota `/rh/nr1/kit`,
+    `nr1KitService`, os tipos `Nr1KitMaterial`/`Nr1MaterialTipo` e o mock `nr1Kit` em
+    `data/nr1Mock.ts`) — depois do item 37 tirar o único link de acesso a ela (o "Kit de
+    comunicação" no cabeçalho do ciclo), a tela ficou sem nenhum ponto de entrada na interface,
+    então em vez de deixar código morto pendurado, removi a cadeia inteira. A própria copy do kit
+    já citava um `[QR Code da campanha]` como placeholder de texto num modelo de cartaz — ideia
+    que o item 37 concretiza de outro jeito, com um QR Code de verdade no menu "Compartilhar".
+    "Kit de comunicação interna da empresa" em `RH12Convites.tsx:165` é outra coisa (o processo de
+    comunicação interna da EMPRESA CLIENTE, não a tela do produto) — não tem relação com o que foi
+    removido aqui, mantido como estava.
+
+39. **Ajustes no "Compartilhar" do link da avaliação (item 37), a partir de feedback direto de uso.**
+    - **Sem bloco novo na tela.** O botão "Compartilhar" saiu da seção própria (que ocupava uma
+      linha inteira entre "Instrumento aplicado" e "Participação por área") e foi para o cabeçalho
+      da página, ao lado do título — mesmo `action` do `PageHeader` que segurava o antigo link
+      "Kit de comunicação" (item 37), agora reaproveitado de vez. Some quando o ciclo não está em
+      campo (rascunho ainda não começou a coletar; encerrado não tem mais o que compartilhar) —
+      mesmo critério que já existia para o botão "Lembrar" da seção de participação.
+    - **Feedback de "Link copiado" corrigido.** Antes, copiar e fechar o menu aconteciam no mesmo
+      clique — as duas mudanças de estado caíam no mesmo render do React, e o "Link copiado" nunca
+      chegava a aparecer na tela antes do menu sumir. Agora o menu só fecha depois de mostrar o
+      feedback (ícone de check + "Link copiado") por 1,3s.
+    - **Convites deixaram de ser um a um.** O antigo modal pedia um único e-mail de destino; agora
+      é um disparo só, para todos os colaboradores da empresa com e-mail cadastrado
+      (`rhColaboradorService.list()`, o mesmo catálogo de `RH11Colaboradores.tsx`). O botão "Enviar
+      convites" mostra antes quantos vão receber e quantos ficam de fora por não ter e-mail
+      cadastrado. `nr1CampanhaService.enviarLinkAvaliacao(campanhaId, email)` virou
+      `enviarConvitesLink(campanhaId, quantidade)`. Populei 2 dos 32 colaboradores mockados sem
+      e-mail (`data/rhMock.ts`, linha incompleta de importação por planilha — situação real, o
+      próprio produto já prevê isso) para o aviso aparecer no protótipo, não só em teoria.
+    - **Texto do bloco fora do tom Cora, corrigido junto.** Como o bloco em si foi removido, o
+      travessão espaçado que ele carregava ("Único para este ciclo — qualquer elegível...") saiu
+      junto; também troquei outra ocorrência que tinha passado despercebida no texto do QR Code
+      ("...acessar a avaliação — bom para cartazes...") por duas frases diretas, sem o travessão.
+
+40. **"Copiar link" (item 39) virou um modal com o link à vista, em vez de copiar direto ao
+    clicar no item do menu.** Clicar em "Copiar link" abre "Link da avaliação" (`CopiarLinkModal`)
+    com o link por extenso, num campo de leitura, e um botão "Copiar link" logo abaixo — quem vai
+    colar o link em outro lugar confere o que está copiando antes, em vez de só confiar no clique.
+    O botão avisa quando a cópia dá certo (ícone vira check, texto vira "Copiado") por 2s e volta
+    ao normal — mesmo padrão já usado pra copiar o texto de um material no antigo kit de
+    comunicação — sem fechar o modal sozinho: quem fecha é a pessoa, pelo X ou clicando fora.
+
+41. **Botão "Novo ciclo" na tela Ciclos de avaliação, com as duas variações pedidas.**
+    - **Já existe um ciclo em campo**: em vez de abrir o cadastro, mostra um modal ("Existe um
+      ciclo em andamento") avisando que só um ciclo fica em campo por vez e que é preciso encerrar
+      o atual antes — com um botão que leva direto pra ele ("Ver ciclo em andamento").
+    - **Sem ciclo em campo**: abre o cadastro (`NovoCicloSheet`/`NovoCicloConteudo`) com título
+      (texto livre), questionário (mesmo padrão de "Trocar instrumento" — escolhe o modelo, resolve
+      pra última versão publicada pela YNA, sem editar conteúdo) e datas de início/término (término
+      sugerido em +21 dias a partir do início, ajustável). Ao confirmar, o ciclo entra em campo
+      direto — não existe um estado de rascunho neste fluxo simplificado, então não faria sentido
+      criar um só pra publicar em seguida.
+    - **Ao concluir o cadastro**, a mesma Sheet mostra as opções de compartilhamento na hora — link
+      por extenso + três botões diretos (copiar link, mostrar QR Code, enviar convites), sem
+      precisar abrir o menu "Compartilhar" de novo: reaproveita os três modais já existentes
+      (`CopiarLinkModal`, `QrCodeModal`, `EnviarConvitesModal`) por trás de botões visíveis
+      (`CompartilharLinkOpcoes`), em vez do dropdown do cabeçalho do ciclo.
+    - **QR Code ganhou download**: `QrCodeModal` (usado tanto aqui quanto no menu "Compartilhar")
+      passou a ter um botão "Baixar", que salva a imagem já gerada como PNG (`<a download>` sobre
+      o data URL da própria biblioteca `qrcode` — nenhuma chamada de rede a mais).
+    - **Serviço novo**: `nr1CampanhaService.criar(nome, modeloId, versao, inicio, fim)`. O
+      protocolo é gerado a partir do maior sequencial já usado, no mesmo formato dos existentes
+      (`NR1-{empresa}-{ano}-{sequencial}`); participação inicial zerada
+      (`participacaoVazia()`, nova em `data/nr1Mock.ts`, ao lado de `totalElegiveis` agora
+      exportado). Cadastro puramente local ao mock: a checagem de "só um ciclo em campo por vez"
+      acontece na tela, não no serviço — o mock confia em quem chama.
+
+42. **Botão "Encerrar ciclo" (o motivo pelo qual o item 41 nunca tinha como ser testado sem editar
+    o mock na mão) e um parâmetro de URL só de demonstração pra ver as duas telas sem precisar
+    encerrar de verdade.**
+    - **"Encerrar ciclo"**: `nr1CampanhaService.encerrar` já existia (usado desde antes deste
+      ciclo de mudanças), mas nenhum botão da interface chamava esse método — não havia nenhum
+      caminho, pela UI, de fechar um ciclo em campo. Agora, na aba Engajamento do detalhe do
+      ciclo, um botão discreto "Encerrar ciclo" (só aparece com o ciclo em campo) abre um modal de
+      confirmação avisando que a ação não pode ser desfeita, com o botão de confirmar em tom de
+      perigo (`variant="danger"`) — mesmo padrão de cautela que o app já usa pra ações
+      consequentes. Ao confirmar, a tela recarrega e passa a mostrar o estado "encerrado" (perde o
+      botão "Compartilhar" e o próprio "Encerrar ciclo", ganha o aviso de bloqueio que já existia
+      pra ciclos encerrados).
+    - **`?cenario=sem-ciclo` na URL de `/rh/nr1/ciclos`**: mostra a tela como se não houvesse ciclo
+      em campo, sem mexer nos dados de verdade — filtra o ciclo em campo real (se houver) só na
+      exibição desta tela. Sem o parâmetro, o padrão é o estado real dos dados (hoje, com um ciclo
+      em campo). Serve pra apresentar as duas variações da tela lado a lado (duas abas do
+      navegador, uma com o parâmetro e outra sem) sem precisar de fato encerrar o ciclo ativo só
+      pra mostrar a tela vazia — e sem esse parâmetro afetar em nada o "Novo ciclo"/"Encerrar
+      ciclo" reais, que continuam lendo e gravando os dados de verdade.
+
+43. **"Encerrar ciclo" (item 42) mudou de lugar: saiu de dentro da aba Engajamento e foi para o
+    cabeçalho do ciclo, à esquerda de "Compartilhar" — mesma prateleira de ações, sempre visível
+    em qualquer aba, não só na Engajamento.** Ganhou `variant="danger"` (vermelho, mesmo tom de
+    perigo já usado no botão de confirmar dentro do modal) para se diferenciar visualmente de
+    "Compartilhar" à primeira vista — antes era um `ghost` cinza, discreto demais para uma ação
+    que não pode ser desfeita. Ícone continua o mesmo `ph:stop-circle-bold`.
+    - **Mobile**: dois botões de texto completo ao lado de um título longo estouravam a tela.
+      Apliquei o mesmo tratamento já usado no botão "Editar" do detalhe da empresa no Manager
+      (`Mng11EmpresaDetalhe.tsx`): o rótulo de texto vai para dentro de um
+      `<span className="hidden sm:inline">`, então abaixo do breakpoint `sm` os dois botões viram
+      só ícone (compactos, cabem ao lado do título) e voltam a mostrar o texto a partir do
+      tablet/desktop. Mudança feita nos dois botões (`Encerrar ciclo` e `Compartilhar`), já que os
+      dois dividem a mesma prateleira agora.
+
+44. **Questionário do colaborador (`NR1BenQuestionario.tsx`) redesenhado: uma pergunta por vez, sem
+    agrupar por dimensão, opções de resposta com rótulo sempre visível, e uma composição nova de
+    tela reaproveitando a transição "Agora vamos começar".**
+    - **Uma pergunta por vez.** Antes, os "passos" eram um por dimensão (5 no total, cada um
+      mostrando várias perguntas reveladas progressivamente na mesma tela). Agora a sequência é
+      linear: todos os itens de todas as dimensões, nesta ordem, seguidos das perguntas abertas —
+      achatado (`versao.dimensoes.flatMap(d => d.itens)`) em vez de agrupado, e `:passo` na URL
+      passou a contar pergunta a pergunta (hoje, 36 itens de escala + 2 abertas = 38 perguntas,
+      `/avaliacao/1` a `/avaliacao/38`), não mais dimensão a dimensão. A pessoa nunca vê a qual
+      dimensão uma pergunta pertence — não era vocabulário dela mesmo antes, e agora nem a
+      estrutura aparece.
+    - **Opções com rótulo sempre visível.** A versão anterior mostrava os valores da escala como
+      números (1 a 5) num carrossel horizontal, só com os dois extremos escritos por extenso
+      ("Nunca"/"Sempre") como legenda embaixo — o rótulo da opção escolhida só aparecia depois,
+      num badge. Virou uma lista vertical de opções, cada uma com o próprio texto completo sempre
+      visível ("Nunca", "Raramente", "Às vezes", "Frequentemente", "Sempre", ou o equivalente de
+      concordância) — sem precisar decorar o que cada número da escala quer dizer.
+    - **Barra de progresso**: "Questão X de Y" + barra + percentual, mesmo gradiente
+      `from-primary to-pink` já usado no app (a referência visual enviada usava verde escuro, que
+      não existe na paleta do produto — troquei pelas cores reais do design system, mantendo só o
+      layout de referência).
+    - **Composição da tela**: em vez do `FocusLayout` (fundo `bg-yna-gradient-soft`, barra superior
+      com logo + "Sair") que as demais telas do fluxo usam, esta tela ficou standalone — mesmo
+      fundo `bg-yna-gradient` e a mesma composição de card centralizado da transição "Agora vamos
+      começar" (`ColTransicaoAvaliacao.tsx`), só trocando o conteúdo do card pela pergunta atual.
+      Rota `/avaliacao/:passo` saiu do grupo de rotas que compartilhava `FocusLayout` com
+      `/avaliacao/conta` (App.tsx) — esta última não mudou, continua com o `FocusLayout` de antes.
+      Consequência: esta tela perdeu o link "Sair" (só existia no `FocusLayout`, e só no desktop) —
+      a própria tela-base que ela reaproveita (`ColTransicaoAvaliacao`) também não tem esse link,
+      então ficou consistente com o restante do fluxo de transição, não uma lacuna nova.
+    - **Perguntas condicionais e "não se aplica a mim"** continuam do jeito que estavam (opcional,
+      não trava o avanço; marcar "não se aplica" grava um valor como qualquer resposta) — só a
+      moldura ao redor mudou, a regra de negócio é a mesma.
+    - **Salvamento parcial deixou de bloquear a navegação**: antes, cada "Continuar" esperava
+      `nr1ColaboradorService.salvarParcial` responder (com "Salvando…" no botão) antes de avançar —
+      tolerável quando eram 5 passos, mas com 38 passos essa espera a cada clique deixaria o fluxo
+      arrastado. Agora o salvamento dispara em segundo plano (`void`, sem `await`) e a navegação
+      acontece na hora.
+    - Nada mudou em como as respostas são guardadas (`AppContext.nr1.respostas`, por `itemId`) nem
+      em como são enviadas no fim (`NR1BenConclusao.tsx` → `nr1ColaboradorService.enviar`) — o mock
+      já descartava o conteúdo das respostas antes desta mudança (só incrementa um contador
+      agregado), e continua assim; não fazia parte deste pedido.
+
+45. **Inventário de Riscos (`NR1RhInventario.tsx`) abandonou o modelo de cards no desktop por uma
+    tabela, no mesmo padrão de `NR1RhPlanoAcao.tsx`.**
+    - **Filtros**: palavra-chave (busca em `fator` e `grupoExposto`), dimensão e departamento —
+      todos combináveis, com "Limpar filtros" quando algum está ativo. O filtro de departamento
+      usa `rhDepartamentoService.list()` (mesma fonte da Fase D); um risco aparece se qualquer um
+      dos seus `departamentoIds` bater com o departamento escolhido.
+    - **Colunas da tabela** (desktop, `RISCOS_GRID_COLS`): nota do risco, título do risco (+
+      respondentes como meta), dimensão, departamentos afetados, ações vinculadas e status.
+    - **Departamentos afetados** aparece como contagem (`DepartamentosPopover`) — clicar abre um
+      popover com a lista completa dos nomes, sem precisar entrar no detalhe do risco. Segue o
+      mesmo padrão sem biblioteca externa de outros menus de contexto do app (`relative` +
+      `fixed inset-0` para fechar ao clicar fora), com `stopPropagation` para não também abrir o
+      detalhe da linha.
+    - **Abaixo de `lg`, a mesma linha (`RiscoLinha`) renderiza em pilha compacta** em vez de
+      colunas — mesma dualidade de `AcaoLinha` no Plano de ação, não duas implementações
+      separadas. A linha inteira (desktop e mobile) é clicável e abre o Sheet de detalhe já
+      existente; só o botão do popover de departamentos intercepta o clique.
+    - **"Ver plano de ação"/"Definir ação"**, antes um botão por card, virou um link no cabeçalho
+      da seção "Ações vinculadas" dentro do Sheet de detalhe (`RiscoDetalhe`) — a linha da tabela
+      não tem mais botões de ação própria, só o clique que abre o detalhe.
+    - **Status, tendência e sugestão** (`EvolucaoBadges`), que antes só apareciam no rodapé do
+      card, passaram a aparecer no topo do Sheet de detalhe (a coluna "Status" da tabela mostra só
+      o badge principal, por espaço) — a informação não foi perdida, só reorganizada.
+    - Nenhuma mudança em `services/nr1.ts` ou `data/nr1Mock.ts`: a tabela lê os mesmos
+      `nr1ResultadoService.inventario()` e `nr1AcaoService.list()` de sempre.
+
+46. **Modal de detalhe do risco (`NR1RhInventario.tsx`) ganhou duas abas — "Dados do risco" e
+    "Planos de ação" — e os botões editar/excluir/concluir no cabeçalho, no mesmo padrão de
+    editar/concluir do detalhe de uma ação (`NR1RhPlanoAcao.tsx`).**
+    - **Editar risco** reaproveita `Nr1AdicionarRiscoForm.tsx` (o mesmo formulário de "Adicionar
+      risco") num novo modo: com `inicial` preenchido, os campos partem do risco existente e salvar
+      chama `nr1ResultadoService.editarRisco` (novo) em vez de `adicionarRisco`. Sem mudança na
+      aparência do formulário, só no que ele chama ao salvar.
+    - **Excluir risco** é bloqueado, com aviso, quando o risco tem ações vinculadas no plano de
+      ação — a checagem é do serviço (`nr1ResultadoService.excluirRisco`, novo), não só da UI.
+      Como o app ainda não tem como remover uma ação, na prática só dá para excluir um risco que
+      nunca teve ação registrada. Sem ações vinculadas, um modal de confirmação (destrutivo, com
+      `Button variant="danger"`) precede a exclusão de verdade.
+    - **Concluir risco** é a única exceção documentada à regra de que `Nr1RiscoStatus` nunca é
+      definido à mão (o tipo, em `types/index.ts`, é explícito: calculado só por
+      `nr1AnalisarEvolucao`, a partir da evolução entre ciclos). Um novo campo
+      `RiscoSeed.concluidoManualmente` (em `data/nr1Mock.ts`) força `status: 'eliminado'` em
+      `nr1Inventario()` quando presente — mesmo valor que a evolução automática também pode
+      produzir, só mais um caminho até lá, atrás de um modal de confirmação explicando o que a
+      ação faz. O botão some do cabeçalho assim que o risco já está "Eliminado" (por qualquer via).
+    - **"Evolução entre ciclos" foi removida** do detalhe (o bloco ciclo a ciclo, com o
+      componente/função `EvolucaoHistorico`, saiu de vez — não sobrou em nenhuma aba). O que ficou:
+      status + tendência + sugestão (`EvolucaoBadges`) continuam no topo da aba "Dados do risco",
+      só o histórico ciclo a ciclo é que saiu.
+    - **"Ações vinculadas" virou a aba "Planos de ação"**, com as ações listadas no mesmo padrão de
+      linha da visualização "Lista" do Plano de ação (prazo, título + responsável, status — colunas
+      no desktop, pilha no mobile), em vez da lista simples de texto que existia antes. Sem a
+      coluna de nível (redundante: todas as linhas são do mesmo risco, que já aparece na aba
+      "Dados do risco"). Cada linha leva para o Plano de ação filtrado por este risco — editar,
+      comentar e concluir uma ação continua só lá, não foi duplicado dentro do modal.
+    - **Um problema de arquitetura pré-existente apareceu no caminho**: `Modal.tsx` não usa
+      `createPortal` como `Sheet.tsx` usa, então um `Modal` aberto por cima de um `Sheet` ainda
+      montado renderiza visualmente ATRÁS dele (o Sheet, portado para o fim do `<body>`, sempre
+      pinta por cima de qualquer coisa dentro da árvore normal do React, incluindo o Modal). Editar/
+      excluir/concluir contornam isso fechando o Sheet de detalhe antes de abrir o modal de
+      confirmação, e reabrindo o mesmo risco ao cancelar — o mesmo truque que "Editar ação"
+      (Plano de ação) já usava, sem saber que também evitava esse problema. Não mexi em
+      `Modal.tsx`/`Sheet.tsx` para consertar a causa raiz (afetaria toda tela que usa os dois
+      juntos); fica registrado aqui para quem for abrir um Modal por cima de um Sheet em outro
+      lugar do app.
+
+47. **Ajustes finos na tabela e no modal do Inventário de Riscos.**
+    - **Título do risco (tabela) e título da ação (aba "Planos de ação" do detalhe) não abreviam
+      mais** — trocado `truncate` (uma linha, com reticências) por quebra de linha normal
+      (`RiscoLinha` e `RiscoAcaoLinha`, em `NR1RhInventario.tsx`). O título completo sempre aparece,
+      mesmo que a linha cresça em altura.
+    - **Filtro de departamento ordenado alfabeticamente** — `listaDepartamentos` agora é ordenada
+      por `nome` (`localeCompare`) antes de virar as opções do `Select`; antes vinha na ordem de
+      cadastro (`rhDepartamentos`), sem critério visível para quem usa o filtro.
+    - **Campo "Status" no formulário de edição do risco** (`Nr1AdicionarRiscoForm.tsx`, só quando
+      `inicial` está presente — não existe no "Adicionar risco", que sempre nasce "Identificado").
+      Generalizei o mecanismo do botão "Concluir risco" (item 46): `RiscoSeed.concluidoManualmente`
+      (booleano, só "Eliminado") virou `RiscoSeed.statusManual` (guarda qualquer `Nr1RiscoStatus|
+      undefined`), e `editarRisco` agora aceita um `status` opcional que grava nesse campo. O botão
+      "Concluir risco" continua existindo como atalho de um clique para o mesmo resultado
+      (`statusManual = 'eliminado'`) — o campo do formulário é o caminho geral, para qualquer um dos
+      5 status. Salvar a edição sempre grava o status selecionado no formulário: a partir da
+      primeira edição com esse campo, o status do risco fica manual até a próxima edição (não existe
+      opção de "voltar a calcular automaticamente" — não foi pedido, e eu não quis inventar essa
+      trava sem um caso de uso concreto).
+
+48. **Modal de detalhe de uma ação (`NR1RhPlanoAcao.tsx`, `AcaoDetalhe`) perdeu o aviso "Revisar
+    plano" e moveu o aviso de evidência ausente para dentro do Diário de execução.**
+    - **Removido o bloco amarelo "O risco de origem sugere [ação] → Revisar plano"** (aparecia só
+      quando o risco recomendava "revisar-plano" ou "escalar"). Esse bloco era a ÚNICA forma de
+      acionar `RevisarPlanoForm` (criar uma nova versão da ação) em todo o app — removida a
+      confirmação explícita de que essa consequência era esperada, também removi por inteiro o que
+      ficou órfão: `RevisarPlanoForm`, o `Sheet` "Revisar plano", o estado `revisar`/`setRevisar`, e
+      `nr1AcaoService.revisar` (`services/nr1.ts`). O que ficou: "Versões anteriores"
+      (`VersoesAnteriores`) continua mostrando o histórico de quem já foi revisado antes — só não
+      existe mais um jeito de CRIAR uma nova versão pela UI. O card informativo "Risco de origem"
+      (fator, nível, link para o inventário) não mudou — é um bloco diferente, só de leitura.
+    - **"Nenhum arquivo de evidência anexado ainda..."** saiu de ser um bloco solto no corpo do
+      modal e passou a aparecer dentro da seção "Diário de execução", logo abaixo do cabeçalho —
+      mesma condição de antes (`!temEvidencia && status !== 'concluida'`), mesmo texto, só mudou de
+      lugar para ficar junto do que ela está avisando (o diário é onde se anexa evidência).
+
+49. **Filtros da lista de Planos de ação reorganizados: Risco em linha própria com busca por
+    palavra-chave, e os demais escondidos atrás de um botão "Filtrar" no mobile/tablet.**
+    - **Risco virou `SearchSelect`** (o mesmo combobox com busca já usado no campo "Quem" dos
+      formulários de ação), numa linha sozinha ocupando a largura toda, acima dos outros filtros.
+      As opções também pararam de abreviar o texto do risco em 40 caracteres — o dropdown já trunca
+      visualmente o que não cabe, então cortar o texto de antemão só escondia informação sem
+      necessidade (mesmo racional do item 47 na tabela do Inventário).
+    - **No desktop (`lg` +)**, Dimensão/Responsável/Status/Vencimento continuam sempre visíveis,
+      agora numa grade de 4 colunas abaixo da linha do Risco (antes eram 5 colunas, com Risco
+      dentro da mesma grade).
+    - **Abaixo de `lg`**, esses quatro filtros saem da tela e viram um botão "Filtrar" (com um
+      badge mostrando quantos deles estão ativos), que abre um painel em tela cheia — não o
+      `Modal` padrão do design system, que vira um bottom-sheet só até `md` e centralizado dali pra
+      cima: aqui o pedido era tela cheia até `lg`, o mesmo corte do botão, então é um overlay
+      próprio (`fixed inset-0 lg:hidden`), com trava de scroll do body e Escape-para-fechar iguais
+      ao `Modal`. Os selects aplicam na hora (mesmo estado da grade do desktop); o rodapé do painel
+      só tem "Aplicar filtros" (fecha) e "Limpar filtros" (zera risco + os quatro, e fecha).
+
+50. **Fluxo do colaborador/beneficiário recortado para uma única tela de entrada: Bem-vindo →
+    modal "Iniciar avaliação" (CPF + data de nascimento) → LGPD/sigilo → questionário.**
+    - **Removidas as telas de convite por token e de apresentação em slides** —
+      `Ben01Convite.tsx` (`/convite/:token`), `Ben02LinkInvalido.tsx` (`/convite/invalido`) e
+      `Ben00Apresentacao.tsx` (`/apresentacao/:passo`), junto com as rotas correspondentes em
+      `App.tsx`. `Ben00BemVindo.tsx` (`/bem-vindo`) passa a ser o único ponto de entrada do
+      colaborador — coerente com o link único por empresa/ciclo que o RH já compartilha (item do
+      "Compartilhar" em `NR1RhCiclos.tsx`), que nunca foi pensado como um link por pessoa.
+    - **`Ben00BemVindo` ficou com um botão só, "Iniciar avaliação"** (antes eram dois: "Conhecer a
+      YNA", que abria a apresentação removida, e "Já conheço, continuar", que pulava direto pro
+      sigilo). Clicar abre `IniciarAvaliacaoModal` (novo, dentro do próprio arquivo): CPF (com
+      máscara `000.000.000-00` aplicada enquanto digita, `formatarCpf`) e data de nascimento
+      (`type="date"`, com `max` no dia de hoje). O botão "Continuar" só habilita com CPF de 11
+      dígitos e uma data preenchida.
+    - **"Login" é mockado e sempre bem-sucedido** (`nr1ColaboradorService.entrar`, novo em
+      `services/nr1.ts`) — não existe checagem contra uma matrícula real de colaboradores nem
+      persistência de identidade a partir daí; CPF e nascimento servem só para dar à pessoa a
+      sensação de ter "entrado" antes do compromisso de responder, não para autenticar de verdade.
+      A avaliação em si continua tão anônima quanto antes.
+    - **Limpeza do que ficou órfão**: `AppContext.sessaoToken`/`setSessaoToken` (só era escrito por
+      `Ben01Convite`, e — já antes desta mudança — nunca lido em lugar nenhum, então nem chegava a
+      "linkar" conta e avaliação como o comentário original prometia) e `services/index.ts`
+      inteiro (só continha `inviteService`, único consumidor era `Ben01Convite`). Comentários em
+      `App.tsx` e `ColCriarConta.tsx` que citavam o token/apresentação removidos foram atualizados.
+
+51. **Aba "Riscos sugeridos" (detalhe de um ciclo) trocou o modelo de cards por tabela no desktop e
+    card no mobile, no mesmo padrão do Inventário de Riscos, com filtros de nível/dimensão/
+    departamento.** (`components/Nr1RiscosSugeridos.tsx`)
+    - **Colunas no desktop** (`SUGESTOES_GRID_COLS`): nota (nível calculado, ou um badge "Não
+      identificado" quando a sugestão não disparou neste ciclo — mesmo par de estados que o card
+      antigo mostrava no canto superior direito, só que agora como o valor da própria coluna),
+      risco (nome curto + descrição), dimensão, departamentos envolvidos (contagem com popover —
+      igual ao do Inventário, mas sem precisar de uma lista de departamentos à parte:
+      `departamentosEnvolvidos` já traz nome e média de cada um) e ação ("Adicionar ao inventário"
+      ou o badge "Já no inventário"). Abaixo de `lg`, os mesmos dados em pilha, como card.
+    - **Não portei a coluna de CID-11** que o card antigo mostrava (pills + "+N mais") — cabe
+      melhor na análise completa (`Nr1RiscoAnaliseSheet`, que já lista todos os CIDs com
+      probabilidade de associação) do que espremida numa coluna; a tabela é sobre comparar as 7
+      sugestões rapidamente, não repetir o detalhe inteiro de cada uma.
+    - **A linha/card inteiro abre a análise completa ao clicar** (mesmo destino do antigo botão
+      "Analisar", que foi removido) — só o popover de departamentos e o botão "Adicionar ao
+      inventário" interceptam o clique (`stopPropagation`) pra não competir com a abertura da
+      análise. "Adicionar" continua com o mesmo caminho de sempre (abre `Nr1AdicionarRiscoForm`
+      com `prefill`), sem precisar passar pela análise primeiro.
+    - **Filtros — nível de risco, dimensão e departamento**, todos combináveis, com "Limpar
+      filtros". Nível filtra por `nivelEmpresa` (sempre calculado, mesmo quando a sugestão não
+      disparou); departamento usa a mesma lista ordenada alfabeticamente de `rhDepartamentoService`
+      do Inventário, filtrando por presença em `departamentosEnvolvidos`.
+    - Nenhuma mudança em `nr1ResultadoService.riscosSugeridos` nem no cálculo de disparo/k-
+      anonimato: só a apresentação da mesma leitura mudou.
+
+52. **Trilha de rastreabilidade (modal "Trilha de rastreabilidade" em Relatório e rastreabilidade)
+    ganhou tipos visualmente diferentes, destaque para os pontos críticos, e ordenação do mais
+    recente para o mais antigo.**
+    - **Cada categoria agora tem ícone, cor e rótulo próprios** (`ETAPA_META`, em
+      `NR1RhRelatorio.tsx`): ciclo de avaliação (azul), risco identificado (neutro, a não ser que
+      critique — ver abaixo), plano de ação (neutro, a não ser que esteja atrasado) e evidência
+      (verde). Antes os quatro tipos usavam o mesmo círculo neutro, só o ícone mudava — difícil
+      distinguir "o que é isso" numa lida rápida.
+    - **Destaque para os pontos mais críticos, dentro de cada categoria**: um risco identificado
+      classificado como "Risco" ou "Crítico" ganha o círculo na cor do próprio nível (mesma escala
+      de cor de `NIVEL_RISCO`, usada em todo o resto do produto) mais um selo com o nome do nível;
+      uma ação "atrasada" ganha círculo vermelho e o selo "Atrasada". O título da etapa também fica
+      em negrito nesses casos. Ciclo de avaliação e evidência não têm um estado "crítico" — são
+      sempre o mesmo tom da categoria.
+    - **Dado estruturado, não texto**: para a UI saber quando destacar, `Nr1TrilhaEtapa`
+      (`types/index.ts`) ganhou dois campos opcionais — `nivel` (só em etapas `inventario`) e
+      `status` (só em etapas `acao`) — em vez de tentar inferir a criticidade lendo `detalhe` como
+      string livre.
+    - **Ordenação do mais recente para o mais antigo**: `nr1ResultadoService.trilha` agora ordena
+      `etapas` por `em` (decrescente) antes de devolver — antes a ordem era fixa por tipo
+      (avaliação, inventário, todas as ações, todas as evidências), sem relação com a data real de
+      cada evento. Reconfirmei com um servidor limpo (reiniciado, sem cache de sessão anterior) que
+      a ordem sai correta ponta a ponta — se ainda aparecer errada, é sinal de aba com bundle
+      antigo em cache, vale um refresh completo.
+
+53. **Ciclo, risco e plano de ação, dentro da Trilha de rastreabilidade, agora linkam para a
+    página de detalhe correspondente.**
+    - Cada etapa `avaliacao` ganhou "Ver ciclo" → `/rh/nr1/ciclos/:campanhaId`; `inventario`,
+      "Ver risco no inventário" → `/rh/nr1/inventario?detalhe=:riscoId` (o mesmo deep-link que a
+      coluna "Ação" do Plano de ação já usava); `acao`, "Ver plano de ação" →
+      `/rh/nr1/plano-acao?risco=:riscoId`. `evidencia` continua sem link — é um comentário dentro
+      de uma ação, sem página própria.
+    - `campanhaId` é o único campo novo em `Nr1TrilhaEtapa` (só na etapa `avaliacao`) — `inventario`
+      e `acao` não precisaram de campo novo porque toda a trilha já é de um risco só
+      (`Nr1Trilha.riscoId`), o mesmo id usado nos dois links.
+    - Clicar em qualquer um desses links navega para fora da tela de Relatório (fecha o Sheet
+      "Trilha de rastreabilidade" só porque a rota muda, não por um `onClose` explícito) — mesmo
+      comportamento de outros links "Ver X" que já existiam dentro de Sheets no app (ex.: "Ver
+      risco no inventário" dentro do detalhe de uma ação, no Plano de ação).
+
+54. **Trilha de rastreabilidade: a ordenação por data (item 52) embaralhava a sequência causal —
+    trocada por ordem hierárquica (ciclo → risco → cada ação com sua evidência logo abaixo), com
+    recência só dentro de cada nível.**
+    - Um sort só por `em`, mais recente primeiro, podia colocar a evidência de uma ação antiga
+      acima de uma ação mais nova de outro plano — tecnicamente "mais recente no topo", mas sem
+      relação nenhuma com a lógica real da cadeia (ciclo origina risco, risco origina ação, ação
+      origina evidência). `nr1ResultadoService.trilha` agora monta a lista nessa ordem fixa —
+      avaliação, depois inventário, depois cada ação — e só ordena por data DENTRO de cada nível:
+      as ações entre si por prazo (`quando`, mais recente primeiro) e, logo abaixo de cada ação, as
+      evidências daquela ação específica por data do comentário (mais recente primeiro). Nenhuma
+      evidência aparece longe da ação a que pertence.
+    - Não precisou de campo novo em `Nr1TrilhaEtapa`: é só a ordem de construção do array
+      `etapas` que mudou, com `.flatMap` agrupando cada ação com suas próprias evidências antes de
+      passar para a próxima.
+
+55. **Trilha de rastreabilidade: o item 54 ainda misturava tipos dentro do mesmo grupo (cada ação
+    com sua evidência logo abaixo) — trocado por quatro blocos totalmente separados, na ordem que
+    o usuário descreveu de baixo pra cima: ciclo → risco → ações → evidências.**
+    - De cima pra baixo agora é: **evidências** (todas, de todas as ações deste risco, mais
+      recente primeiro) → **planos de ação** (todos, mais recente primeiro) → **risco
+      identificado** → **ciclo de avaliação** (a origem, sempre por último). Antes, o item 54
+      intercalava ação+evidência por ação (`.flatMap` por ação), o que ainda misturava os dois
+      tipos dentro do mesmo trecho da lista — o pedido era quatro blocos distintos, não pares
+      ação/evidência.
+    - Cada bloco ordena por um único campo de data que faz sentido pra ele — evidências por `em`
+      (data do comentário), ações por `quando` (prazo) — em vez de tentar comparar `em` entre tipos
+      com significados diferentes (prazo de ação vs. data de comentário), que é a raiz do "datas
+      desordenadas" apontado: os dois nunca deveriam ter sido comparados um contra o outro.
+    - O texto de cada evidência (`Anexada à ação "X" por Y`) continua dizendo a qual ação ela
+      pertence — só não fica mais fisicamente ao lado dela na lista.
+
+56. **"Seus planos de ação" (Visão geral, `NR1RhCockpit.tsx`) trocou o `OptionCard` genérico pelo
+    mesmo formato de linha da visualização "Lista" do Plano de ação.**
+    - Extraí `AcaoLinha` (e a constante `LISTA_GRID_COLS`) de `NR1RhPlanoAcao.tsx` para um
+      componente compartilhado, `components/Nr1AcaoLinha.tsx` — mesma linha, um só lugar de
+      verdade, em vez de duplicar ~65 linhas de JSX/estilo entre as duas telas. `NR1RhPlanoAcao.tsx`
+      agora importa de lá também; nenhuma mudança visual na tela de Plano de ação em si.
+    - **Antes**: `OptionCard` — ícone genérico, título e uma linha de resumo em texto
+      ("Prazo X · Status"), sem nível do risco de origem nem a descrição do risco visíveis.
+      **Agora**: nível do risco (chip com a nota, não só a cor), badge de prazo, título da ação,
+      risco de origem e responsável, e o badge de status — igual ao que já aparece na lista
+      completa do Plano de ação, só que filtrado pra ações da pessoa logada.
+    - Para colorir pelo nível do risco de origem, o Cockpit passou a buscar
+      `nr1ResultadoService.inventario()` também (`riscoDaAcao`, resolve por `riscoId`) — antes só
+      buscava `nr1AcaoService.list()`, sem o risco de cada ação.
+    - `components/OptionCard.tsx` ficou sem nenhum consumidor depois dessa troca (era o único
+      lugar que o usava) — removido.
+
+57. **Clicar num plano de ação em "Seus planos de ação" (Visão geral) abre o mesmo modal de
+    detalhe da tela de Planos de ação, com editar/concluir/comentar — não navega mais pra lista
+    completa. "Ver todos" continua sendo o único caminho pra lista.**
+    - Extraí `AcaoDetalhe` (+ `ComentarioComposer`/`VersoesAnteriores`, privados no arquivo) e
+      `AcaoForm` (+ `useResponsavelField`/`RESPONSAVEL_LEGADO`, privados) de `NR1RhPlanoAcao.tsx`
+      para dois componentes compartilhados novos — `components/Nr1AcaoDetalhe.tsx` e
+      `components/Nr1AcaoForm.tsx` — no mesmo espírito do item 56 com `Nr1AcaoLinha.tsx`.
+      `NR1RhPlanoAcao.tsx` agora importa dos três; nenhuma mudança de comportamento na tela de
+      Plano de ação em si (mesmos componentes, só que num arquivo compartilhado).
+    - `NR1RhCockpit.tsx` ganhou os mesmos três estados e os mesmos quatro handlers que
+      `NR1RhPlanoAcao.tsx` já tinha para o próprio detalhe — `detalhe`/`form`/`erro` e
+      `concluir`/`comentar`/`fecharForm`/`salvarForm` — só que recarregando `acoes` (o `useService`
+      já existente ali) em vez da lista da tela completa. Não criei uma abstração nova pra
+      "gerenciar uma ação" com estado próprio: os handlers são curtos (3-8 linhas) e cada tela já
+      tem seu jeito de recarregar a lista, então duplicar só a parte pequena (o glue) e compartilhar
+      a parte grande (os componentes de UI) pareceu o equilíbrio certo entre DRY e acoplamento.
+    - O botão "Editar ação" do cabeçalho abre `AcaoForm` num segundo `Sheet` (mesmo empilhamento
+      Sheet-sobre-Sheet que a tela completa já usa); cancelar ou salvar volta pro detalhe, não fecha
+      tudo. "Concluir" sem evidência anexada continua desabilitado, mesma regra de sempre.
+
 ---
 
 ## O que está mockado e como trocar
@@ -1150,17 +1614,18 @@ para converter.
 | Empresas clientes, suporte, gestores YNA, cockpit | `data/mngMock.ts` via `services/mng.ts` | Endpoints REST do backoffice |
 | Departamentos e usuários RH de uma empresa, só leitura; contatos, CRUD completo (aba a aba no detalhe da empresa no Manager) | `mngDepartamentoEmpresaService`/`mngUsuarioRhService` (só `list`) / `mngContatoEmpresaService` (CRUD completo), arrays em `data/mngMock.ts` filtrados por `empresaId` | `GET /mng/empresas/:id/{departamentos,usuarios}`; `GET/POST/PATCH/DELETE /mng/empresas/:id/contatos` |
 | Modelos e versões do questionário NR-1 | `nr1Modelos` em `data/nr1Mock.ts` via `nr1ModeloService` | `GET/POST /nr1/modelos`, `/nr1/modelos/:id/versoes` |
-| Campanha NR-1 e participação por área | `nr1Campanhas` via `nr1CampanhaService` | `GET /nr1/campanhas`, `POST /nr1/campanhas/:id/lembretes` |
+| Campanha NR-1 e participação por área, incl. criação de um novo ciclo | `nr1Campanhas` via `nr1CampanhaService` (`criar`, `lembrar`) | `GET/POST /nr1/campanhas`, `POST /nr1/campanhas/:id/lembretes` |
+| Link único da avaliação (compartilhável, sem convite individual) e o disparo de convites por e-mail para todos os colaboradores | `nr1LinkAvaliacao` (monta a partir de `campanha.protocolo`, só exibição) + `nr1CampanhaService.enviarConvitesLink` | Precisa de uma rota real que resolva `/a/:protocolo` — hoje quem entra nesse link cai em `/bem-vindo` sem saber de qual empresa/ciclo, já que `/bem-vindo` não lê parâmetro nenhum; `POST /nr1/campanhas/:id/convites-link` para o disparo em lote |
 | Mapa de calor e médias por dimensão, por campanha | `nr1ResultadoService.mapaCalor(campanhaId?)` / `mediaPorDimensao(campanhaId?)` | `GET /nr1/campanhas/:id/mapa-calor` — **o k-anonimato deve ser aplicado no servidor**, não na tela |
 | Pontuação por pergunta de uma dimensão (empresa ou área) | `nr1ResultadoService.itensPorDimensao(campanhaId, dimensaoId, departamentoId?)` — distribuída de forma determinística a partir da média já publicada, não é resposta individual real | `GET /nr1/campanhas/:id/dimensoes/:dimensaoId/itens?departamentoId=` — precisa de resposta agregada por item, real, vinda do backend |
 | Inventário de Riscos (status/tendência/sugestão inclusos; cadastro manual) | `nr1ResultadoService.inventario`/`adicionarRisco`, array `RISCOS` em `data/nr1Mock.ts` | `GET/POST /nr1/inventario` |
 | Riscos sugeridos (triagem assistida + possível CID-11) | `nr1ResultadoService.riscosSugeridos(campanhaId)`, conteúdo-semente em `data/nr1RiscosSugeridosMock.ts` | `GET /nr1/campanhas/:id/riscos-sugeridos` — cálculo do gatilho pode continuar client-side ou ir para o servidor, mas o conteúdo (CID, ações, disclaimers) deveria virar tabela editável pela YNA, não hardcoded |
 | Histórico de um risco entre ciclos | `nr1ResultadoService.riscoCiclos(riscoId)`, dado em `nr1RiscosCiclos` (derivado do mapa de calor por campanha) | `GET /nr1/riscos/:id/ciclos` |
 | Exportações (inventário PDF/planilha, relatório PDF) | retornam só o nome do arquivo | `POST /nr1/exportacoes` com geração server-side |
-| Plano de ação 5W2H, diário de comentários e versionamento | `nr1AcaoService` (`comentar`, `versoes`, `revisar`, `avaliarEfetividade`) | `GET/POST /nr1/acoes`, `POST /nr1/acoes/:id/comentarios` com upload real de anexo; nova versão como registro imutável, nunca edição da anterior |
+| Plano de ação 5W2H, diário de comentários e versionamento | `nr1AcaoService` (`comentar`, `versoes`, `avaliarEfetividade`) | `GET/POST /nr1/acoes`, `POST /nr1/acoes/:id/comentarios` com upload real de anexo; nova versão como registro imutável, nunca edição da anterior |
 | Canal de escuta (relatos e andamentos) | `nr1CanalService` | `POST /nr1/relatos` — **sem vincular identidade do relator** |
 | Respostas da avaliação do colaborador | `nr1ColaboradorService.enviar` só incrementa o contador | `POST /nr1/campanhas/:id/respostas`, anônimo, registrando modelo+versão |
-| Sessão anônima do colaborador (token de convite → conta) | `AppContext.sessaoToken` (memória) | Persistir server-side e vincular à conta criada, sem nunca expor o vínculo a serviços do RH |
+| "Login" do colaborador em `/bem-vindo` (CPF + data de nascimento) | `nr1ColaboradorService.entrar` sempre retorna sucesso, sem checar nada | Validar CPF + nascimento contra a matrícula de colaboradores da empresa (ligada ao link único do ciclo), sem nunca vincular isso às respostas da avaliação em si |
 | Interesse em cuidado futuro (agregado comercial) | Capturado no Passo 3 de `/criar-conta`, guardado em `AppContext.perfilInteresse`; `MngCockpit.interesseCuidado` ainda é mock estático, não lê essa captura | Persistir a resposta do Passo 3 no cadastro da conta, depois agregar server-side para alimentar o cockpit, nunca por pessoa |
 | Vídeos e artigos de apoio da home (`/meu-espaco`) | `data/conteudoApoioMock.ts` (estático, sem player real; artigo em blocos tipados `ArtigoBloco`) | CMS/endpoint de conteúdo, com upload de vídeo real |
 

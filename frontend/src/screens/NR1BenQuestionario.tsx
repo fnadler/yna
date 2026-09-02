@@ -1,16 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { Button } from '../components/Button'
-import { Badge } from '../components/Badge'
 import { Textarea } from '../components/Textarea'
 import { Skeleton } from '../components/Skeleton'
 import { ErrorState } from '../components/ErrorState'
 import { useService } from '../hooks/useService'
 import { useApp } from '../contexts/AppContext'
 import { nr1ColaboradorService } from '../services/nr1'
-import { NR1_DIMENSOES } from '../data/nr1Mock'
-import type { Nr1Item, Nr1QuestionarioVersao, Nr1EscalaConfig, Nr1DimensaoId } from '../types'
+import type { Nr1Item, Nr1QuestionarioVersao, Nr1EscalaConfig } from '../types'
 
 /* NR1-BEN-03 — Questionário renderizado dinamicamente a partir do
    modelo/versão atribuído à campanha (RF-A01, RF-CO-NR1-01).
@@ -19,27 +17,27 @@ import type { Nr1Item, Nr1QuestionarioVersao, Nr1EscalaConfig, Nr1DimensaoId } f
    abertas vêm da versão registrada na campanha. Trocar o instrumento no
    backoffice muda esta tela sem tocar em código.
 
-   Wizard por dimensão (espelha Ben09Triagem), com salvamento progressivo. */
+   Uma pergunta por vez, sem agrupar por dimensão — pedido explícito, para
+   não expor a estrutura interna do instrumento (dimensão/escala é
+   linguagem de conformidade, não do colaborador) e para o formulário
+   parecer mais curto: uma pergunta atrás da outra, nunca uma lista inteira
+   de uma vez. Mesma base visual da tela "Agora vamos começar"
+   (`ColTransicaoAvaliacao.tsx`) que antecede o questionário — full-bleed,
+   fundo em gradiente, um único card centralizado — trocando o conteúdo do
+   card pela pergunta atual. Por isso esta tela não usa `FocusLayout` como
+   as demais do fluxo: tem fundo e composição próprios, como
+   `ColTransicaoAvaliacao`/`NR1BenConclusao` (ver App.tsx). */
 
 /** Valor usado quando o respondente marca um item condicional como não
    aplicável — não entra na média da dimensão. */
 const NAO_SE_APLICA = 'na'
 
-/** Destaca o nome da dimensão em negrito + gradiente, no mesmo padrão de
-   título das telas de apresentação/sigilo (`Ben00Apresentacao.tsx`,
-   `Ben03Lgpd.tsx`). Usa o `curto` já curado em `NR1_DIMENSOES` (o mesmo
-   texto dos eixos do radar/chips) como o trecho a destacar, sempre que ele
-   for de fato o prefixo do nome completo. */
-function tituloDimensao(nome: string, dimensaoId: Nr1DimensaoId) {
-  const curto = NR1_DIMENSOES.find((d) => d.id === dimensaoId)?.curto
-  if (!curto || !nome.startsWith(curto)) return nome
-  return (
-    <>
-      <span className="font-extrabold bg-yna-gradient-button bg-clip-text text-transparent">{curto}</span>
-      {nome.slice(curto.length)}
-    </>
-  )
-}
+/** Uma "pergunta" nesta tela é ou um item de escala (dimensão) ou uma das
+   perguntas abertas da versão — a mesma sequência, sem distinção visual de
+   onde cada uma vem. */
+type Pergunta =
+  | { tipo: 'item'; item: Nr1Item }
+  | { tipo: 'aberta'; id: string; texto: string }
 
 export function NR1BenQuestionario() {
   const { passo } = useParams<{ passo: string }>()
@@ -60,33 +58,33 @@ export function NR1BenQuestionario() {
 
   if (instrumento.status === 'idle' || instrumento.status === 'loading') {
     return (
-      <main className="flex flex-1 flex-col px-5 pb-10 pt-10">
-        <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
+      <PaginaCentralizada>
+        <div className="flex w-full flex-col gap-4 rounded-2xl border border-border bg-surface p-7 shadow md:p-10">
           <Skeleton className="h-2 w-full rounded-pill" />
-          <Skeleton className="h-10 w-2/3 rounded-lg" />
-          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-28 w-full rounded-lg" />)}
+          <Skeleton className="h-8 w-4/5 rounded-lg" />
+          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
         </div>
-      </main>
+      </PaginaCentralizada>
     )
   }
 
   if (instrumento.status === 'error') {
     return (
-      <main className="flex flex-1 flex-col justify-center px-5 py-10">
-        <div className="mx-auto w-full max-w-xl">
+      <PaginaCentralizada>
+        <div className="w-full rounded-2xl border border-border bg-surface p-7 shadow md:p-10">
           <ErrorState message={instrumento.message} onRetry={instrumento.reload} />
         </div>
-      </main>
+      </PaginaCentralizada>
     )
   }
 
   if (!instrumento.data) {
     return (
-      <main className="flex flex-1 flex-col justify-center px-5 py-10">
-        <div className="mx-auto w-full max-w-xl">
+      <PaginaCentralizada>
+        <div className="w-full rounded-2xl border border-border bg-surface p-7 shadow md:p-10">
           <ErrorState message="Esta conversa não está mais aberta." onRetry={() => navigate('/despedida')} />
         </div>
-      </main>
+      </PaginaCentralizada>
     )
   }
 
@@ -101,6 +99,17 @@ export function NR1BenQuestionario() {
   )
 }
 
+/** Fundo em gradiente + card centralizado — mesma composição da tela
+   "Agora vamos começar", reutilizada aqui para o carregamento/erro nunca
+   destoarem visualmente da pergunta em si. */
+function PaginaCentralizada({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center overflow-x-hidden bg-yna-gradient px-5 py-10">
+      <div className="flex w-full max-w-xl flex-col items-center">{children}</div>
+    </div>
+  )
+}
+
 function Wizard({ versao, passo, respostas, onResponder, campanhaId }: {
   versao: Nr1QuestionarioVersao
   passo?: string
@@ -109,81 +118,38 @@ function Wizard({ versao, passo, respostas, onResponder, campanhaId }: {
   campanhaId: string
 }) {
   const navigate = useNavigate()
-  const [salvando, setSalvando] = useState(false)
 
-  /* Passos = uma dimensão cada, mais um passo final para as perguntas abertas
-     (quando a versão tiver alguma). */
-  const passos = useMemo(() => {
-    const base = versao.dimensoes.map((d) => ({ tipo: 'dimensao' as const, dimensao: d }))
-    return versao.abertas.length > 0 ? [...base, { tipo: 'abertas' as const, dimensao: null }] : base
+  /* Sequência única de perguntas — todos os itens de todas as dimensões,
+     nesta ordem, seguidos das perguntas abertas (quando a versão tiver
+     alguma). Sem agrupar por dimensão: essa é a mudança pedida. */
+  const perguntas = useMemo<Pergunta[]>(() => {
+    const itens = versao.dimensoes.flatMap((d) => d.itens).map((item) => ({ tipo: 'item' as const, item }))
+    const abertas = versao.abertas.map((texto, i) => ({ tipo: 'aberta' as const, id: `aberta-${i}`, texto }))
+    return [...itens, ...abertas]
   }, [versao])
 
-  const total = passos.length
+  const total = perguntas.length
   const idx = Math.max(0, Math.min(total - 1, parseInt(passo ?? '1', 10) - 1))
-  const atual = passos[idx]!
+  const atual = perguntas[idx]!
   const numero = idx + 1
   const ultimo = idx === total - 1
+  const pct = Math.round((numero / total) * 100)
 
-  /* Rolar ao topo a cada passo — sem isso o usuário cai no meio da lista. */
+  /* Rolar ao topo a cada pergunta — sem isso quem já rolou o card anterior
+     cairia no meio da próxima. */
   useEffect(() => { window.scrollTo({ top: 0 }) }, [idx])
 
-  const itens = atual.tipo === 'dimensao' ? atual.dimensao.itens : []
-  const obrigatorios = itens.filter((i) => !i.condicional)
-  const completo = atual.tipo === 'abertas' || obrigatorios.every((i) => respostas[i.id] !== undefined)
+  /* Perguntas abertas e itens condicionais são opcionais — não travam o
+     avanço se ficarem sem resposta. Um item condicional pode, além disso,
+     ser respondido explicitamente como "não se aplica", que grava um valor
+     como qualquer outra resposta. */
+  const completo = atual.tipo === 'aberta' || atual.item.condicional || respostas[atual.item.id] !== undefined
 
-  /* Quantas perguntas da dimensão já podem ser vistas: a primeira ainda não
-     respondida entra (é a que a pessoa está respondendo agora), e a lista
-     para aí — as próximas só aparecem depois. Numa pergunta condicional, o
-     botão "Não se aplica a mim" é o gatilho para destravar a próxima quando
-     ela não se aplica — ele grava um valor (`NAO_SE_APLICA`) como qualquer
-     outra resposta, então já entra na mesma verificação, sem regra especial.
-     (O botão "Continuar" da dimensão continua não exigindo essa resposta —
-     isso só importa quando há uma pergunta depois dela para destravar.)
-     Reabrir um passo já respondido antes recalcula isso já com tudo visível,
-     não reinicia a revelação do zero. */
-  const visiveis = useMemo(() => {
-    let n = 0
-    for (let i = 0; i < itens.length; i++) {
-      n = i + 1
-      if (respostas[itens[i]!.id] === undefined) break
-    }
-    return n
-  }, [itens, respostas])
-
-  /* Rola sozinho até a pergunta recém-liberada (ou até o botão de avançar,
-     quando a última pergunta da dimensão acaba de ser respondida) — assim a
-     pessoa nunca precisa procurar manualmente a próxima pergunta, e não tem
-     como "pular" uma sem querer, porque ela simplesmente ainda não existe na
-     tela. Guarda de `idx`: ao trocar de passo, só sincroniza as referências,
-     sem disparar rolagem (a rolagem para o topo do passo já é feita acima). */
-  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({})
-  const continuarRef = useRef<HTMLDivElement | null>(null)
-  const ultimoIdxRef = useRef(idx)
-  const ultimoVisiveisRef = useRef(visiveis)
-  const ultimoCompletoRef = useRef(completo)
-
-  useEffect(() => {
-    const trocouDePasso = ultimoIdxRef.current !== idx
-    ultimoIdxRef.current = idx
-
-    if (!trocouDePasso) {
-      if (visiveis > ultimoVisiveisRef.current) {
-        const proximo = itens[visiveis - 1]
-        const alvo = proximo && itemRefs.current[proximo.id]
-        if (alvo) requestAnimationFrame(() => alvo.scrollIntoView({ behavior: 'smooth', block: 'center' }))
-      } else if (!ultimoCompletoRef.current && completo) {
-        requestAnimationFrame(() => continuarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }))
-      }
-    }
-
-    ultimoVisiveisRef.current = visiveis
-    ultimoCompletoRef.current = completo
-  }, [idx, visiveis, completo, itens])
-
-  const avancar = async () => {
-    setSalvando(true)
-    await nr1ColaboradorService.salvarParcial(campanhaId, respostas)
-    setSalvando(false)
+  const avancar = () => {
+    /* Salva em segundo plano, sem travar a navegação nisso — são muito mais
+       passos agora (uma pergunta por vez, não uma dimensão inteira), então
+       esperar a resposta do mock a cada clique deixaria o fluxo arrastado. */
+    void nr1ColaboradorService.salvarParcial(campanhaId, respostas)
     if (ultimo) navigate('/avaliacao/conclusao')
     else navigate(`/avaliacao/${numero + 1}`)
   }
@@ -194,166 +160,59 @@ function Wizard({ versao, passo, respostas, onResponder, campanhaId }: {
   }
 
   return (
-    <>
-      {/* Header: back button + progress bar — hidden on desktop (barra inferior própria) */}
-      <header className="flex lg:hidden items-center gap-3 px-5 pb-2 pt-8">
-        <button
-          onClick={voltar}
-          aria-label="Voltar"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill border border-border bg-surface text-ink-secondary transition-colors hover:bg-surface-hover"
-        >
-          <Icon icon="ph:arrow-left-bold" width={18} aria-hidden />
-        </button>
-        <div
-          className="h-2 flex-1 overflow-hidden rounded-pill bg-surface-2"
-          role="progressbar"
-          aria-valuemin={1}
-          aria-valuemax={total}
-          aria-valuenow={numero}
-          aria-label={`Parte ${numero} de ${total}`}
-        >
+    <PaginaCentralizada>
+      <div key={idx} className="w-full animate-yna-slide-up rounded-2xl border border-border bg-surface p-6 shadow md:p-9">
+        {/* Progresso — rótulo + barra + percentual, mesma leitura de sempre
+           (bg-gradient-to-r from-primary to-pink), sem depender de cor
+           sozinha (o rótulo já diz "Questão X de Y" por extenso). */}
+        <div>
+          <span className="text-[13px] font-medium text-ink-secondary">Questão {numero} de {total}</span>
           <div
-            className="h-full rounded-pill bg-gradient-to-r from-primary to-pink transition-all duration-500"
-            style={{ width: `${(numero / total) * 100}%` }}
-          />
-        </div>
-        <span className="shrink-0 font-mono text-xs font-medium text-ink-secondary">{numero} de {total}</span>
-      </header>
-
-      <main key={idx} className="flex flex-1 flex-col px-5 pb-10 pt-6 lg:pb-28 animate-yna-slide-up">
-        <div className="mx-auto w-full max-w-xl">
-          {atual.tipo === 'dimensao' ? (
-            <>
-              <h1 className="text-[24px] font-extralight leading-[1.15] tracking-[-0.02em] text-ink lg:text-[32px]">
-                {tituloDimensao(atual.dimensao.nome, atual.dimensao.id)}
-              </h1>
-              <p className="mt-2 text-[14px] leading-relaxed text-ink-secondary">
-                Pensando nas últimas semanas, o quanto cada frase combina com o seu dia a dia?
-              </p>
-              {numero === 1 && (
-                <p className="mt-3 flex items-start gap-2 text-[12.5px] leading-relaxed text-ink-muted">
-                  <Icon icon="ph:heart-bold" width={13} className="mt-0.5 shrink-0" aria-hidden />
-                  Leva cerca de 8 minutos. Não existe resposta certa aqui, só a sua, do jeito que tem sido de verdade.
-                </p>
-              )}
-
-              <div className="mt-7 flex flex-col gap-4">
-                {itens.slice(0, visiveis).map((item, i) => (
-                  <div
-                    key={item.id}
-                    ref={(el) => { itemRefs.current[item.id] = el }}
-                    className={i === visiveis - 1 ? 'animate-yna-slide-up' : undefined}
-                  >
-                    <ItemCard
-                      item={item}
-                      escalas={versao.escala}
-                      valor={respostas[item.id]}
-                      onChange={(v) => onResponder(item.id, v)}
-                    />
-                  </div>
-                ))}
-                {/* Ponta do próximo card, só para avisar que vem mais uma pergunta
-                   depois desta — sem revelar o conteúdo dela. */}
-                {visiveis < itens.length && (
-                  <div
-                    aria-hidden
-                    className="-mt-2 h-7 rounded-t-lg border border-b-0 border-border bg-surface"
-                    style={{
-                      maskImage: 'linear-gradient(to bottom, black, transparent)',
-                      WebkitMaskImage: 'linear-gradient(to bottom, black, transparent)',
-                    }}
-                  />
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              <h1 className="text-[24px] font-extralight leading-[1.15] tracking-[-0.02em] text-ink lg:text-[32px]">
-                Quer contar mais{' '}
-                <span className="font-extrabold bg-yna-gradient-button bg-clip-text text-transparent">alguma coisa?</span>
-              </h1>
-              <p className="mt-2 text-[14px] leading-relaxed text-ink-secondary">
-                Estas são opcionais. Escreva só se fizer sentido para você. Continua tudo anônimo.
-              </p>
-
-              <div className="mt-7 flex flex-col gap-5">
-                {versao.abertas.map((q, i) => {
-                  const id = `aberta-${i}`
-                  return (
-                    <div key={id} className="flex flex-col gap-2">
-                      <label htmlFor={id} className="text-[14px] leading-snug text-ink">{q}</label>
-                      <Textarea
-                        id={id}
-                        placeholder="Escreva à vontade…"
-                        value={String(respostas[id] ?? '')}
-                        onChange={(e) => onResponder(id, e.target.value)}
-                      />
-                    </div>
-                  )
-                })}
-                <p className="flex items-start gap-2 text-[12px] leading-relaxed text-ink-muted">
-                  <Icon icon="ph:lock-bold" width={13} className="mt-0.5 shrink-0" aria-hidden />
-                  Evite escrever nomes. Assim garantimos que nada volte para você.
-                </p>
-              </div>
-            </>
-          )}
-
-          <div ref={continuarRef} className="mt-9 flex flex-col gap-2 lg:hidden">
-            <Button size="lg" fullWidth iconRight="ph:arrow-right-bold" disabled={!completo || salvando} onClick={avancar}>
-              {salvando ? 'Salvando…' : ultimo ? 'Finalizar' : 'Continuar'}
-            </Button>
-            {!completo && (
-              <p className="text-center text-[12px] text-ink-secondary">
-                Faltam {obrigatorios.filter((i) => respostas[i.id] === undefined).length} de {obrigatorios.length} nesta parte.
-              </p>
-            )}
-            <p className="text-center text-[12px] text-ink-secondary">
-              Se precisar parar, o que você já respondeu fica guardado.
-            </p>
-          </div>
-        </div>
-      </main>
-
-      {/* Barra inferior desktop — voltar à esquerda, progresso ao centro, continuar à direita */}
-      <div className="hidden lg:flex fixed bottom-0 left-0 right-0 z-20 h-[72px] items-center border-t border-border bg-surface/90 px-10 backdrop-blur-sm">
-        <div className="w-40">
-          <button
-            onClick={voltar}
-            className="flex items-center gap-2 font-heading text-sm font-medium text-ink-secondary transition-colors hover:text-ink"
+            className="mt-2 h-2 overflow-hidden rounded-pill bg-surface-2"
+            role="progressbar"
+            aria-valuemin={1}
+            aria-valuemax={total}
+            aria-valuenow={numero}
+            aria-label={`Questão ${numero} de ${total}`}
           >
-            <Icon icon="ph:arrow-left-bold" width={16} aria-hidden />
-            Voltar
-          </button>
-        </div>
-
-        <div className="flex flex-1 flex-col items-center gap-1.5">
-          <div className="h-1.5 w-52 overflow-hidden rounded-pill bg-surface-2">
             <div
               className="h-full rounded-pill bg-gradient-to-r from-primary to-pink transition-all duration-500"
-              style={{ width: `${(numero / total) * 100}%` }}
+              style={{ width: `${pct}%` }}
             />
           </div>
-          <span className="font-mono text-[11px] text-ink-secondary">{numero} de {total}</span>
+          <p className="mt-1 text-right font-mono text-[12px] font-semibold text-primary dark:text-primary-300">{pct}%</p>
         </div>
 
-        <div className="flex w-40 justify-end">
-          <Button
-            onClick={avancar}
-            disabled={!completo || salvando}
-            iconRight="ph:arrow-right-bold"
-          >
-            {salvando ? 'Salvando…' : ultimo ? 'Finalizar' : 'Continuar'}
+        <div className="mt-6">
+          {atual.tipo === 'item' ? (
+            <PerguntaItem item={atual.item} escalas={versao.escala} valor={respostas[atual.item.id]} onChange={(v) => onResponder(atual.item.id, v)} />
+          ) : (
+            <PerguntaAberta texto={atual.texto} valor={String(respostas[atual.id] ?? '')} onChange={(v) => onResponder(atual.id, v)} />
+          )}
+        </div>
+
+        <div className="mt-8 flex gap-3">
+          <Button variant="secondary" className="flex-1" iconLeft="ph:arrow-left-bold" onClick={voltar}>
+            Anterior
+          </Button>
+          <Button className="flex-1" disabled={!completo} iconRight={ultimo ? 'ph:check-bold' : 'ph:arrow-right-bold'} onClick={avancar}>
+            {ultimo ? 'Concluir' : 'Próximo'}
           </Button>
         </div>
       </div>
-    </>
+
+      <p className="mt-5 text-center text-[12.5px] leading-relaxed text-ink-secondary/80">
+        Se precisar parar, o que você já respondeu fica guardado.
+      </p>
+    </PaginaCentralizada>
   )
 }
 
-/* Um item do questionário. O controle segue o `tipoCampo` definido no modelo —
-   por isso o mesmo componente atende escala, texto livre e número. */
-function ItemCard({ item, escalas, valor, onChange }: {
+/* Uma pergunta de escala — texto + lista vertical de opções, cada uma com
+   o próprio rótulo sempre visível (não um número de 1 a 5): é o que muda
+   nesta tela em relação à versão anterior, onde só os extremos da escala
+   apareciam escritos. */
+function PerguntaItem({ item, escalas, valor, onChange }: {
   item: Nr1Item
   escalas: Nr1EscalaConfig
   valor: number | string | undefined
@@ -363,75 +222,39 @@ function ItemCard({ item, escalas, valor, onChange }: {
   const escala = escalas[item.escala]
 
   return (
-    <fieldset className="rounded-lg border border-border bg-surface p-4">
-      <legend className="sr-only">{item.texto}</legend>
-      <p className="text-[14.5px] leading-snug text-ink">{item.texto}</p>
+    <fieldset>
+      <legend className="text-[19px] font-heading font-semibold leading-snug text-ink md:text-[21px]">
+        {item.texto}
+      </legend>
 
       {item.condicional && (
-        <p className="mt-1 text-[11.5px] text-ink-muted">Responda só se isso fizer parte do seu trabalho.</p>
+        <p className="mt-1.5 text-[12.5px] text-ink-muted">Responda só se isso fizer parte do seu trabalho.</p>
       )}
 
-      {(item.tipoCampo === 'select' || item.tipoCampo === 'multiselect') && (
-        <>
-          <div className="mt-4 flex gap-1.5" role="radiogroup" aria-label={item.texto}>
-            {escala.opcoes.map((o) => {
-              const on = valor === o.valor
-              return (
-                <button
-                  key={o.valor}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  aria-label={o.rotulo}
-                  title={o.rotulo}
-                  onClick={() => onChange(o.valor)}
-                  className={`flex min-h-[44px] flex-1 items-center justify-center rounded-lg border-[1.5px] font-heading text-[15px] font-semibold transition-all ${
-                    on
-                      ? 'border-primary bg-primary text-white shadow-sm'
-                      : 'border-border bg-surface text-ink-secondary hover:border-border-strong hover:bg-surface-hover'
-                  }`}
-                >
-                  {o.valor}
-                </button>
-              )
-            })}
-          </div>
-          <div className="mt-2 flex justify-between text-[13px] font-medium text-ink-secondary">
-            <span>{escala.opcoes[0]?.rotulo}</span>
-            <span>{escala.opcoes[escala.opcoes.length - 1]?.rotulo}</span>
-          </div>
-          {/* Rótulo da opção escolhida — confirma a leitura sem depender da cor.
-             O espaço é sempre reservado (mesmo vazio) para o card não crescer
-             ao responder e empurrar o resto da tela para baixo. */}
-          <div className="mt-3 flex h-[26px] items-center justify-center">
-            {typeof valor === 'number' && (
-              <Badge tone="primary">{escala.opcoes.find((o) => o.valor === valor)?.rotulo}</Badge>
-            )}
-          </div>
-        </>
-      )}
-
-      {(item.tipoCampo === 'text' || item.tipoCampo === 'textarea') && (
-        <div className="mt-3">
-          <Textarea
-            aria-label={item.texto}
-            rows={item.tipoCampo === 'text' ? 2 : 4}
-            value={String(valor ?? '')}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Escreva à vontade…"
-          />
-        </div>
-      )}
-
-      {(item.tipoCampo === 'number' || item.tipoCampo === 'date') && (
-        <input
-          type={item.tipoCampo === 'number' ? 'number' : 'date'}
-          aria-label={item.texto}
-          value={String(valor ?? '')}
-          onChange={(e) => onChange(e.target.value)}
-          className="mt-3 w-full rounded border-[1.5px] border-border bg-surface px-3.5 py-2.5 text-sm text-ink outline-none focus:border-primary"
-        />
-      )}
+      <div className="mt-5 flex flex-col gap-2.5" role="radiogroup" aria-label={item.texto}>
+        {escala.opcoes.map((o) => {
+          const on = valor === o.valor
+          return (
+            <button
+              key={o.valor}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => onChange(o.valor)}
+              className={`flex w-full items-center gap-3 rounded-lg border-[1.5px] px-4 py-3.5 text-left transition-colors ${
+                on
+                  ? 'border-primary bg-primary-50'
+                  : 'border-border bg-surface hover:border-border-strong hover:bg-surface-hover'
+              }`}
+            >
+              <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${on ? 'border-primary' : 'border-border-strong'}`}>
+                {on && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
+              </span>
+              <span className={`text-[15px] leading-snug text-ink ${on ? 'font-semibold' : ''}`}>{o.rotulo}</span>
+            </button>
+          )
+        })}
+      </div>
 
       {item.condicional && (
         <button
@@ -449,5 +272,18 @@ function ItemCard({ item, escalas, valor, onChange }: {
         </button>
       )}
     </fieldset>
+  )
+}
+
+/* Pergunta aberta — texto livre, opcional (ver `completo` no Wizard). */
+function PerguntaAberta({ texto, valor, onChange }: { texto: string; valor: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <p className="text-[19px] font-heading font-semibold leading-snug text-ink md:text-[21px]">{texto}</p>
+      <p className="mt-1.5 text-[12.5px] text-ink-muted">Opcional. Escreva só se fizer sentido para você.</p>
+      <div className="mt-5">
+        <Textarea aria-label={texto} rows={4} value={valor} onChange={(e) => onChange(e.target.value)} placeholder="Escreva à vontade…" />
+      </div>
+    </div>
   )
 }

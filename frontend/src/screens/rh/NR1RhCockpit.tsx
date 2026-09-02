@@ -2,18 +2,22 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { RhTopBar } from '../../components/RhTopBar'
-import { OptionCard } from '../../components/OptionCard'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
+import { Button } from '../../components/Button'
+import { Sheet } from '../../components/Sheet'
+import { Modal } from '../../components/Modal'
 import { Nr1CicloStatusCard } from '../../components/Nr1CicloStatusCard'
+import { AcaoLinha } from '../../components/Nr1AcaoLinha'
+import { AcaoDetalhe } from '../../components/Nr1AcaoDetalhe'
+import { AcaoForm } from '../../components/Nr1AcaoForm'
 import { RiscoPorDimensaoGrid, MapaCalorTable } from '../../components/Nr1Resultado'
 import { Nr1PerguntasSheet, type Nr1PerguntasEscopo } from '../../components/Nr1PerguntasSheet'
 import { PAGE_MAX_W } from '../../lib/layout'
-import { ACAO_STATUS, fmtData } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
 import { useRh } from '../../contexts/RhContext'
 import { nr1CampanhaService, nr1ResultadoService, nr1AcaoService } from '../../services/nr1'
-import type { Nr1Campanha } from '../../types'
+import type { Nr1Campanha, Nr1Acao } from '../../types'
 
 /** Rótulo curto de um ciclo para o seletor — o pedaço depois do "·" no nome
    ("Avaliação de riscos psicossociais · 1º semestre 2026" → "1º semestre
@@ -30,22 +34,25 @@ const cicloLabelCurto = (c: Nr1Campanha) => {
    secundários) — o que fazia o módulo parecer improvisado e espremia
    mapeamento, planejamento e controle atrás de um único ponto de entrada.
    Depois, virou um resumo estático de 10 segundos (risco por dimensão + mapa
-   de calor, sem interação), com o card de estado do ciclo só na Home
+   de calor, sem interação), com o card de estado do ciclo só na antiga Home
    (RH10Home.tsx), para não duplicar informação em dois lugares.
 
    Essa segunda versão durou até esta tela ser promovida a primeiro item da
    sidebar, sem agrupamento (ver RhAppLayout) — o item mais visível do menu.
    Por pedido explícito, ela ganhou o que fazia essa promoção valer a pena:
-   saudação, o mesmo card de estado do ciclo da Home/Ciclos de avaliação, um
-   bloco dos planos de ação da própria pessoa, e o risco por dimensão/mapa de
-   calor agora clicáveis (mesma interação da aba "Resultado" do detalhe de um
-   ciclo — abre `Nr1PerguntasSheet` com a pontuação por pergunta).
+   saudação, o mesmo card de estado do ciclo da antiga Home/Ciclos de
+   avaliação, um bloco dos planos de ação da própria pessoa, e o risco por
+   dimensão/mapa de calor agora clicáveis (mesma interação da aba "Resultado"
+   do detalhe de um ciclo — abre `Nr1PerguntasSheet` com a pontuação por
+   pergunta).
 
-   Nota de rastro: isso deixa esta tela parecida com `RH10Home.tsx` (ambas
-   têm saudação + card de ciclo + risco por dimensão) — exatamente a
-   duplicação que a versão anterior evitava de propósito. Não fundi as duas
-   nem toquei na Home porque não foi isso que foi pedido aqui; só registro
-   para quem for revisar a IA do RH depois.
+   Essa promoção deixou esta tela e a Home dizendo a mesma coisa de duas
+   formas diferentes (ambas tinham saudação + card de ciclo + risco por
+   dimensão) — a duplicação que a versão anterior evitava de propósito. A
+   Home (RH10Home.tsx, rota /rh/home) foi removida depois, e `/rh` passou a
+   redirecionar direto pra esta tela (ver RhAppLayout/App.tsx) — o conteúdo
+   que só existia lá ("Suas pendências" agregadas da empresa e os atalhos
+   "A cadeia") não foi portado pra cá; se fizer falta, é um pedido à parte.
 
    "Risco por dimensão"/"Mapa de calor" viraram um único bloco com um
    seletor de ciclo por cima (visual de aba, mesmo padrão da Engajamento/
@@ -62,7 +69,11 @@ export function NR1RhCockpit() {
 
   const campanha = useService(() => nr1CampanhaService.ativa(), [])
   const acoes = useService(() => nr1AcaoService.list(), [])
+  const inventario = useService(() => nr1ResultadoService.inventario(), [])
   const [perguntas, setPerguntas] = useState<Nr1PerguntasEscopo | null>(null)
+  const [detalhe, setDetalhe] = useState<Nr1Acao | null>(null)
+  const [form, setForm] = useState<{ acao?: Nr1Acao; riscoId: string } | null>(null)
+  const [erro, setErro] = useState<string | null>(null)
 
   /* Ciclo de referência do bloco "Risco por dimensão"/"Mapa de calor" —
      independente da campanha ativa buscada acima (essa alimenta só o card
@@ -105,6 +116,46 @@ export function NR1RhCockpit() {
       .filter((a) => !superadas.has(a.id) && a.status !== 'concluida' && a.quem.includes(usuario.nome))
       .sort((a, b) => a.quando.localeCompare(b.quando))
   })()
+
+  /* Resolve o risco de origem de cada ação — só pra alimentar `AcaoLinha`
+     (nível/dimensão/risco na linha), o mesmo componente que a tela Plano de
+     ação usa na visualização "Lista" (`Nr1AcaoLinha.tsx`, extraído de lá).
+     Antes "Seus planos de ação" usava um `OptionCard` genérico, sem nível,
+     prazo ou risco de origem visíveis — só título e um resumo em texto. */
+  const riscoDaAcao = (riscoId: string) =>
+    inventario.status === 'success' ? inventario.data.find((r) => r.id === riscoId) : undefined
+
+  const riscos = inventario.status === 'success' ? inventario.data : []
+
+  /* Mesma lógica de `NR1RhPlanoAcao.tsx` para editar/concluir/comentar uma
+     ação a partir do detalhe — clicar num item de "Seus planos de ação"
+     agora abre o modal aqui mesmo, em vez de só navegar pra lista completa
+     (que continua existindo, alcançável por "Ver todos"). */
+  const concluir = async (a: Nr1Acao) => {
+    const r = await nr1AcaoService.concluir(a.id)
+    if (!r.ok) { setErro(r.message ?? 'Não foi possível concluir a ação.'); return }
+    setDetalhe(null)
+    acoes.reload()
+  }
+
+  const fecharForm = () => {
+    const editando = form?.acao
+    setForm(null)
+    if (editando) setDetalhe(editando)
+  }
+
+  const salvarForm = (salvo: Nr1Acao) => {
+    const editando = form?.acao
+    setForm(null)
+    acoes.reload()
+    if (editando) setDetalhe(salvo)
+  }
+
+  const comentar = async (a: Nr1Acao, p: { texto?: string; arquivos?: string[] }) => {
+    await nr1AcaoService.comentar(a.id, { autor: usuario.nome, ...p })
+    acoes.reload()
+    setDetalhe({ ...a })
+  }
 
   return (
     <div className="min-h-full bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
@@ -149,13 +200,11 @@ export function NR1RhCockpit() {
             {acoes.status === 'success' && minhasAcoes.length > 0 && (
               <div className="flex flex-col gap-2">
                 {minhasAcoes.map((a) => (
-                  <OptionCard
+                  <AcaoLinha
                     key={a.id}
-                    to={`/rh/nr1/plano-acao?risco=${a.riscoId}`}
-                    variant={a.status === 'atrasada' ? 'danger' : 'default'}
-                    icon={a.status === 'atrasada' ? 'ph:clock-countdown-bold' : 'ph:list-checks-bold'}
-                    label={a.oQue}
-                    desc={`Prazo ${fmtData(a.quando)} · ${ACAO_STATUS[a.status].label}`}
+                    acao={a}
+                    risco={riscoDaAcao(a.riscoId)}
+                    onClick={() => setDetalhe(a)}
                   />
                 ))}
               </div>
@@ -245,6 +294,63 @@ export function NR1RhCockpit() {
       </div>
 
       <Nr1PerguntasSheet escopo={perguntas} onClose={() => setPerguntas(null)} />
+
+      <Sheet
+        open={detalhe !== null}
+        onClose={() => setDetalhe(null)}
+        title={detalhe?.oQue ?? 'Detalhe da ação'}
+        icon="ph:list-checks-bold"
+        size="md"
+        headerActions={detalhe && (
+          <>
+            <button
+              onClick={() => { setForm({ acao: detalhe, riscoId: detalhe.riscoId }); setDetalhe(null) }}
+              aria-label="Editar ação"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink"
+            >
+              <Icon icon="ph:pencil-simple-bold" width={15} aria-hidden />
+            </button>
+            {detalhe.status !== 'concluida' && (
+              <button
+                onClick={() => concluir(detalhe)}
+                disabled={!detalhe.comentarios.some((c) => c.arquivos && c.arquivos.length > 0)}
+                aria-label="Concluir ação"
+                title="Concluir ação"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-primary-600 disabled:pointer-events-none disabled:opacity-50"
+              >
+                <Icon icon="ph:check-bold" width={15} aria-hidden />
+              </button>
+            )}
+          </>
+        )}
+      >
+        {detalhe && (
+          <AcaoDetalhe
+            acao={detalhe}
+            risco={riscoDaAcao(detalhe.riscoId)}
+            onComentar={(p) => comentar(detalhe, p)}
+          />
+        )}
+      </Sheet>
+
+      <Sheet open={form !== null} onClose={fecharForm} title="Editar ação" icon="ph:list-checks-bold" size="md">
+        {form && (
+          <AcaoForm
+            inicial={form.acao}
+            riscoId={form.riscoId}
+            riscos={riscos}
+            onClose={fecharForm}
+            onSaved={salvarForm}
+          />
+        )}
+      </Sheet>
+
+      <Modal open={erro !== null} title="Ação não concluída" onClose={() => setErro(null)}>
+        <div className="flex flex-col gap-4">
+          <p className="text-[13.5px] leading-relaxed text-ink-secondary">{erro}</p>
+          <Button fullWidth onClick={() => setErro(null)}>Entendi</Button>
+        </div>
+      </Modal>
     </div>
   )
 }

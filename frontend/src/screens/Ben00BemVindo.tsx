@@ -1,27 +1,92 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { LogoYna } from '../components/YnaLogo'
 import { Button } from '../components/Button'
+import { Modal } from '../components/Modal'
+import { Input } from '../components/Input'
+import { nr1ColaboradorService } from '../services/nr1'
 
-/* BEN-00: Boas-vindas a partir do convite (Apresentação, etapa 1).
+/** Formata dígitos de CPF em `000.000.000-00` conforme a pessoa digita —
+   nunca mais de 11 dígitos, sem exigir que ela mesma digite os pontos e o
+   traço. */
+function formatarCpf(v: string): string {
+  const d = v.replace(/\D/g, '').slice(0, 11)
+  let out = d.slice(0, 3)
+  if (d.length > 3) out += `.${d.slice(3, 6)}`
+  if (d.length > 6) out += `.${d.slice(6, 9)}`
+  if (d.length > 9) out += `-${d.slice(9, 11)}`
+  return out
+}
 
-   Fica entre a validação do convite (`Ben01Convite.tsx`, que já guardou o
-   token em `AppContext.sessaoToken`) e o LGPD/sigilo (`Ben03Lgpd.tsx`,
-   `/sigilo`). Antes desta tela existir, o convite caía direto no sigilo,
-   sem nenhuma apresentação da YNA, e a pessoa ficava sem contexto do que
-   estava prestes a responder e por quê.
+/** Modal "Iniciar avaliação" — CPF + data de nascimento, sem senha. É a
+   única forma de identificação antes do questionário (ver
+   `nr1ColaboradorService.entrar`, `services/nr1.ts`): confirma que a
+   pessoa faz parte da empresa que a convidou, sem tornar suas respostas
+   identificáveis depois — a avaliação em si continua anônima. */
+function IniciarAvaliacaoModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const navigate = useNavigate()
+  const [cpf, setCpf] = useState('')
+  const [nascimento, setNascimento] = useState('')
+  const [entrando, setEntrando] = useState(false)
+
+  const hoje = new Date().toISOString().slice(0, 10)
+  const valido = cpf.replace(/\D/g, '').length === 11 && nascimento.length > 0 && nascimento <= hoje
+
+  const entrar = async () => {
+    if (!valido) return
+    setEntrando(true)
+    await nr1ColaboradorService.entrar({ cpf: cpf.replace(/\D/g, ''), nascimento })
+    setEntrando(false)
+    navigate('/sigilo')
+  }
+
+  return (
+    <Modal open={open} title="Iniciar avaliação" onClose={onClose}>
+      <div className="flex flex-col gap-4">
+        <p className="text-[13.5px] leading-relaxed text-ink-secondary">
+          Confirme seu CPF e sua data de nascimento para começar. Isso só confirma que você faz
+          parte da empresa que te convidou — suas respostas continuam anônimas.
+        </p>
+        <Input
+          label="CPF"
+          inputMode="numeric"
+          placeholder="000.000.000-00"
+          value={cpf}
+          onChange={(e) => setCpf(formatarCpf(e.target.value))}
+          maxLength={14}
+        />
+        <Input
+          label="Data de nascimento"
+          type="date"
+          value={nascimento}
+          max={hoje}
+          onChange={(e) => setNascimento(e.target.value)}
+        />
+        <Button fullWidth iconLeft="ph:arrow-right-bold" disabled={!valido || entrando} onClick={entrar}>
+          {entrando ? 'Entrando…' : 'Continuar'}
+        </Button>
+      </div>
+    </Modal>
+  )
+}
+
+/* BEN-00: único ponto de entrada do colaborador — não existe mais convite
+   por token nem apresentação em slides antes daqui (ver App.tsx): a pessoa
+   chega em `/bem-vindo` (a partir do link único da campanha, compartilhado
+   pelo RH), clica em "Iniciar avaliação", se identifica no modal acima
+   (CPF + data de nascimento) e cai direto no LGPD/sigilo (`Ben03Lgpd.tsx`,
+   `/sigilo`).
 
    Mesmo layout/composição do `RH00BemVindo.tsx` (que por sua vez replica
    este), mas a copy não promete atendimento/terapia. O produto, depois do
    recorte NR-1 standalone, é a avaliação psicossocial anônima em si, não
-   uma porta de entrada para cuidado clínico. Também não há "Já tenho
-   conta": nesta etapa do fluxo a pessoa ainda não criou nenhuma (a conta
-   leve só existe depois da avaliação respondida, em `/criar-conta`). O
-   link secundário pula direto a apresentação, não faz login. */
+   uma porta de entrada para cuidado clínico. */
 export function Ben00BemVindo() {
-  const navigate = useNavigate()
+  const [loginOpen, setLoginOpen] = useState(false)
 
   return (
+    <>
     <div className="relative w-full">
       {/* MOBILE LAYOUT (md:hidden) */}
       <div className="relative w-full bg-yna-gradient-soft md:hidden flex flex-col">
@@ -101,17 +166,11 @@ export function Ben00BemVindo() {
             dia a dia. Ela é protegida por lei e não tem vínculo com o seu nome.
           </p>
           <button
-            onClick={() => navigate('/apresentacao/1')}
+            onClick={() => setLoginOpen(true)}
             className="flex h-[52px] w-full items-center justify-center gap-2.5 rounded-xl bg-primary font-heading text-[15px] font-semibold text-white shadow-md transition-all duration-300 hover:bg-primary-600 active:scale-[0.98] animate-yna-slide-up animate-yna-delay-550"
           >
-            Conhecer a YNA
+            Iniciar avaliação
             <Icon icon="ph:arrow-right-bold" width={18} aria-hidden />
-          </button>
-          <button
-            onClick={() => navigate('/sigilo')}
-            className="mt-3 flex min-h-[44px] w-full items-center justify-center text-sm font-medium text-ink-secondary hover:text-ink animate-yna-slide-up animate-yna-delay-550"
-          >
-            Já conheço, continuar
           </button>
         </div>
       </div>
@@ -144,16 +203,10 @@ export function Ben00BemVindo() {
                 size="lg"
                 className="!bg-primary !text-white shadow-lg shadow-primary/10 hover:!bg-primary-600 active:scale-[0.98] transition-all duration-300 w-fit px-8"
                 iconRight="ph:arrow-right-bold"
-                onClick={() => navigate('/apresentacao/1')}
+                onClick={() => setLoginOpen(true)}
               >
-                Conhecer a YNA
+                Iniciar avaliação
               </Button>
-              <button
-                onClick={() => navigate('/sigilo')}
-                className="text-sm font-medium text-ink-secondary hover:text-ink"
-              >
-                Já conheço, continuar
-              </button>
             </div>
           </div>
 
@@ -225,5 +278,7 @@ export function Ben00BemVindo() {
         </div>
       </div>
     </div>
+    <IniciarAvaliacaoModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+    </>
   )
 }

@@ -682,12 +682,23 @@ export interface Nr1ResponsavelTecnico {
 
 export type Nr1TrilhaEtapaTipo = 'avaliacao' | 'inventario' | 'acao' | 'evidencia'
 
-/** Elo da cadeia risco → avaliação → inventário → ação → evidência. */
+/** Elo da cadeia risco → avaliação → inventário → ação → evidência.
+   `nivel` (só em etapas `inventario`) e `status` (só em etapas `acao`) vêm
+   junto para a UI destacar os pontos mais críticos da trilha (nível
+   risco/crítico, ação atrasada) sem precisar inferir isso lendo `detalhe`
+   como texto livre. `campanhaId` (só em etapas `avaliacao`) é o que permite
+   linkar para a página do ciclo — `inventario`/`acao` não precisam de um
+   campo equivalente porque toda a trilha já é de UM risco só
+   (`Nr1Trilha.riscoId`), o mesmo id usado pra linkar pro inventário e pro
+   plano de ação. */
 export interface Nr1TrilhaEtapa {
   tipo: Nr1TrilhaEtapaTipo
   titulo: string
   detalhe: string
   em: string
+  nivel?: Nr1NivelRisco
+  status?: Nr1AcaoStatus
+  campanhaId?: string
 }
 
 /** Trilha completa de um risco priorizado (RF-F01). */
@@ -710,15 +721,3 @@ export interface Nr1MinhaAvaliacao {
   scores: { dimensaoId: Nr1DimensaoId; nome: string; media: number }[]
 }
 
-/* --- Kit de comunicação da campanha (RF-K01) --- */
-
-export type Nr1MaterialTipo = 'email' | 'cartaz' | 'post' | 'roteiro'
-
-export interface Nr1KitMaterial {
-  id: string
-  tipo: Nr1MaterialTipo
-  titulo: string
-  descricao: string
-  /** Copy pronta, no tom da marca — o RH copia e adapta. */
-  conteudo: string
-}

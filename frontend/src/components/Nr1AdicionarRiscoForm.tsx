@@ -7,18 +7,20 @@ import { useService } from '../hooks/useService'
 import { nr1ResultadoService } from '../services/nr1'
 import { rhDepartamentoService } from '../services/rh'
 import { NR1_DIMENSOES, nr1NivelPorProduto } from '../data/nr1Mock'
-import { NIVEL_RISCO } from '../lib/nr1'
-import type { Nr1DimensaoId, Nr1Severidade } from '../types'
+import { NIVEL_RISCO, STATUS_RISCO } from '../lib/nr1'
+import type { Nr1DimensaoId, Nr1RiscoInventario, Nr1RiscoStatus, Nr1Severidade } from '../types'
 
 /* Formulário "Adicionar risco" — os mesmos sete campos do GRO que já
    aparecem no detalhe do risco (fator, danos, grupo exposto, dimensão,
-   probabilidade, severidade, controles). Usado em dois pontos: o botão
+   probabilidade, severidade, controles). Usado em três pontos: o botão
    "Adicionar risco" do Inventário (`NR1RhInventario.tsx`, sem `prefill` — um
-   risco identificado fora da pesquisa, por auditoria ou observação direta) e
+   risco identificado fora da pesquisa, por auditoria ou observação direta),
    o botão "Adicionar ao inventário" da aba "Riscos sugeridos"
-   (`Nr1RiscosSugeridos.tsx`, com `prefill` vindo da leitura da sugestão).
+   (`Nr1RiscosSugeridos.tsx`, com `prefill` vindo da leitura da sugestão), e
+   "Editar" no detalhe de um risco existente (`NR1RhInventario.tsx`, com
+   `inicial` — mesmos campos, virando um update em vez de um insert).
 
-   Em ambos os casos, o RH ainda escolhe e pode ajustar cada campo antes de
+   Em todos os casos, o RH ainda escolhe e pode ajustar cada campo antes de
    salvar — mesmo quando `prefill` já sugere valores, nada é gravado sem
    confirmação explícita: o julgamento de probabilidade/severidade do GRO
    continua sendo do SST/RH, nunca calculado sozinho pelo produto a partir
@@ -27,9 +29,10 @@ export function Nr1AdicionarRiscoForm({
   onClose,
   onSaved,
   prefill,
+  inicial,
 }: {
   onClose: () => void
-  onSaved: () => void
+  onSaved: (salvo?: Nr1RiscoInventario) => void
   prefill?: {
     dimensaoId?: Nr1DimensaoId
     departamentoIds?: string[]
@@ -40,16 +43,20 @@ export function Nr1AdicionarRiscoForm({
     controles?: string
     origemSugestaoId?: string
   }
+  /** Presente no modo "Editar" — o risco existente sendo alterado. Quando
+     presente, `prefill` é ignorado (os dois nunca coexistem). */
+  inicial?: Nr1RiscoInventario
 }) {
   const departamentos = useService(() => rhDepartamentoService.list(), [])
 
-  const [dimensaoId, setDimensaoId] = useState<Nr1DimensaoId>(prefill?.dimensaoId ?? NR1_DIMENSOES[0]!.id)
-  const [departamentoIds, setDepartamentoIds] = useState<string[]>(prefill?.departamentoIds ?? [])
-  const [fator, setFator] = useState(prefill?.fator ?? '')
-  const [danos, setDanos] = useState(prefill?.danos ?? '')
-  const [probabilidade, setProbabilidade] = useState(String(prefill?.probabilidade ?? 3))
-  const [severidade, setSeveridade] = useState(String(prefill?.severidade ?? 3))
-  const [controles, setControles] = useState(prefill?.controles ?? '')
+  const [dimensaoId, setDimensaoId] = useState<Nr1DimensaoId>(inicial?.dimensaoId ?? prefill?.dimensaoId ?? NR1_DIMENSOES[0]!.id)
+  const [departamentoIds, setDepartamentoIds] = useState<string[]>(inicial?.departamentoIds ?? prefill?.departamentoIds ?? [])
+  const [fator, setFator] = useState(inicial?.fator ?? prefill?.fator ?? '')
+  const [danos, setDanos] = useState(inicial?.danos ?? prefill?.danos ?? '')
+  const [probabilidade, setProbabilidade] = useState(String(inicial?.probabilidade ?? prefill?.probabilidade ?? 3))
+  const [severidade, setSeveridade] = useState(String(inicial?.severidade ?? prefill?.severidade ?? 3))
+  const [controles, setControles] = useState(inicial ? inicial.controles.join('\n') : (prefill?.controles ?? ''))
+  const [status, setStatus] = useState<Nr1RiscoStatus>(inicial?.status ?? 'identificado')
   const [salvando, setSalvando] = useState(false)
 
   const dep = departamentos.status === 'success' ? departamentos.data : []
@@ -66,7 +73,7 @@ export function Nr1AdicionarRiscoForm({
   const salvar = async () => {
     if (!valido) return
     setSalvando(true)
-    await nr1ResultadoService.adicionarRisco({
+    const patch = {
       dimensaoId,
       departamentoIds,
       fator: fator.trim(),
@@ -74,10 +81,12 @@ export function Nr1AdicionarRiscoForm({
       probabilidade: Number(probabilidade),
       severidade: Number(severidade) as Nr1Severidade,
       controles: controles.split('\n').map((c) => c.trim()).filter(Boolean),
-      origemSugestaoId: prefill?.origemSugestaoId,
-    })
+    }
+    const salvo = inicial
+      ? await nr1ResultadoService.editarRisco(inicial.id, { ...patch, status })
+      : await nr1ResultadoService.adicionarRisco({ ...patch, origemSugestaoId: prefill?.origemSugestaoId })
     setSalvando(false)
-    onSaved()
+    onSaved(salvo)
   }
 
   return (
@@ -164,6 +173,22 @@ export function Nr1AdicionarRiscoForm({
         </div>
       </div>
 
+      {inicial && (
+        <div>
+          <p className="mb-1.5 text-[13px] font-semibold text-ink">Status</p>
+          <Select
+            value={status}
+            onChange={(v) => setStatus(v as Nr1RiscoStatus)}
+            ariaLabel="Status do risco"
+            options={(Object.keys(STATUS_RISCO) as Nr1RiscoStatus[]).map((s) => ({ value: s, label: STATUS_RISCO[s].label }))}
+          />
+          <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-muted">
+            Normalmente calculado a partir da evolução entre ciclos. Trocar aqui é um julgamento
+            manual do RH/SST, e vale até a próxima edição.
+          </p>
+        </div>
+      )}
+
       {prefill?.origemSugestaoId && (
         <div className="rounded-lg border border-warning/30 bg-warning-bg p-3.5">
           <p className="text-[11.5px] leading-relaxed text-warning-ink">
@@ -182,7 +207,7 @@ export function Nr1AdicionarRiscoForm({
       <div className="mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button variant="ghost" onClick={onClose}>Cancelar</Button>
         <Button iconLeft="ph:check-bold" disabled={!valido || salvando} onClick={salvar}>
-          {salvando ? 'Salvando…' : 'Adicionar risco'}
+          {salvando ? 'Salvando…' : inicial ? 'Salvar alterações' : 'Adicionar risco'}
         </Button>
       </div>
     </div>
