@@ -20,12 +20,27 @@ export const NR1_TODAY = '2026-06-25'
    Dimensões, escalas e pontuação
    ------------------------------------------------------------------ */
 
-/** `curto` é usado onde não cabe o nome inteiro — eixos do radar, chips. */
+/** `curto` é usado onde não cabe o nome inteiro — cabeçalho do mapa de
+   calor, eixos do radar, chips.
+
+   Recorte de 8 dimensões (revisão pós-validação de 2026-09), mais granular
+   que as 4 do Guia do MTE usadas até então — separa demandas de organização
+   do trabalho, isola liderança e segurança psicossocial de relações em
+   geral, e acrescenta valores e saúde/bem-estar como dimensões próprias.
+   `ambiente` (a antiga "Ambiente e recursos") foi absorvida por
+   `organizacao`, que ainda cobre recursos e condições de trabalho. Os ids
+   `organizacao` e `contexto` foram mantidos (só o nome mudou) para não
+   invalidar os riscos do inventário e os itens do modelo derivado de
+   cliente que já apontavam pra eles — ver ITENS_BCP e RISCOS abaixo. */
 export const NR1_DIMENSOES: { id: Nr1DimensaoId; nome: string; curto: string; descricao: string; icon: string }[] = [
-  { id: 'organizacao', nome: 'Organização do trabalho', curto: 'Organização', descricao: 'Carga, ritmo, autonomia, clareza de papel e mudanças.', icon: 'ph:stack-bold' },
-  { id: 'relacoes', nome: 'Relações e liderança', curto: 'Relações', descricao: 'Apoio da liderança e dos pares, respeito e conflito.', icon: 'ph:users-three-bold' },
-  { id: 'ambiente', nome: 'Ambiente e recursos', curto: 'Ambiente', descricao: 'Recursos, ferramentas, condições físicas e informação.', icon: 'ph:buildings-bold' },
-  { id: 'contexto', nome: 'Contexto externo', curto: 'Contexto', descricao: 'Interface trabalho-vida, hiperconexão e contato com público.', icon: 'ph:globe-hemisphere-west-bold' },
+  { id: 'demandas', nome: 'Demandas no trabalho', curto: 'Demandas', descricao: 'Ritmo, carga e prazos de trabalho.', icon: 'ph:gauge-bold' },
+  { id: 'organizacao', nome: 'Organização e conteúdo do trabalho', curto: 'Organização', descricao: 'Autonomia, clareza de papel, mudanças, recursos e condições de trabalho.', icon: 'ph:stack-bold' },
+  { id: 'relacoes', nome: 'Relações interpessoais', curto: 'Relações', descricao: 'Apoio dos pares, respeito e conflito entre colegas.', icon: 'ph:users-three-bold' },
+  { id: 'lideranca', nome: 'Liderança', curto: 'Liderança', descricao: 'Apoio, retorno construtivo e incentivo da liderança direta.', icon: 'ph:megaphone-bold' },
+  { id: 'contexto', nome: 'Interface trabalho-indivíduo', curto: 'Interface', descricao: 'Interface trabalho-vida, hiperconexão e contato com público.', icon: 'ph:scales-bold' },
+  { id: 'valores', nome: 'Valores do local de trabalho', curto: 'Valores', descricao: 'Alinhamento entre valores pessoais e da organização.', icon: 'ph:compass-bold' },
+  { id: 'saude', nome: 'Saúde e bem-estar', curto: 'Saúde', descricao: 'Percepção de saúde, energia, sono e recuperação.', icon: 'ph:heartbeat-bold' },
+  { id: 'seguranca', nome: 'Segurança psicossocial', curto: 'Segurança', descricao: 'Assédio moral, bullying e hostilidade no trabalho.', icon: 'ph:shield-warning-bold' },
 ]
 
 export const nr1DimensaoNome = (id: Nr1DimensaoId) =>
@@ -90,12 +105,21 @@ const item = ([id, texto, referencia, escala, direcao, nucleo, extra]: ItemSeed)
   ...extra,
 })
 
-const ORGANIZACAO: ItemSeed[] = [
+/** Antes vivia em "Organização do trabalho" — a revisão de 7 dimensões isola
+   carga/ritmo/prazos (demanda) da autonomia/papel/mudança (organização em
+   si), porque as duas pedem ações de gestão bem diferentes. */
+const DEMANDAS: ItemSeed[] = [
   ['OT01', 'Preciso trabalhar em um ritmo muito acelerado.', 'HSE · Demandas', 'A', 'reverso', true],
   ['OT02', 'Tenho prazos que são impossíveis de cumprir.', 'HSE · Demandas', 'A', 'reverso', false],
   ['OT03', 'Preciso deixar tarefas de lado porque tenho trabalho demais.', 'HSE · Demandas', 'A', 'reverso', false],
   ['OT04', 'Sinto-me pressionado(a) a trabalhar muitas horas.', 'HSE · Demandas', 'A', 'reverso', false],
   ['OT05', 'Consigo fazer pausas suficientes durante o expediente.', 'HSE · Demandas', 'A', 'positivo', false],
+]
+
+/** Autonomia, papel e mudança (antigo núcleo de "Organização do trabalho")
+   + recursos e condições de trabalho (antiga dimensão "Ambiente e
+   recursos", absorvida aqui — ver nota em `NR1_DIMENSOES`). */
+const ORGANIZACAO: ItemSeed[] = [
   ['OT06', 'Tenho autonomia para decidir como realizar o meu trabalho.', 'HSE · Controle', 'A', 'positivo', true],
   ['OT07', 'Tenho influência sobre o meu próprio ritmo de trabalho.', 'HSE · Controle', 'A', 'positivo', false],
   ['OT08', 'Posso decidir quando fazer uma pausa.', 'HSE · Controle', 'A', 'positivo', false],
@@ -105,35 +129,66 @@ const ORGANIZACAO: ItemSeed[] = [
   ['OT12', 'Entendo como o meu trabalho se conecta ao objetivo da organização.', 'HSE · Papel', 'A', 'positivo', false],
   ['OT13', 'Quando há mudanças no trabalho, fica claro como elas vão funcionar na prática.', 'HSE · Mudança', 'B', 'positivo', false],
   ['OT14', 'Tenho oportunidade de esclarecer dúvidas com a liderança sobre mudanças no trabalho.', 'HSE · Mudança', 'B', 'positivo', false],
-]
-
-const RELACOES: ItemSeed[] = [
-  ['RL01', 'Posso contar com a minha liderança para me ajudar em um problema de trabalho.', 'HSE · Apoio da liderança', 'A', 'positivo', true],
-  ['RL02', 'Recebo retorno construtivo sobre o trabalho que faço.', 'HSE · Apoio da liderança', 'A', 'positivo', false],
-  ['RL03', 'Minha liderança me incentiva no trabalho.', 'HSE · Apoio da liderança', 'B', 'positivo', false],
-  ['RL04', 'Sinto-me apoiado(a) quando o trabalho é emocionalmente exigente.', 'HSE · Apoio da liderança', 'B', 'positivo', false],
-  ['RL05', 'Quando o trabalho fica difícil, meus colegas me ajudam.', 'HSE · Apoio dos pares', 'A', 'positivo', true],
-  ['RL06', 'Recebo dos colegas o apoio de que preciso.', 'HSE · Apoio dos pares', 'B', 'positivo', false],
-  ['RL07', 'Recebo dos colegas o respeito que mereço.', 'HSE · Relações', 'B', 'positivo', false],
-  ['RL08', 'Há atritos ou raiva entre colegas.', 'HSE · Relações', 'A', 'reverso', true],
-  ['RL09', 'As relações no trabalho são tensas.', 'HSE · Relações', 'B', 'reverso', false],
-  ['RL10', 'Sou alvo de palavras ou comportamentos hostis no trabalho (assédio moral).', 'HSE · Relações', 'A', 'reverso', false, { sensivel: true }],
-  ['RL11', 'Sou alvo de intimidação ou bullying no trabalho.', 'HSE · Relações', 'A', 'reverso', false, { sensivel: true }],
-]
-
-const AMBIENTE: ItemSeed[] = [
   ['AR01', 'Tenho os recursos e as ferramentas necessários para fazer bem o meu trabalho.', 'COPSOQ · Recursos', 'B', 'positivo', true],
   ['AR02', 'As condições físicas do ambiente (espaço, ruído, conforto) permitem que eu trabalhe adequadamente.', 'MTE · Ambiente', 'B', 'positivo', true],
   ['AR03', 'Os sistemas e tecnologias que uso funcionam de forma confiável.', 'MTE · Recursos', 'B', 'positivo', false],
   ['AR04', 'Tenho as informações de que preciso para realizar bem o meu trabalho.', 'COPSOQ · Previsibilidade', 'B', 'positivo', false],
 ]
 
+/** Apoio dos pares, respeito e conflito entre colegas — sem os itens de
+   apoio da liderança (agora em LIDERANCA) nem os de assédio/bullying (agora
+   em SEGURANCA), que a revisão de 8 dimensões isola em dimensões próprias. */
+const RELACOES: ItemSeed[] = [
+  ['RL05', 'Quando o trabalho fica difícil, meus colegas me ajudam.', 'HSE · Apoio dos pares', 'A', 'positivo', true],
+  ['RL06', 'Recebo dos colegas o apoio de que preciso.', 'HSE · Apoio dos pares', 'B', 'positivo', false],
+  ['RL07', 'Recebo dos colegas o respeito que mereço.', 'HSE · Relações', 'B', 'positivo', false],
+  ['RL08', 'Há atritos ou raiva entre colegas.', 'HSE · Relações', 'A', 'reverso', true],
+  ['RL09', 'As relações no trabalho são tensas.', 'HSE · Relações', 'B', 'reverso', false],
+]
+
+/** Antes dentro de "Relações e liderança" (RL01-04) — isolada como dimensão
+   própria na revisão de 8, porque o apoio da liderança direta pede uma
+   leitura e uma ação de gestão diferentes do apoio entre pares. */
+const LIDERANCA: ItemSeed[] = [
+  ['RL01', 'Posso contar com a minha liderança para me ajudar em um problema de trabalho.', 'HSE · Apoio da liderança', 'A', 'positivo', true],
+  ['RL02', 'Recebo retorno construtivo sobre o trabalho que faço.', 'HSE · Apoio da liderança', 'A', 'positivo', false],
+  ['RL03', 'Minha liderança me incentiva no trabalho.', 'HSE · Apoio da liderança', 'B', 'positivo', false],
+  ['RL04', 'Sinto-me apoiado(a) quando o trabalho é emocionalmente exigente.', 'HSE · Apoio da liderança', 'B', 'positivo', false],
+]
+
+/** Interface trabalho-indivíduo (antigo "Contexto externo", só o nome
+   mudou — id `contexto` mantido, ver nota em `NR1_DIMENSOES`). */
 const CONTEXTO: ItemSeed[] = [
   ['CE01', 'As exigências do trabalho interferem na minha vida pessoal e familiar.', 'COPSOQ · Trabalho-família', 'A', 'reverso', true],
   ['CE02', 'Sinto que preciso ficar disponível para o trabalho fora do meu horário.', 'MTE · Hiperconexão', 'A', 'reverso', true],
   ['CE03', 'Consigo me desconectar do trabalho no meu tempo de descanso.', 'MTE · Hiperconexão', 'A', 'positivo', false],
   ['CE04', 'No trabalho remoto ou híbrido, sinto-me isolado(a) da equipe.', 'MTE · Isolamento', 'A', 'reverso', false, { condicional: true }],
   ['CE05', 'No contato com público ou clientes, lido com situações de agressividade ou tensão.', 'MTE · Contexto', 'A', 'reverso', false, { condicional: true }],
+]
+
+/** Dimensão nova na revisão de 7 — ainda sem itens próprios no instrumento
+   v0.3, adaptados aqui do recorte COPSOQ de referência (ver PARTE 7 de
+   LISTA_RISCOS_PSICOSSOCIAIS_REFERENCIA.md), pendentes da mesma validação
+   clínica do restante do questionário. */
+const VALORES: ItemSeed[] = [
+  ['VL01', 'Sinto que os meus valores pessoais são respeitados no ambiente de trabalho.', 'COPSOQ · Valores', 'B', 'positivo', true],
+  ['VL02', 'Há clareza sobre os objetivos e os valores da organização.', 'COPSOQ · Valores', 'B', 'positivo', false],
+]
+
+/** Idem — adaptada do recorte COPSOQ "Saúde Geral" de referência. */
+const SAUDE: ItemSeed[] = [
+  ['SB01', 'De modo geral, considero a minha saúde boa.', 'COPSOQ · Saúde geral', 'B', 'positivo', true],
+  ['SB02', 'Consigo me recuperar adequadamente do desgaste do trabalho.', 'COPSOQ · Saúde geral', 'B', 'positivo', false],
+  ['SB03', 'Meu sono tem sido prejudicado por questões do trabalho.', 'COPSOQ · Saúde geral', 'A', 'reverso', false],
+]
+
+/** Assédio moral e bullying — antes dentro de "Relações e liderança"
+   (RL10/RL11), isolados aqui na revisão de 8 dimensões como "Segurança
+   psicossocial", porque pedem apuração e resposta diferentes de um atrito
+   comum entre colegas. */
+const SEGURANCA: ItemSeed[] = [
+  ['RL10', 'Sou alvo de palavras ou comportamentos hostis no trabalho (assédio moral).', 'HSE · Relações', 'A', 'reverso', true, { sensivel: true }],
+  ['RL11', 'Sou alvo de intimidação ou bullying no trabalho.', 'HSE · Relações', 'A', 'reverso', false, { sensivel: true }],
 ]
 
 function dimensao(id: Nr1DimensaoId, seeds: ItemSeed[]): Nr1Dimensao {
@@ -144,10 +199,14 @@ function dimensao(id: Nr1DimensaoId, seeds: ItemSeed[]): Nr1Dimensao {
 /** Dimensões do Modelo YNA base — recriadas a cada chamada para que uma versão
    rascunho editada não mute a versão publicada (imutabilidade — RF-A04). */
 export const nr1DimensoesBase = (): Nr1Dimensao[] => [
+  dimensao('demandas', DEMANDAS),
   dimensao('organizacao', ORGANIZACAO),
   dimensao('relacoes', RELACOES),
-  dimensao('ambiente', AMBIENTE),
+  dimensao('lideranca', LIDERANCA),
   dimensao('contexto', CONTEXTO),
+  dimensao('valores', VALORES),
+  dimensao('saude', SAUDE),
+  dimensao('seguranca', SEGURANCA),
 ]
 
 const ABERTAS_BASE = [
@@ -294,22 +353,25 @@ export const nr1Campanhas: Nr1Campanha[] = [
    mesma, não sempre o retrato mais recente. A tabela de 2025 é derivada da
    de 2026 escalada pela razão das médias por dimensão já usadas em
    `nr1Ciclos`, para as duas fontes nunca discordarem. */
+/** Uma coluna por dimensão, na ordem de `NR1_DIMENSOES`: demandas,
+   organização, relações, liderança, interface (contexto), valores, saúde,
+   segurança (psicossocial). */
 const MEDIAS_2026_1S: Record<string, number[]> = {
-  'd-trading': [2.1, 2.6, 3.8, 2.4],
-  'd-tech': [3.1, 3.6, 3.4, 2.9],
-  'd-ops': [2.7, 3.2, 2.8, 3.3],
-  'd-compliance': [3.4, 3.9, 4.1, 3.6],
-  'd-rh': [3.8, 4.2, 4.0, 3.9],
-  'd-diretoria': [0, 0, 0, 0],
+  'd-trading': [1.9, 2.5, 2.6, 2.5, 2.4, 2.9, 2.1, 2.7],
+  'd-tech': [2.7, 3.1, 3.4, 3.3, 2.5, 3.2, 2.9, 3.8],
+  'd-ops': [2.6, 2.6, 2.7, 2.8, 3.3, 3.0, 2.8, 3.4],
+  'd-compliance': [3.3, 3.7, 3.9, 3.8, 3.6, 3.8, 3.5, 4.2],
+  'd-rh': [3.7, 4.0, 4.2, 4.1, 3.9, 4.1, 3.9, 4.5],
+  'd-diretoria': [0, 0, 0, 0, 0, 0, 0, 0],
 }
 
 const MEDIAS_2025_2S: Record<string, number[]> = {
-  'd-trading': [1.7, 2.3, 3.6, 2.1],
-  'd-tech': [2.6, 3.2, 3.2, 2.5],
-  'd-ops': [2.2, 2.8, 2.6, 2.9],
-  'd-compliance': [2.8, 3.4, 3.9, 3.1],
-  'd-rh': [3.2, 3.7, 3.8, 3.4],
-  'd-diretoria': [0, 0, 0, 0],
+  'd-trading': [1.6, 2.1, 2.2, 2.1, 2.1, 2.5, 1.8, 2.3],
+  'd-tech': [2.3, 2.6, 2.9, 2.8, 2.1, 2.7, 2.4, 3.3],
+  'd-ops': [2.1, 2.3, 2.2, 2.4, 2.9, 2.5, 2.3, 2.9],
+  'd-compliance': [2.7, 3.1, 3.3, 3.2, 3.1, 3.2, 2.9, 3.6],
+  'd-rh': [3.1, 3.4, 3.6, 3.5, 3.3, 3.5, 3.3, 3.9],
+  'd-diretoria': [0, 0, 0, 0, 0, 0, 0, 0],
 }
 
 const MEDIAS_POR_CAMPANHA: Record<string, Record<string, number[]>> = {
@@ -413,7 +475,7 @@ export const RISCOS: RiscoSeed[] = [
     ],
   },
   {
-    id: 'r-05', dimensaoId: 'ambiente', departamentoIds: ['d-ops'],
+    id: 'r-05', dimensaoId: 'organizacao', departamentoIds: ['d-ops'],
     fator: 'Instabilidade dos sistemas e insuficiência de recursos para a execução do trabalho.',
     danos: 'Frustração, estresse ocupacional, retrabalho e prolongamento de jornada.',
     probabilidade: 3, severidade: 2,
@@ -651,10 +713,14 @@ export const nr1Ciclos: Nr1Ciclo[] = [
     versao: '1.0',
     participacaoPct: 62,
     mediaPorDimensao: [
-      { dimensaoId: 'organizacao', media: 2.4 },
-      { dimensaoId: 'relacoes', media: 3.0 },
-      { dimensaoId: 'ambiente', media: 3.3 },
-      { dimensaoId: 'contexto', media: 2.6 },
+      { dimensaoId: 'demandas', media: 2.4 },
+      { dimensaoId: 'organizacao', media: 2.7 },
+      { dimensaoId: 'relacoes', media: 2.8 },
+      { dimensaoId: 'lideranca', media: 2.7 },
+      { dimensaoId: 'contexto', media: 2.7 },
+      { dimensaoId: 'valores', media: 2.9 },
+      { dimensaoId: 'saude', media: 2.5 },
+      { dimensaoId: 'seguranca', media: 3.2 },
     ],
   },
   {
@@ -665,10 +731,14 @@ export const nr1Ciclos: Nr1Ciclo[] = [
     versao: '1.0',
     participacaoPct: Math.round((totalRespostas / totalElegiveis) * 100),
     mediaPorDimensao: [
-      { dimensaoId: 'organizacao', media: 2.9 },
+      { dimensaoId: 'demandas', media: 2.8 },
+      { dimensaoId: 'organizacao', media: 3.2 },
       { dimensaoId: 'relacoes', media: 3.4 },
-      { dimensaoId: 'ambiente', media: 3.5 },
-      { dimensaoId: 'contexto', media: 3.0 },
+      { dimensaoId: 'lideranca', media: 3.3 },
+      { dimensaoId: 'contexto', media: 3.1 },
+      { dimensaoId: 'valores', media: 3.4 },
+      { dimensaoId: 'saude', media: 3.0 },
+      { dimensaoId: 'seguranca', media: 3.7 },
     ],
   },
 ]
@@ -689,10 +759,14 @@ export const nr1MinhasAvaliacoes: Nr1MinhaAvaliacao[] = [
     modeloNome: 'Modelo YNA de Riscos Psicossociais',
     versao: '1.0',
     scores: [
-      { dimensaoId: 'organizacao', nome: 'Organização do trabalho', media: 2.3 },
-      { dimensaoId: 'relacoes', nome: 'Relações e liderança', media: 3.1 },
-      { dimensaoId: 'ambiente', nome: 'Ambiente e recursos', media: 3.4 },
-      { dimensaoId: 'contexto', nome: 'Contexto externo', media: 2.5 },
+      { dimensaoId: 'demandas', nome: 'Demandas no trabalho', media: 2.2 },
+      { dimensaoId: 'organizacao', nome: 'Organização e conteúdo do trabalho', media: 2.6 },
+      { dimensaoId: 'relacoes', nome: 'Relações interpessoais', media: 3.0 },
+      { dimensaoId: 'lideranca', nome: 'Liderança', media: 2.9 },
+      { dimensaoId: 'contexto', nome: 'Interface trabalho-indivíduo', media: 2.6 },
+      { dimensaoId: 'valores', nome: 'Valores do local de trabalho', media: 2.8 },
+      { dimensaoId: 'saude', nome: 'Saúde e bem-estar', media: 2.4 },
+      { dimensaoId: 'seguranca', nome: 'Segurança psicossocial', media: 3.4 },
     ],
   },
 ]

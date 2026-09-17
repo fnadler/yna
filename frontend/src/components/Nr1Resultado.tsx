@@ -11,67 +11,134 @@ import type { Nr1LinhaMapa, Nr1DimensaoId } from '../types'
 
 type DimensaoMedia = { dimensaoId: Nr1DimensaoId; nome: string; media: number; nivel: ReturnType<typeof nr1NivelPorMedia> }
 
-/** Risco por dimensão (macro) — grade de 4 cards. Clicável quando
+/** Máximo de cards por linha na grade desktop de "Risco por dimensão".
+   Acima disso, `balancedRows` já divide em mais de uma linha. */
+const MAX_CARDS_POR_LINHA = 4
+
+/** Quantos itens cabem em cada linha para distribuir `n` itens da forma mais
+   equilibrada possível, respeitando no máximo `maxPorLinha` por linha —
+   nunca uma linha cheia seguida de uma quase vazia. Ex.: 7 itens (máx. 4)
+   vira [4, 3], não [4, 4, ...-1] nem [4, 4] com um item sobrando; 10 itens
+   vira [4, 3, 3], não [4, 4, 2]. */
+function balancedRows(n: number, maxPorLinha: number): number[] {
+  if (n <= 0) return []
+  const linhas = Math.ceil(n / maxPorLinha)
+  const base = Math.floor(n / linhas)
+  const resto = n % linhas
+  return Array.from({ length: linhas }, (_, i) => base + (i < resto ? 1 : 0))
+}
+
+/** Risco por dimensão (macro) — grade de cards, uma por dimensão do modelo
+   aplicado (4, 8, ou quantas o modelo tiver). Clicável quando
    `onClickDimensao` é passado: abre a lista de perguntas daquela dimensão,
-   na visão da empresa inteira (quem chama decide o escopo). */
+   na visão da empresa inteira (quem chama decide o escopo).
+
+   Abaixo do breakpoint `lg`, a grade é a de sempre (2 ou 3 colunas fixas,
+   última linha pode ficar incompleta — tela estreita não tem espaço de
+   sobra pra bancar um cálculo de equilíbrio). A partir do `lg`, a grade
+   troca para linhas calculadas por `balancedRows`: em vez de encher cada
+   linha até o limite e empurrar a sobra pra uma última linha capenga (o
+   que um `grid-template-columns` fixo faria), as linhas saem sempre com o
+   mesmo número de cards ou, quando `dimensoes.length` não divide exato,
+   com no máximo 1 de diferença entre elas — e cada linha ocupa a largura
+   toda do card (`1fr` por coluna daquela linha), nunca só o espaço dos
+   itens que sobraram. */
 export function RiscoPorDimensaoGrid({ dimensoes, onClickDimensao }: { dimensoes: DimensaoMedia[]; onClickDimensao?: (dimensaoId: Nr1DimensaoId) => void }) {
+  const linhas = balancedRows(dimensoes.length, MAX_CARDS_POR_LINHA)
+  const chunks: DimensaoMedia[][] = []
+  let cursor = 0
+  for (const n of linhas) {
+    chunks.push(dimensoes.slice(cursor, cursor + n))
+    cursor += n
+  }
+
+  const renderCard = (d: DimensaoMedia) => {
+    const meta = NR1_DIMENSOES.find((x) => x.id === d.dimensaoId)
+    const st = NIVEL_RISCO[d.nivel]
+    const conteudo = (
+      <>
+        <Icon icon={meta?.icon ?? 'ph:list-bold'} width={18} className="text-primary dark:text-primary-300" aria-hidden />
+        <p className="line-clamp-2 min-h-[2.4em] text-[12.5px] font-medium leading-snug text-ink" title={meta?.nome}>{meta?.nome}</p>
+        <p className="text-[26px] font-bold leading-none tracking-[-0.02em] text-ink">{d.media.toFixed(1)}</p>
+        <span className={`inline-flex w-fit items-center rounded-pill px-2 py-0.5 text-[11px] font-semibold ${st.cls}`}>
+          {st.label}
+        </span>
+      </>
+    )
+    return onClickDimensao ? (
+      <button
+        key={d.dimensaoId}
+        onClick={() => onClickDimensao(d.dimensaoId)}
+        className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
+      >
+        {conteudo}
+      </button>
+    ) : (
+      <div key={d.dimensaoId} className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+        {conteudo}
+      </div>
+    )
+  }
+
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      {dimensoes.map((d) => {
-        const meta = NR1_DIMENSOES.find((x) => x.id === d.dimensaoId)
-        const st = NIVEL_RISCO[d.nivel]
-        const conteudo = (
-          <>
-            <Icon icon={meta?.icon ?? 'ph:list-bold'} width={18} className="text-primary dark:text-primary-300" aria-hidden />
-            <p className="text-[12.5px] font-medium leading-snug text-ink">{meta?.nome}</p>
-            <p className="text-[26px] font-bold leading-none tracking-[-0.02em] text-ink">{d.media.toFixed(1)}</p>
-            <span className={`inline-flex w-fit items-center rounded-pill px-2 py-0.5 text-[11px] font-semibold ${st.cls}`}>
-              {st.label}
-            </span>
-          </>
-        )
-        return onClickDimensao ? (
-          <button
-            key={d.dimensaoId}
-            onClick={() => onClickDimensao(d.dimensaoId)}
-            className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
-          >
-            {conteudo}
-          </button>
-        ) : (
-          <div key={d.dimensaoId} className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
-            {conteudo}
+    <>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:hidden">
+        {dimensoes.map(renderCard)}
+      </div>
+
+      <div className="hidden flex-col gap-3 lg:flex">
+        {chunks.map((chunk, i) => (
+          <div key={i} className="grid gap-3" style={{ gridTemplateColumns: `repeat(${chunk.length}, minmax(0, 1fr))` }}>
+            {chunk.map(renderCard)}
           </div>
-        )
-      })}
-    </div>
+        ))}
+      </div>
+    </>
   )
 }
 
 /** Mapa de calor por dimensão × área, com legenda e nota de anonimato.
    Célula clicável quando `onClickCelula` é passado: abre a lista de
    perguntas daquela dimensão, na visão da área da linha (nunca de uma
-   linha protegida — essas nem chegam a renderizar célula por dimensão). */
+   linha protegida — essas nem chegam a renderizar célula por dimensão).
+
+   Layout pensado para uma quantidade variável de dimensões (colunas) e
+   áreas (linhas) — nem toda empresa mede as mesmas 8 dimensões, e a lista
+   de áreas cresce e encolhe por empresa:
+   · `table-fixed` com a coluna de área em largura fixa e as colunas de
+     dimensão dividindo o espaço restante em partes iguais — em vez de
+     colunas de largura fixa somada (o comportamento antigo, pensado para
+     exatamente 4), a tabela se estica para preencher a largura disponível
+     em telas grandes e só entra em scroll horizontal abaixo do mínimo por
+     coluna (`MIN_PX_POR_DIMENSAO`), calculado a partir de quantas dimensões
+     o modelo aplicado realmente tem;
+   · cabeçalho fixo (`sticky`) sobre um corpo com altura máxima e scroll
+     vertical próprio — uma lista de áreas maior rola dentro do card, sem
+     empurrar o resto da página nem esconder as dimensões lá embaixo. */
+const MIN_PX_LABEL = 168
+const MIN_PX_POR_DIMENSAO = 92
+
 export function MapaCalorTable({ linhas, onClickCelula }: {
   linhas: Nr1LinhaMapa[]
   onClickCelula?: (dimensaoId: Nr1DimensaoId, departamentoId: string, departamento: string) => void
 }) {
   const K = NR1_PONTUACAO.kAnonimato
   const protegidas = linhas.filter((l) => l.protegido)
+  const minLargura = MIN_PX_LABEL + NR1_DIMENSOES.length * MIN_PX_POR_DIMENSAO
 
   return (
     <>
-      <div className="overflow-x-auto rounded-lg border border-border bg-surface">
-        <table className="w-full min-w-[680px] border-collapse">
+      <div className="max-h-[65vh] overflow-auto rounded-lg border border-border bg-surface">
+        <table className="w-full table-fixed border-collapse" style={{ minWidth: `${minLargura}px` }}>
           <caption className="sr-only">
             Nível de risco psicossocial por dimensão e área, em média de 1 a 5, onde 5 é a
             situação desejável.
           </caption>
-          <thead>
+          <thead className="sticky top-0 z-10 bg-surface">
             <tr className="border-b border-border">
-              <th scope="col" className="px-4 py-3 text-left text-[12px] font-semibold text-ink-secondary">Área</th>
+              <th scope="col" style={{ width: MIN_PX_LABEL }} className="px-4 py-3 text-left text-[12px] font-semibold text-ink-secondary">Área</th>
               {NR1_DIMENSOES.map((d) => (
-                <th key={d.id} scope="col" className="px-2 py-3 text-center text-[11px] font-semibold text-ink-secondary">
+                <th key={d.id} scope="col" className="px-1.5 py-3 text-center text-[11px] font-semibold leading-snug text-ink-secondary">
                   {d.nome}
                 </th>
               ))}
@@ -80,13 +147,13 @@ export function MapaCalorTable({ linhas, onClickCelula }: {
           <tbody>
             {linhas.map((l) => (
               <tr key={l.departamentoId} className="border-b border-border last:border-0">
-                <th scope="row" className="px-4 py-3 text-left">
-                  <p className="text-[13px] font-medium text-ink">{l.departamento}</p>
+                <th scope="row" className="px-4 py-2.5 text-left">
+                  <p className="truncate text-[13px] font-medium text-ink">{l.departamento}</p>
                   <p className="text-[11px] font-normal text-ink-muted">{l.respondentes} respondentes</p>
                 </th>
 
                 {l.protegido ? (
-                  <td colSpan={NR1_DIMENSOES.length} className="px-2 py-3 text-center">
+                  <td colSpan={NR1_DIMENSOES.length} className="px-2 py-2.5 text-center">
                     <span className={`inline-flex items-center gap-1.5 rounded-pill px-3 py-1 text-[11px] font-medium ${NIVEL_PROTEGIDO.cls}`}>
                       <Icon icon="ph:lock-simple-bold" width={12} aria-hidden />
                       Dados protegidos (menos de {K} respostas)
@@ -97,21 +164,21 @@ export function MapaCalorTable({ linhas, onClickCelula }: {
                     const st = c.nivel ? NIVEL_RISCO[c.nivel] : NIVEL_PROTEGIDO
                     const conteudo = (
                       <>
-                        <span className="font-mono text-[15px] font-bold leading-none">{c.media?.toFixed(1) ?? '—'}</span>
-                        <span className="text-[10.5px] font-semibold leading-none">{st.label}</span>
+                        <span className="font-mono text-[14px] font-bold leading-none">{c.media?.toFixed(1) ?? '—'}</span>
+                        <span className="text-[10px] font-semibold leading-none">{st.label}</span>
                       </>
                     )
                     return (
-                      <td key={c.dimensaoId} className="px-2 py-2 text-center">
+                      <td key={c.dimensaoId} className="p-1.5 text-center">
                         {onClickCelula ? (
                           <button
                             onClick={() => onClickCelula(c.dimensaoId, l.departamentoId, l.departamento)}
-                            className={`flex min-h-[52px] w-full min-w-[64px] flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1 transition-transform hover:scale-[1.03] ${st.cls}`}
+                            className={`flex min-h-[44px] w-full flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1 transition-transform hover:scale-[1.03] ${st.cls}`}
                           >
                             {conteudo}
                           </button>
                         ) : (
-                          <span className={`flex min-h-[52px] min-w-[64px] flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1 ${st.cls}`}>
+                          <span className={`flex min-h-[44px] w-full flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1 ${st.cls}`}>
                             {conteudo}
                           </span>
                         )}

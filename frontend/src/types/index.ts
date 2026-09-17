@@ -293,8 +293,12 @@ export interface MngNotificacao {
      e a versão aplicada fica registrada na campanha (RF-A04 / RF-F02).
    ============================================================ */
 
-/** As quatro dimensões de fatores psicossociais do Guia do MTE. */
-export type Nr1DimensaoId = 'organizacao' | 'relacoes' | 'ambiente' | 'contexto'
+/** Id de uma dimensão de fatores psicossociais. O número e o conteúdo das
+   dimensões variam por modelo de questionário (o Modelo YNA usa um recorte,
+   um cliente pode derivar outro) — por isso é uma string livre, não uma
+   união fixa; `NR1_DIMENSOES` em `data/nr1Mock.ts` é que enumera as
+   dimensões do modelo-semente atual. */
+export type Nr1DimensaoId = string
 
 /** Escala de resposta: A = frequência · B = concordância (§7 do questionário). */
 export type Nr1EscalaId = 'A' | 'B'

@@ -17,6 +17,7 @@ import { PAGE_MAX_W } from '../../lib/layout'
 import { useService } from '../../hooks/useService'
 import { useRh } from '../../contexts/RhContext'
 import { nr1CampanhaService, nr1ResultadoService, nr1AcaoService } from '../../services/nr1'
+import { NR1_DIMENSOES } from '../../data/nr1Mock'
 import type { Nr1Campanha, Nr1Acao } from '../../types'
 
 /** Rótulo curto de um ciclo para o seletor — o pedaço depois do "·" no nome
@@ -247,7 +248,9 @@ export function NR1RhCockpit() {
 
             <h3 className="mb-3 text-[13px] font-semibold text-ink-secondary">Risco por dimensão</h3>
             {(dimensoes.status === 'idle' || dimensoes.status === 'loading') && (
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}</div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-[repeat(auto-fit,minmax(150px,1fr))]">
+                {NR1_DIMENSOES.map((d) => <Skeleton key={d.id} className="h-32 w-full rounded-lg" />)}
+              </div>
             )}
             {dimensoes.status === 'error' && <ErrorState message={dimensoes.message} onRetry={dimensoes.reload} />}
             {dimensoes.status === 'success' && (
