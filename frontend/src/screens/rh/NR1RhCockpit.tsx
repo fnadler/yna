@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { RhTopBar } from '../../components/RhTopBar'
 import { Skeleton } from '../../components/Skeleton'
@@ -18,6 +18,10 @@ import { useService } from '../../hooks/useService'
 import { useRh } from '../../contexts/RhContext'
 import { nr1CampanhaService, nr1ResultadoService, nr1AcaoService } from '../../services/nr1'
 import { NR1_DIMENSOES } from '../../data/nr1Mock'
+import {
+  NR1_SIM_MAX_DIMENSOES, NR1_SIM_MAX_DEPARTAMENTOS, lerSimulacaoDaUrl, nr1SimulacaoEhPadrao,
+  nr1DimensoesParaSimulacao, nr1DepartamentosParaSimulacao, nr1MapaCalorSimulado, nr1MediaPorDimensaoSimulada,
+} from '../../lib/nr1Simulacao'
 import type { Nr1Campanha, Nr1Acao } from '../../types'
 
 /** Rótulo curto de um ciclo para o seletor — o pedaço depois do "·" no nome
@@ -92,6 +96,38 @@ export function NR1RhCockpit() {
 
   const dimensoes = useService(() => nr1ResultadoService.mediaPorDimensao(campanhaId), [campanhaId])
   const mapa = useService(() => nr1ResultadoService.mapaCalor(campanhaId), [campanhaId])
+
+  /* Simulador de densidade do bloco "Risco por dimensão"/"Mapa de calor" —
+     ver `lib/nr1Simulacao.ts`. `?dims=`/`?deps=` na URL pisam no dado real
+     por uma grade fictícia do tamanho pedido, pra cliente e time verem como
+     a tela se comporta com outras quantidades sem esperar o modelo ou a
+     base de departamentos mudar de verdade. Sem os parâmetros (ou nos
+     valores padrão, 8×6), o bloco é exatamente o de sempre. */
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { nDimensoes, nDepartamentos } = lerSimulacaoDaUrl(searchParams)
+  const simulando = !nr1SimulacaoEhPadrao(nDimensoes, nDepartamentos)
+  const dimensoesSimuladas = useMemo(() => nr1DimensoesParaSimulacao(nDimensoes), [nDimensoes])
+  const departamentosSimulados = useMemo(() => nr1DepartamentosParaSimulacao(nDepartamentos), [nDepartamentos])
+  const mapaSimulado = useMemo(
+    () => nr1MapaCalorSimulado(dimensoesSimuladas, departamentosSimulados),
+    [dimensoesSimuladas, departamentosSimulados],
+  )
+  const mediaSimulada = useMemo(
+    () => nr1MediaPorDimensaoSimulada(dimensoesSimuladas, mapaSimulado),
+    [dimensoesSimuladas, mapaSimulado],
+  )
+  const atualizarSimulacao = (patch: { dims?: string; deps?: string }) => {
+    const next = new URLSearchParams(searchParams)
+    if (patch.dims !== undefined) next.set('dims', patch.dims)
+    if (patch.deps !== undefined) next.set('deps', patch.deps)
+    setSearchParams(next, { replace: true })
+  }
+  const restaurarPadrao = () => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('dims')
+    next.delete('deps')
+    setSearchParams(next, { replace: true })
+  }
 
   const firstName = usuario.nome.split(' ')[0]
 
@@ -225,9 +261,55 @@ export function NR1RhCockpit() {
               </div>
             </div>
 
-            {campanhas.status === 'loading' && <Skeleton className="mb-5 h-11 w-full max-w-md rounded-lg" />}
-            {campanhas.status === 'error' && <ErrorState message={campanhas.message} onRetry={campanhas.reload} />}
-            {campanhas.status === 'success' && campanhasPorData.length > 0 && (
+            {/* Simulador de densidade — ver `lib/nr1Simulacao.ts`. Sempre
+               visível (não só quando ativo) pra ser descoberto por quem não
+               sabe que existe, sem precisar editar a URL à mão. */}
+            <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg bg-surface-2 px-3.5 py-2.5">
+              <span className="flex items-center gap-1.5 text-[12px] font-medium text-ink-secondary">
+                <Icon icon="ph:flask-bold" width={14} aria-hidden />
+                Simular:
+              </span>
+              <label className="flex items-center gap-1.5 text-[12px] text-ink-secondary">
+                dimensões
+                <input
+                  type="number"
+                  min={1}
+                  max={NR1_SIM_MAX_DIMENSOES}
+                  value={nDimensoes}
+                  onChange={(e) => atualizarSimulacao({ dims: e.target.value })}
+                  className="w-14 rounded border border-border bg-surface px-1.5 py-1 text-center text-[12px] text-ink outline-none focus:border-primary"
+                  aria-label="Número de dimensões a simular"
+                />
+              </label>
+              <span className="text-ink-muted">×</span>
+              <label className="flex items-center gap-1.5 text-[12px] text-ink-secondary">
+                departamentos
+                <input
+                  type="number"
+                  min={1}
+                  max={NR1_SIM_MAX_DEPARTAMENTOS}
+                  value={nDepartamentos}
+                  onChange={(e) => atualizarSimulacao({ deps: e.target.value })}
+                  className="w-14 rounded border border-border bg-surface px-1.5 py-1 text-center text-[12px] text-ink outline-none focus:border-primary"
+                  aria-label="Número de departamentos a simular"
+                />
+              </label>
+              {simulando && (
+                <button onClick={restaurarPadrao} className="font-heading text-[12px] font-semibold text-primary hover:underline dark:text-primary-300">
+                  Restaurar padrão (8 × 6)
+                </button>
+              )}
+            </div>
+            {simulando && (
+              <p className="mb-5 flex items-start gap-1.5 rounded-lg bg-warning/15 px-3.5 py-2.5 text-[12px] leading-relaxed text-warning-ink">
+                <Icon icon="ph:warning-bold" width={14} className="mt-0.5 shrink-0" aria-hidden />
+                Dados fictícios, gerados só para simular o layout com {nDimensoes} dimensõe{nDimensoes === 1 ? '' : 's'} e {nDepartamentos} departamento{nDepartamentos === 1 ? '' : 's'} — não refletem o ciclo real.
+              </p>
+            )}
+
+            {!simulando && campanhas.status === 'loading' && <Skeleton className="mb-5 h-11 w-full max-w-md rounded-lg" />}
+            {!simulando && campanhas.status === 'error' && <ErrorState message={campanhas.message} onRetry={campanhas.reload} />}
+            {!simulando && campanhas.status === 'success' && campanhasPorData.length > 0 && (
               <div className="mb-5 flex gap-1 overflow-x-auto rounded-lg bg-surface-2 p-1" role="tablist" aria-label="Ciclo de referência">
                 {campanhasPorData.map((cmp) => (
                   <button
@@ -247,13 +329,14 @@ export function NR1RhCockpit() {
             )}
 
             <h3 className="mb-3 text-[13px] font-semibold text-ink-secondary">Risco por dimensão</h3>
-            {(dimensoes.status === 'idle' || dimensoes.status === 'loading') && (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-[repeat(auto-fit,minmax(150px,1fr))]">
-                {NR1_DIMENSOES.map((d) => <Skeleton key={d.id} className="h-32 w-full rounded-lg" />)}
+            {simulando && <RiscoPorDimensaoGrid dimensoes={mediaSimulada} />}
+            {!simulando && (dimensoes.status === 'idle' || dimensoes.status === 'loading') && (
+              <div className="flex flex-col gap-2">
+                {NR1_DIMENSOES.map((d) => <Skeleton key={d.id} className="h-10 w-full rounded-lg" />)}
               </div>
             )}
-            {dimensoes.status === 'error' && <ErrorState message={dimensoes.message} onRetry={dimensoes.reload} />}
-            {dimensoes.status === 'success' && (
+            {!simulando && dimensoes.status === 'error' && <ErrorState message={dimensoes.message} onRetry={dimensoes.reload} />}
+            {!simulando && dimensoes.status === 'success' && (
               <RiscoPorDimensaoGrid
                 dimensoes={dimensoes.data}
                 onClickDimensao={campanhaId ? (dimensaoId) => {
@@ -264,16 +347,18 @@ export function NR1RhCockpit() {
             )}
             <p className="mt-2 text-[11px] text-ink-muted">
               Média de 1 a 5, onde 5 é a situação desejável. Áreas com menos de 4 respondentes não
-              entram no cálculo.{campanhaId && ' Clique num card para ver a pontuação por pergunta.'}
+              entram no cálculo.{!simulando && campanhaId && ' Clique num card para ver a pontuação por pergunta.'}
             </p>
 
             <div className="my-6 border-t border-border" />
 
             <h3 className="mb-3 text-[13px] font-semibold text-ink-secondary">Mapa de calor por área</h3>
-            {(mapa.status === 'idle' || mapa.status === 'loading') && <Skeleton className="h-80 w-full rounded-lg" />}
-            {mapa.status === 'error' && <ErrorState message={mapa.message} onRetry={mapa.reload} />}
-            {mapa.status === 'success' && (
+            {simulando && <MapaCalorTable dimensoes={dimensoesSimuladas} linhas={mapaSimulado} />}
+            {!simulando && (mapa.status === 'idle' || mapa.status === 'loading') && <Skeleton className="h-80 w-full rounded-lg" />}
+            {!simulando && mapa.status === 'error' && <ErrorState message={mapa.message} onRetry={mapa.reload} />}
+            {!simulando && mapa.status === 'success' && (
               <MapaCalorTable
+                dimensoes={NR1_DIMENSOES}
                 linhas={mapa.data}
                 onClickCelula={campanhaId ? (dimensaoId, departamentoId, departamento) => {
                   const linha = mapa.data.find((l) => l.departamentoId === departamentoId)!
@@ -282,7 +367,7 @@ export function NR1RhCockpit() {
                 } : undefined}
               />
             )}
-            {campanhaId && <p className="mt-2 text-[11px] text-ink-muted">Clique numa célula para ver a pontuação por pergunta daquela área.</p>}
+            {!simulando && campanhaId && <p className="mt-2 text-[11px] text-ink-muted">Clique numa célula para ver a pontuação por pergunta daquela área.</p>}
           </section>
         </div>
 

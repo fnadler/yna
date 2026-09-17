@@ -20,6 +20,7 @@ import { fmtData, pct } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
 import { nr1CampanhaService, nr1ModeloService, nr1ResultadoService } from '../../services/nr1'
 import { rhColaboradorService } from '../../services/rh'
+import { NR1_DIMENSOES } from '../../data/nr1Mock'
 import type { Nr1Campanha, Nr1QuestionarioModelo } from '../../types'
 
 /** Link único do ciclo — identifica empresa e ciclo pelo próprio protocolo
@@ -897,7 +898,7 @@ function CampanhaResultado({ campanhaId }: { campanhaId: string }) {
       <section className="mb-6">
         <h2 className="mb-3 text-[15px] font-semibold text-ink">Risco por dimensão</h2>
         {(dimensoes.status === 'idle' || dimensoes.status === 'loading') && (
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}</div>
+          <div className="flex flex-col gap-2">{NR1_DIMENSOES.map((d) => <Skeleton key={d.id} className="h-10 w-full rounded-lg" />)}</div>
         )}
         {dimensoes.status === 'error' && <ErrorState message={dimensoes.message} onRetry={dimensoes.reload} />}
         {dimensoes.status === 'success' && (
@@ -921,6 +922,7 @@ function CampanhaResultado({ campanhaId }: { campanhaId: string }) {
         {mapa.status === 'error' && <ErrorState message={mapa.message} onRetry={mapa.reload} />}
         {mapa.status === 'success' && (
           <MapaCalorTable
+            dimensoes={NR1_DIMENSOES}
             linhas={mapa.data}
             onClickCelula={(dimensaoId, departamentoId, departamento) => {
               const linha = mapa.data.find((l) => l.departamentoId === departamentoId)!

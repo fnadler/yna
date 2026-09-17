@@ -28,10 +28,21 @@ function balancedRows(n: number, maxPorLinha: number): number[] {
   return Array.from({ length: linhas }, (_, i) => base + (i < resto ? 1 : 0))
 }
 
-/** Risco por dimensão (macro) — grade de cards, uma por dimensão do modelo
-   aplicado (4, 8, ou quantas o modelo tiver). Clicável quando
-   `onClickDimensao` é passado: abre a lista de perguntas daquela dimensão,
-   na visão da empresa inteira (quem chama decide o escopo).
+/** Risco por dimensão (macro) — grade de linhas compactas, uma por
+   dimensão do modelo aplicado (4, 8, ou quantas o modelo tiver). Clicável
+   quando `onClickDimensao` é passado: abre a lista de perguntas daquela
+   dimensão, na visão da empresa inteira (quem chama decide o escopo).
+
+   Cada card tem 2 zonas bem separadas: identidade em cima (ícone + nome,
+   sempre com `min-h` de 2 linhas reservado — mesmo o nome de 1 linha só
+   ganha o espaço em branco, pra todo card da grade nascer com a mesma
+   altura, não só os da mesma fileira) e a nota em destaque embaixo (número
+   grande + nível, um de cada lado). O nome nunca trunca — se algum for tão
+   comprido que passe de 2 linhas, o card cresce, nunca corta. `rounded-md`
+   (não `rounded-lg`, usado nos cards maiores da tela): no tamanho compacto
+   deste card o raio de 20px do `rounded-lg` chama mais atenção que devia —
+   mesmo raio das células do mapa de calor logo abaixo, que têm o mesmo
+   papel (número + nível) numa caixa pequena.
 
    Abaixo do breakpoint `lg`, a grade é a de sempre (2 ou 3 colunas fixas,
    última linha pode ficar incompleta — tela estreita não tem espaço de
@@ -39,7 +50,7 @@ function balancedRows(n: number, maxPorLinha: number): number[] {
    troca para linhas calculadas por `balancedRows`: em vez de encher cada
    linha até o limite e empurrar a sobra pra uma última linha capenga (o
    que um `grid-template-columns` fixo faria), as linhas saem sempre com o
-   mesmo número de cards ou, quando `dimensoes.length` não divide exato,
+   mesmo número de itens ou, quando `dimensoes.length` não divide exato,
    com no máximo 1 de diferença entre elas — e cada linha ocupa a largura
    toda do card (`1fr` por coluna daquela linha), nunca só o espaço dos
    itens que sobraram. */
@@ -53,28 +64,44 @@ export function RiscoPorDimensaoGrid({ dimensoes, onClickDimensao }: { dimensoes
   }
 
   const renderCard = (d: DimensaoMedia) => {
+    /* O ícone vem de `NR1_DIMENSOES` (metadado visual do modelo real) — mas
+       o nome vem sempre de `d.nome`, o mesmo já publicado pelo serviço (ou
+       pela simulação, ver `lib/nr1Simulacao.ts`), nunca de um lookup nessa
+       constante. Uma dimensão simulada (`sim-dim-9` etc.) não existe em
+       `NR1_DIMENSOES`, e olhar `meta?.nome` pra ela renderizaria em branco. */
     const meta = NR1_DIMENSOES.find((x) => x.id === d.dimensaoId)
     const st = NIVEL_RISCO[d.nivel]
     const conteudo = (
       <>
-        <Icon icon={meta?.icon ?? 'ph:list-bold'} width={18} className="text-primary dark:text-primary-300" aria-hidden />
-        <p className="line-clamp-2 min-h-[2.4em] text-[12.5px] font-medium leading-snug text-ink" title={meta?.nome}>{meta?.nome}</p>
-        <p className="text-[26px] font-bold leading-none tracking-[-0.02em] text-ink">{d.media.toFixed(1)}</p>
-        <span className={`inline-flex w-fit items-center rounded-pill px-2 py-0.5 text-[11px] font-semibold ${st.cls}`}>
-          {st.label}
-        </span>
+        <div className="flex items-start gap-1.5">
+          <Icon icon={meta?.icon ?? 'ph:list-bold'} width={15} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
+          {/* `min-h` reserva sempre 2 linhas de nome, mesmo pras dimensões
+             com nome curto — sem isso, um card de nome curto (1 linha) e
+             outro de nome comprido (2 linhas) na mesma grade ficavam com
+             alturas diferentes, e só o grid (que iguala pela linha inteira)
+             disfarçava a diferença dentro de uma mesma fileira, não entre
+             fileiras. Sem `line-clamp`: se um nome raríssimo precisar de
+             3 linhas, ele cresce — nunca corta (RF pedido explicitamente). */}
+          <p className="min-h-[2.4em] text-[12.5px] font-medium leading-snug text-ink">{d.nome}</p>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-mono text-[22px] font-bold leading-none tracking-[-0.01em] text-ink">{d.media.toFixed(1)}</span>
+          <span className={`shrink-0 rounded-pill px-2 py-0.5 text-[10.5px] font-semibold leading-none ${st.cls}`}>
+            {st.label}
+          </span>
+        </div>
       </>
     )
     return onClickDimensao ? (
       <button
         key={d.dimensaoId}
         onClick={() => onClickDimensao(d.dimensaoId)}
-        className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
+        className="flex flex-col gap-2.5 rounded-md border border-border bg-surface px-3.5 py-3 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
       >
         {conteudo}
       </button>
     ) : (
-      <div key={d.dimensaoId} className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+      <div key={d.dimensaoId} className="flex flex-col gap-2.5 rounded-md border border-border bg-surface px-3.5 py-3">
         {conteudo}
       </div>
     )
@@ -82,7 +109,10 @@ export function RiscoPorDimensaoGrid({ dimensoes, onClickDimensao }: { dimensoes
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:hidden">
+      {/* Linha horizontal quer largura, não uma coluna estreita — abaixo do
+         `lg` fica em lista de 1 coluna (não mais 2-3), pra não truncar o
+         nome ainda mais num espaço que já é apertado no celular. */}
+      <div className="flex flex-col gap-2 lg:hidden">
         {dimensoes.map(renderCard)}
       </div>
 
@@ -114,17 +144,35 @@ export function RiscoPorDimensaoGrid({ dimensoes, onClickDimensao }: { dimensoes
      o modelo aplicado realmente tem;
    · cabeçalho fixo (`sticky`) sobre um corpo com altura máxima e scroll
      vertical próprio — uma lista de áreas maior rola dentro do card, sem
-     empurrar o resto da página nem esconder as dimensões lá embaixo. */
+     empurrar o resto da página nem esconder as dimensões lá embaixo.
+     `sticky` vai em cada `<th>` do cabeçalho, não no `<thead>` inteiro —
+     sticky num `<thead>` (row group) tem suporte inconsistente entre
+     navegadores e chegou a descolar o cabeçalho da célula "Área" durante o
+     scroll; por célula é o jeito que funciona em todo navegador;
+   · com o nome completo da dimensão no cabeçalho (em vez do `curto`) e um
+     modelo com muitas dimensões, o mínimo por coluna passa a exceder a
+     largura do card e a tabela entra em scroll horizontal — comportamento
+     aceito, não um bug (ver conversa que definiu isso). Nesse caso a coluna
+     de área (`sticky left-0`) fica travada na tela, para nunca perder de
+     vista de qual área é a nota enquanto rola pras dimensões seguintes.
+
+   `dimensoes` é sempre recebido por prop (nunca lido de `NR1_DIMENSOES`
+   direto): o cabeçalho tem que listar exatamente as dimensões que geraram
+   as células de `linhas`, sejam as do modelo real ou as de uma simulação
+   (ver `lib/nr1Simulacao.ts`) — usar a constante global aqui já causou
+   cabeçalho e células saírem com contagens diferentes quando as duas
+   divergem. */
 const MIN_PX_LABEL = 168
 const MIN_PX_POR_DIMENSAO = 92
 
-export function MapaCalorTable({ linhas, onClickCelula }: {
+export function MapaCalorTable({ dimensoes, linhas, onClickCelula }: {
+  dimensoes: { id: Nr1DimensaoId; nome: string }[]
   linhas: Nr1LinhaMapa[]
   onClickCelula?: (dimensaoId: Nr1DimensaoId, departamentoId: string, departamento: string) => void
 }) {
   const K = NR1_PONTUACAO.kAnonimato
   const protegidas = linhas.filter((l) => l.protegido)
-  const minLargura = MIN_PX_LABEL + NR1_DIMENSOES.length * MIN_PX_POR_DIMENSAO
+  const minLargura = MIN_PX_LABEL + dimensoes.length * MIN_PX_POR_DIMENSAO
 
   return (
     <>
@@ -134,11 +182,11 @@ export function MapaCalorTable({ linhas, onClickCelula }: {
             Nível de risco psicossocial por dimensão e área, em média de 1 a 5, onde 5 é a
             situação desejável.
           </caption>
-          <thead className="sticky top-0 z-10 bg-surface">
+          <thead>
             <tr className="border-b border-border">
-              <th scope="col" style={{ width: MIN_PX_LABEL }} className="px-4 py-3 text-left text-[12px] font-semibold text-ink-secondary">Área</th>
-              {NR1_DIMENSOES.map((d) => (
-                <th key={d.id} scope="col" className="px-1.5 py-3 text-center text-[11px] font-semibold leading-snug text-ink-secondary">
+              <th scope="col" style={{ width: MIN_PX_LABEL }} className="sticky top-0 left-0 z-30 border-r border-border bg-surface px-4 py-3 text-left text-[12px] font-semibold text-ink-secondary">Área</th>
+              {dimensoes.map((d) => (
+                <th key={d.id} scope="col" className="sticky top-0 z-20 bg-surface px-1.5 py-3 text-center text-[11px] font-semibold leading-snug text-ink-secondary">
                   {d.nome}
                 </th>
               ))}
@@ -147,13 +195,13 @@ export function MapaCalorTable({ linhas, onClickCelula }: {
           <tbody>
             {linhas.map((l) => (
               <tr key={l.departamentoId} className="border-b border-border last:border-0">
-                <th scope="row" className="px-4 py-2.5 text-left">
+                <th scope="row" className="sticky left-0 z-10 border-r border-border bg-surface px-4 py-2.5 text-left">
                   <p className="truncate text-[13px] font-medium text-ink">{l.departamento}</p>
                   <p className="text-[11px] font-normal text-ink-muted">{l.respondentes} respondentes</p>
                 </th>
 
                 {l.protegido ? (
-                  <td colSpan={NR1_DIMENSOES.length} className="px-2 py-2.5 text-center">
+                  <td colSpan={dimensoes.length} className="px-2 py-2.5 text-center">
                     <span className={`inline-flex items-center gap-1.5 rounded-pill px-3 py-1 text-[11px] font-medium ${NIVEL_PROTEGIDO.cls}`}>
                       <Icon icon="ph:lock-simple-bold" width={12} aria-hidden />
                       Dados protegidos (menos de {K} respostas)
