@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import QRCode from 'qrcode'
 import { RhTopBar } from '../../components/RhTopBar'
 import { PageHeader } from '../../components/PageHeader'
+import { Avatar } from '../../components/Avatar'
 import { Button } from '../../components/Button'
+import { Badge } from '../../components/Badge'
 import { Input } from '../../components/Input'
 import { Sheet } from '../../components/Sheet'
 import { Modal } from '../../components/Modal'
@@ -16,12 +18,12 @@ import { Nr1CicloStatusCard } from '../../components/Nr1CicloStatusCard'
 import { Nr1PerguntasSheet, type Nr1PerguntasEscopo } from '../../components/Nr1PerguntasSheet'
 import { Nr1RiscosSugeridosTab } from '../../components/Nr1RiscosSugeridos'
 import { PAGE_MAX_W } from '../../lib/layout'
-import { fmtData, pct } from '../../lib/nr1'
+import { pct } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
 import { nr1CampanhaService, nr1ModeloService, nr1ResultadoService } from '../../services/nr1'
-import { rhColaboradorService } from '../../services/rh'
+import { rhColaboradorService, rhDepartamentoService } from '../../services/rh'
 import { NR1_DIMENSOES } from '../../data/nr1Mock'
-import type { Nr1Campanha, Nr1QuestionarioModelo } from '../../types'
+import type { Nr1Campanha, RhColaboradorStatus } from '../../types'
 
 /** Link único do ciclo — identifica empresa e ciclo pelo próprio protocolo
    (já único e já no formato "NR1-{empresa}-{ano}-{sequencial}"), sem
@@ -29,6 +31,54 @@ import type { Nr1Campanha, Nr1QuestionarioModelo } from '../../types'
    na avaliação anônima, sem depender de um convite individual (Convites
    continua existindo, para quem prefere aquele fluxo). */
 const nr1LinkAvaliacao = (protocolo: string) => `https://app.yna.com.br/a/${protocolo}`
+
+/** Estado + ação de "Encerrar ciclo" — usado tanto pelo card do ciclo ativo
+   na lista quanto pelo cabeçalho do detalhe, pra não duplicar a chamada de
+   serviço e o tratamento de loading em dois lugares. */
+function useEncerrarCiclo(campanhaId: string | undefined, onEncerrado: () => void) {
+  const [open, setOpen] = useState(false)
+  const [encerrando, setEncerrando] = useState(false)
+
+  const confirmar = async () => {
+    if (!campanhaId) return
+    setEncerrando(true)
+    await nr1CampanhaService.encerrar(campanhaId)
+    setEncerrando(false)
+    setOpen(false)
+    onEncerrado()
+  }
+
+  return { open, setOpen, encerrando, confirmar }
+}
+
+/** Confirmação de "Encerrar ciclo" — mesmo texto e mesmo botão de perigo
+   nos dois lugares que oferecem essa ação (card do ciclo ativo na lista,
+   cabeçalho do detalhe). */
+function EncerrarCicloModal({ nome, open, encerrando, onClose, onConfirm }: {
+  nome: string
+  open: boolean
+  encerrando: boolean
+  onClose: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <Modal open={open} title="Encerrar ciclo" onClose={onClose}>
+      <div className="flex flex-col gap-4">
+        <p className="text-[13.5px] leading-relaxed text-ink-secondary">
+          O ciclo <span className="font-semibold text-ink">{nome}</span> para de coletar respostas a partir de
+          agora. Essa ação não pode ser desfeita. As respostas já recebidas continuam valendo para o
+          inventário e o relatório.
+        </p>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+          <Button variant="danger" iconLeft="ph:stop-circle-bold" disabled={encerrando} onClick={onConfirm}>
+            {encerrando ? 'Encerrando…' : 'Encerrar ciclo'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
 
 /* NR1-RH-01/G01 — Ciclos de avaliação (RF-B01/B04, RF-RH-NR1-10, RF-G01/02/03).
 
@@ -95,6 +145,7 @@ function CicloListaScreen() {
     : []
 
   const ativa = campanhasVisiveis.find((c) => c.status === 'em-campo')
+  const encerrarCiclo = useEncerrarCiclo(ativa?.id, () => campanhas.reload())
 
   /* Só um ciclo em campo por vez — respostas de dois ciclos abertos ao
      mesmo tempo se misturariam, e o mapa de calor/inventário não teriam
@@ -136,9 +187,28 @@ function CicloListaScreen() {
           </div>
         )}
         {campanhas.status === 'success' && campanhasVisiveis.length > 0 && (
-          <ListaCampanhas campanhas={campanhasVisiveis} onOpen={(id) => navigate(`/rh/nr1/ciclos/${id}`)} />
+          <ListaCampanhas
+            campanhas={campanhasVisiveis}
+            onOpen={(id) => navigate(`/rh/nr1/ciclos/${id}`)}
+            acoesCicloAtivo={ativa && (
+              <>
+                <Button size="sm" variant="danger" iconLeft="ph:stop-circle-bold" onClick={() => encerrarCiclo.setOpen(true)}>
+                  Encerrar ciclo
+                </Button>
+                <CompartilharLinkMenu link={nr1LinkAvaliacao(ativa.protocolo)} campanhaId={ativa.id} />
+              </>
+            )}
+          />
         )}
       </div>
+
+      <EncerrarCicloModal
+        nome={ativa?.nome ?? 'atual'}
+        open={encerrarCiclo.open}
+        encerrando={encerrarCiclo.encerrando}
+        onClose={() => encerrarCiclo.setOpen(false)}
+        onConfirm={encerrarCiclo.confirmar}
+      />
 
       <Modal open={emCampoAviso !== null} title="Existe um ciclo em andamento" onClose={() => setEmCampoAviso(null)}>
         {emCampoAviso && (
@@ -166,7 +236,14 @@ function CicloListaScreen() {
   )
 }
 
-function ListaCampanhas({ campanhas, onOpen }: { campanhas: Nr1Campanha[]; onOpen: (id: string) => void }) {
+function ListaCampanhas({ campanhas, onOpen, acoesCicloAtivo }: {
+  campanhas: Nr1Campanha[]
+  onOpen: (id: string) => void
+  /** Botões de "Encerrar ciclo"/"Compartilhar" do ciclo em campo — só ele
+     os recebe (o único card clicável que também precisa agir sem entrar
+     no detalhe primeiro; o histórico já é só consulta). */
+  acoesCicloAtivo?: ReactNode
+}) {
   const ativa = campanhas.find((c) => c.status === 'em-campo')
   const outras = [...campanhas.filter((c) => c.id !== ativa?.id)].sort((a, b) => b.inicio.localeCompare(a.inicio))
 
@@ -175,7 +252,7 @@ function ListaCampanhas({ campanhas, onOpen }: { campanhas: Nr1Campanha[]; onOpe
       {ativa && (
         <section>
           <h2 className="mb-3 text-[15px] font-semibold text-ink">Ciclo em campo</h2>
-          <Nr1CicloStatusCard campanha={ativa} destaque onClick={() => onOpen(ativa.id)} />
+          <Nr1CicloStatusCard campanha={ativa} destaque onClick={() => onOpen(ativa.id)} acoes={acoesCicloAtivo} />
         </section>
       )}
       <section>
@@ -220,10 +297,10 @@ function NovoCicloSheet({ open, onClose }: { open: boolean; onClose: () => void 
 }
 
 /* Cadastro simples de propósito: título, questionário (resolve pra última
-   versão publicada, mesmo critério de "Trocar instrumento" — RH não edita
-   conteúdo de questionário) e datas. Ao salvar, o ciclo já entra em campo —
-   não existe um estado de rascunho neste fluxo simplificado, então não faz
-   sentido criar um só pra publicar em seguida. */
+   versão publicada — RH não edita conteúdo de questionário) e datas. Ao
+   salvar, o ciclo já entra em campo — não existe um estado de rascunho
+   neste fluxo simplificado, então não faz sentido criar um só pra publicar
+   em seguida. */
 function NovoCicloConteudo({ onClose }: { onClose: () => void }) {
   const modelos = useService(() => nr1ModeloService.list(), [])
   const [nome, setNome] = useState('')
@@ -388,25 +465,34 @@ const TABS = [
   { key: 'engajamento', label: 'Engajamento' },
   { key: 'resultado', label: 'Resultado' },
   { key: 'riscos-sugeridos', label: 'Riscos sugeridos' },
+  { key: 'colaboradores', label: 'Colaboradores habilitados' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
+
+/** Estado vazio das abas "Resultado" e "Riscos sugeridos" enquanto o ciclo
+   está em campo — o dado por trás (`nr1MapaCalor`/`NR1_RISCOS_SUGERIDOS`)
+   já existe pra qualquer campanha independente do status, mas mostrá-lo
+   antes do ciclo encerrar passaria uma falsa sensação de resultado
+   fechado, quando na prática a participação ainda está em andamento (e o
+   número de respostas, junto). Sai assim que o ciclo é encerrado — mesmo
+   dado, só que agora um retrato que não vai mais mudar. */
+function AbaEmColeta({ mensagem }: { mensagem: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-surface px-5 py-14 text-center">
+      <Icon icon="ph:hourglass-medium-bold" width={32} className="mx-auto text-ink-muted" aria-hidden />
+      <p className="mt-3 text-[15px] font-semibold text-ink">Dados ainda em coleta</p>
+      <p className="mx-auto mt-1 max-w-sm text-[13px] leading-relaxed text-ink-secondary">
+        {mensagem} Enquanto o ciclo está em andamento, os dados ainda estão sendo coletados.
+      </p>
+    </div>
+  )
+}
 
 function CicloDetalheScreen({ campanhaId }: { campanhaId: string }) {
   const campanha = useService(() => nr1CampanhaService.get(campanhaId), [campanhaId])
   const [tab, setTab] = useState<TabKey>('engajamento')
-  const [trocarOpen, setTrocarOpen] = useState(false)
   const [lembrete, setLembrete] = useState<{ areas: string[]; enviados?: number } | null>(null)
-  const [erro, setErro] = useState<string | null>(null)
-  const [encerrarOpen, setEncerrarOpen] = useState(false)
-  const [encerrando, setEncerrando] = useState(false)
-
-  const encerrar = async () => {
-    setEncerrando(true)
-    await nr1CampanhaService.encerrar(campanhaId)
-    setEncerrando(false)
-    setEncerrarOpen(false)
-    campanha.reload()
-  }
+  const encerrarCiclo = useEncerrarCiclo(campanhaId, () => campanha.reload())
 
   return (
     <div className="min-h-full bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
@@ -418,25 +504,11 @@ function CicloDetalheScreen({ campanhaId }: { campanhaId: string }) {
           Ciclos de avaliação
         </Link>
 
-        <PageHeader
-          title={campanha.status === 'success' && campanha.data ? campanha.data.nome : 'Ciclo de avaliação'}
-          subtitle={
-            campanha.status === 'success' && campanha.data
-              ? `Protocolo ${campanha.data.protocolo} · ${fmtData(campanha.data.inicio)} a ${fmtData(campanha.data.fim)}`
-              : 'O ciclo que gera o inventário de riscos psicossociais.'
-          }
-          action={campanha.status === 'success' && campanha.data && campanha.data.status === 'em-campo' ? (
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="danger" iconLeft="ph:stop-circle-bold" onClick={() => setEncerrarOpen(true)}>
-                <span className="hidden sm:inline">Encerrar ciclo</span>
-              </Button>
-              <CompartilharLinkMenu link={nr1LinkAvaliacao(campanha.data.protocolo)} campanhaId={campanha.data.id} />
-            </div>
-          ) : undefined}
-        />
-
         {(campanha.status === 'idle' || campanha.status === 'loading') && (
-          <div className="flex flex-col gap-3"><Skeleton className="h-40 w-full rounded-lg" /><Skeleton className="h-64 w-full rounded-lg" /></div>
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-48 w-full rounded-lg" />
+            <Skeleton className="h-64 w-full rounded-lg" />
+          </div>
         )}
         {campanha.status === 'error' && <ErrorState message={campanha.message} onRetry={campanha.reload} />}
         {campanha.status === 'success' && !campanha.data && (
@@ -450,6 +522,24 @@ function CicloDetalheScreen({ campanhaId }: { campanhaId: string }) {
 
         {campanha.status === 'success' && campanha.data && (
           <>
+            {/* O próprio card do ciclo é o cabeçalho da página — título,
+               status, participação/prazo e, em campo, as ações — em vez de
+               um `PageHeader` de texto solto seguido do mesmo card logo
+               abaixo (o que a aba Engajamento já mostrava, duplicado). */}
+            <div className="mb-6">
+              <Nr1CicloStatusCard
+                campanha={campanha.data}
+                acoes={campanha.data.status === 'em-campo' ? (
+                  <>
+                    <Button size="sm" variant="danger" iconLeft="ph:stop-circle-bold" onClick={() => encerrarCiclo.setOpen(true)}>
+                      <span className="hidden sm:inline">Encerrar ciclo</span>
+                    </Button>
+                    <CompartilharLinkMenu link={nr1LinkAvaliacao(campanha.data.protocolo)} campanhaId={campanha.data.id} />
+                  </>
+                ) : undefined}
+              />
+            </div>
+
             <div className="mb-5 flex gap-1 rounded-lg bg-surface-2 p-1" role="tablist" aria-label="Seções do ciclo">
               {TABS.map((t) => (
                 <button
@@ -469,24 +559,23 @@ function CicloDetalheScreen({ campanhaId }: { campanhaId: string }) {
             {tab === 'engajamento' && (
               <CampanhaEngajamento
                 campanha={campanha.data}
-                onTrocar={() => setTrocarOpen(true)}
                 onLembrar={(areas) => setLembrete({ areas })}
               />
             )}
-            {tab === 'resultado' && <CampanhaResultado campanhaId={campanha.data.id} />}
-            {tab === 'riscos-sugeridos' && <Nr1RiscosSugeridosTab campanhaId={campanha.data.id} />}
+            {tab === 'resultado' && (
+              campanha.data.status === 'em-campo'
+                ? <AbaEmColeta mensagem="O risco por dimensão e o mapa de calor ficam disponíveis quando o ciclo for encerrado." />
+                : <CampanhaResultado campanhaId={campanha.data.id} />
+            )}
+            {tab === 'riscos-sugeridos' && (
+              campanha.data.status === 'em-campo'
+                ? <AbaEmColeta mensagem="As leituras de risco sugeridas ficam disponíveis quando o ciclo for encerrado." />
+                : <Nr1RiscosSugeridosTab campanhaId={campanha.data.id} />
+            )}
+            {tab === 'colaboradores' && <CampanhaColaboradoresHabilitados campanha={campanha.data} />}
           </>
         )}
       </div>
-
-      {/* Seleção de modelo + versão */}
-      <TrocarInstrumentoSheet
-        open={trocarOpen}
-        campanha={campanha.status === 'success' ? campanha.data : undefined}
-        onClose={() => setTrocarOpen(false)}
-        onSaved={() => { setTrocarOpen(false); campanha.reload() }}
-        onErro={(m) => { setTrocarOpen(false); setErro(m) }}
-      />
 
       <Modal open={lembrete !== null} title="Enviar lembrete" onClose={() => setLembrete(null)}>
         {lembrete && (
@@ -525,112 +614,34 @@ function CicloDetalheScreen({ campanhaId }: { campanhaId: string }) {
         )}
       </Modal>
 
-      <Modal open={erro !== null} title="Instrumento não alterado" onClose={() => setErro(null)}>
-        <div className="flex flex-col gap-4">
-          <p className="text-[13.5px] leading-relaxed text-ink-secondary">{erro}</p>
-          <Button fullWidth onClick={() => setErro(null)}>Entendi</Button>
-        </div>
-      </Modal>
-
-      <Modal open={encerrarOpen} title="Encerrar ciclo" onClose={() => setEncerrarOpen(false)}>
-        <div className="flex flex-col gap-4">
-          <p className="text-[13.5px] leading-relaxed text-ink-secondary">
-            O ciclo {campanha.status === 'success' && campanha.data ? <span className="font-semibold text-ink">{campanha.data.nome}</span> : 'atual'} para de coletar respostas a partir de agora. Essa ação não pode ser desfeita.
-            As respostas já recebidas continuam valendo para o inventário e o relatório.
-          </p>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="ghost" onClick={() => setEncerrarOpen(false)}>Cancelar</Button>
-            <Button variant="danger" iconLeft="ph:stop-circle-bold" disabled={encerrando} onClick={encerrar}>
-              {encerrando ? 'Encerrando…' : 'Encerrar ciclo'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      <EncerrarCicloModal
+        nome={campanha.status === 'success' && campanha.data ? campanha.data.nome : 'atual'}
+        open={encerrarCiclo.open}
+        encerrando={encerrarCiclo.encerrando}
+        onClose={() => encerrarCiclo.setOpen(false)}
+        onConfirm={encerrarCiclo.confirmar}
+      />
     </div>
   )
 }
 
-function TrocarInstrumentoSheet({ open, campanha, onClose, onSaved, onErro }: {
-  open: boolean
-  campanha?: Nr1Campanha
-  onClose: () => void
-  onSaved: () => void
-  onErro: (m: string) => void
-}) {
-  const modelos = useService(() => nr1ModeloService.list(), [])
-
-  return (
-    <Sheet open={open} onClose={onClose} title="Instrumento do ciclo" icon="ph:seal-check-bold" size="md">
-      {campanha && modelos.status === 'success' && (
-        <SelecionarInstrumento
-          campanha={campanha}
-          modelos={modelos.data}
-          onClose={onClose}
-          onSaved={onSaved}
-          onErro={onErro}
-        />
-      )}
-      {modelos.status === 'loading' && <div className="px-5 py-6"><Skeleton className="h-40 w-full rounded-lg" /></div>}
-    </Sheet>
-  )
-}
-
-/* Aba "Engajamento" — participação total e por área (a tela original). */
-function CampanhaEngajamento({ campanha, onTrocar, onLembrar }: {
+/* Aba "Engajamento" — participação total e por área (a tela original).
+   O estado do ciclo (mesmo card da Visão geral) e o registro do
+   instrumento aplicado saíram daqui: o card virou o cabeçalho da própria
+   página de detalhe (`CicloDetalheScreen`), e o card "Instrumento
+   aplicado" foi removido — seu botão "Trocar" já vinha sempre desabilitado
+   (`disabled={campanha.status !== 'rascunho'}`, e nenhuma campanha deste
+   protótipo nasce em rascunho: `nr1CampanhaService.criar` já publica
+   direto em campo), então a troca de instrumento nunca foi alcançável por
+   aqui. */
+function CampanhaEngajamento({ campanha, onLembrar }: {
   campanha: Nr1Campanha
-  onTrocar: () => void
   onLembrar: (areas: string[]) => void
 }) {
   const abaixoDaMeta = campanha.participacao.filter((p) => pct(p.respostas, p.elegiveis) < META_PARTICIPACAO)
 
   return (
     <>
-      {/* Estado do ciclo — mesmo card da Visão geral (NR1RhCockpit.tsx),
-         para as duas telas nunca discordarem sobre o mesmo ciclo. */}
-      <div className="mb-6">
-        <Nr1CicloStatusCard campanha={campanha} />
-      </div>
-
-      {/* Instrumento aplicado — o registro metodológico */}
-      <section className="mb-6 rounded-lg border border-border bg-surface p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary dark:text-primary-300">
-              <Icon icon="ph:seal-check-bold" width={20} aria-hidden />
-            </span>
-            <div className="min-w-0">
-              <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-muted">Instrumento aplicado</span>
-              <p className="mt-1 font-heading text-[15px] font-semibold text-ink">{campanha.modeloNome}</p>
-              <p className="mt-0.5 text-[12.5px] text-ink-secondary">Versão {campanha.versao} · registrada no ciclo e em cada resposta</p>
-            </div>
-          </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            iconLeft="ph:swap-bold"
-            disabled={campanha.status !== 'rascunho'}
-            onClick={onTrocar}
-          >
-            Trocar
-          </Button>
-        </div>
-
-        {campanha.status === 'em-campo' && (
-          <p className="mt-3 flex items-start gap-2 border-t border-border pt-3 text-[12px] leading-relaxed text-ink-muted">
-            <Icon icon="ph:lock-simple-bold" width={13} className="mt-0.5 shrink-0" aria-hidden />
-            O ciclo já está em campo. A versão aplicada não muda no meio do ciclo. É assim que
-            as respostas seguem comparáveis e a metodologia se sustenta.
-          </p>
-        )}
-        {campanha.status === 'encerrada' && (
-          <p className="mt-3 flex items-start gap-2 border-t border-border pt-3 text-[12px] leading-relaxed text-ink-muted">
-            <Icon icon="ph:lock-simple-bold" width={13} className="mt-0.5 shrink-0" aria-hidden />
-            O ciclo já foi encerrado. A versão aplicada permanece registrada, como parte da
-            rastreabilidade deste ciclo.
-          </p>
-        )}
-      </section>
-
       {/* Participação por área */}
       <section>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -886,6 +897,128 @@ function EnviarConvitesModal({ open, campanhaId, onClose }: { open: boolean; cam
   )
 }
 
+/** Rótulo/tom do status do colaborador — mesmo mapeamento de
+   `RH11Colaboradores.tsx`, para a mesma palavra/cor em qualquer lugar do
+   app que mostre esse status. */
+const STATUS_COLABORADOR: Record<RhColaboradorStatus, { label: string; tone: 'success' | 'primary' | 'neutral' }> = {
+  ativo: { label: 'Ativo', tone: 'success' },
+  convidado: { label: 'Convidado', tone: 'primary' },
+  nao_convidado: { label: 'Não convidado', tone: 'neutral' },
+}
+
+/* Aba "Colaboradores habilitados" — só consulta (sem convidar, editar ou
+   mover ninguém, que é o que `RH11Colaboradores.tsx` faz; aqui é o mesmo
+   formato de lista, sem nenhum botão), pra responder "quem estava apto a
+   responder este ciclo?" sem sair da tela do ciclo.
+
+   "Habilitado" aqui é só `status === 'ativo'` — colaborador convidado mas
+   que ainda não entrou, ou nem convidado ainda, não chega a receber o
+   questionário. Não existe (e não deveria existir, dado o k-anonimato)
+   uma lista de quem respondeu — só o cadastro atual da empresa, com o
+   aviso abaixo deixando claro que isso não é uma lista de respondentes. */
+function CampanhaColaboradoresHabilitados({ campanha }: { campanha: Nr1Campanha }) {
+  const colaboradores = useService(() => rhColaboradorService.list(), [])
+  const departamentos = useService(() => rhDepartamentoService.list(), [])
+  const [busca, setBusca] = useState('')
+  const [depFiltro, setDepFiltro] = useState('todos')
+
+  const deps = departamentos.status === 'success' ? departamentos.data : []
+  const depNome = (id: string) => deps.find((d) => d.id === id)?.nome ?? '—'
+
+  const habilitados = colaboradores.status === 'success'
+    ? colaboradores.data.filter((c) => c.status === 'ativo')
+    : []
+
+  const termo = busca.trim().toLowerCase()
+  const filtrados = habilitados.filter((c) => {
+    if (depFiltro !== 'todos' && c.departamentoId !== depFiltro) return false
+    if (termo && !c.nomeCompleto.toLowerCase().includes(termo)) return false
+    return true
+  })
+
+  return (
+    <>
+      <div className="mb-4 flex gap-3 rounded-lg border border-border bg-surface-2 p-4">
+        <Icon icon="ph:info-bold" width={18} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
+        <p className="text-[12.5px] leading-relaxed text-ink-secondary">
+          Esta lista indica apenas os colaboradores ativos e elegíveis para receber o
+          questionário no período da aplicação. A participação é anônima e o sistema não
+          registra a adesão individual.
+        </p>
+      </div>
+
+      {/* O número que responde "quantos estavam habilitados" é o da própria
+         campanha (`elegiveis`) — o mesmo já usado no card do ciclo ("112 de
+         177 colaboradores responderam") — não o tamanho da lista abaixo,
+         que é só o cadastro atual filtrável, sem relação de 1 para 1 com
+         quem estava elegível naquele período. */}
+      <div className="mb-5 flex items-center gap-2">
+        <Icon icon="ph:users-three-bold" width={18} className="text-primary dark:text-primary-300" aria-hidden />
+        <p className="text-[13px] text-ink-secondary">
+          <span className="font-heading text-[15px] font-semibold text-ink">{campanha.elegiveis}</span> colaboradores habilitados neste ciclo
+        </p>
+      </div>
+
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row">
+        <div className="relative flex-1">
+          <Icon icon="ph:magnifying-glass-bold" width={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted" aria-hidden />
+          <input
+            type="search"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar por nome…"
+            aria-label="Buscar colaborador"
+            className="w-full rounded-lg border border-border bg-surface py-3 pl-11 pr-4 text-[15px] text-ink placeholder:text-ink-muted transition-colors focus:border-primary focus:outline-none"
+          />
+        </div>
+        <Select
+          value={depFiltro}
+          onChange={setDepFiltro}
+          ariaLabel="Filtrar por departamento"
+          className="sm:w-56"
+          options={[{ value: 'todos', label: 'Todos os departamentos' }, ...deps.map((d) => ({ value: d.id, label: d.nome }))]}
+        />
+      </div>
+
+      {(colaboradores.status === 'idle' || colaboradores.status === 'loading' || departamentos.status === 'idle' || departamentos.status === 'loading') && (
+        <div className="flex flex-col gap-2">
+          {[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-[68px] w-full rounded-lg" />)}
+        </div>
+      )}
+      {colaboradores.status === 'error' && <ErrorState message={colaboradores.message} onRetry={colaboradores.reload} />}
+      {departamentos.status === 'error' && <ErrorState message={departamentos.message} onRetry={departamentos.reload} />}
+
+      {colaboradores.status === 'success' && departamentos.status === 'success' && (
+        <>
+          <p className="mb-2 text-[13px] text-ink-muted">{filtrados.length} colaborador(es)</p>
+          {filtrados.length > 0 ? (
+            <ul className="flex flex-col gap-2">
+              {filtrados.map((c) => {
+                const meta = STATUS_COLABORADOR[c.status]
+                return (
+                  <li key={c.id} className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3">
+                    <Avatar initials={c.initials} size={40} palette={c.palette} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-heading text-sm font-semibold text-ink">{c.nomeCompleto}</p>
+                      <p className="truncate text-[12px] text-ink-secondary">{depNome(c.departamentoId)} · {c.emailCorporativo}</p>
+                    </div>
+                    <Badge tone={meta.tone} className="hidden shrink-0 sm:inline-flex">{meta.label}</Badge>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <div className="rounded-lg border border-border bg-surface px-4 py-12 text-center">
+              <Icon icon="ph:users-three-bold" width={32} className="mx-auto text-ink-muted" aria-hidden />
+              <p className="mt-3 text-sm text-ink-secondary">Nenhum colaborador encontrado com esses filtros.</p>
+            </div>
+          )}
+        </>
+      )}
+    </>
+  )
+}
+
 /* Aba "Resultado" — risco por dimensão (macro) + mapa de calor por área,
    ambos do ciclo selecionado, não sempre o retrato mais recente. */
 function CampanhaResultado({ campanhaId }: { campanhaId: string }) {
@@ -936,82 +1069,5 @@ function CampanhaResultado({ campanhaId }: { campanhaId: string }) {
 
       <Nr1PerguntasSheet escopo={perguntas} onClose={() => setPerguntas(null)} />
     </>
-  )
-}
-
-/* Seleção de modelo + versão. Só oferece versões publicadas: rascunho não vai
-   a campo, e arquivada não entra em ciclo novo. */
-function SelecionarInstrumento({ campanha, modelos, onClose, onSaved, onErro }: {
-  campanha: Nr1Campanha
-  modelos: Nr1QuestionarioModelo[]
-  onClose: () => void
-  onSaved: () => void
-  onErro: (m: string) => void
-}) {
-  const [modeloId, setModeloId] = useState(campanha.modeloId)
-  const [salvando, setSalvando] = useState(false)
-
-  const modelo = modelos.find((m) => m.id === modeloId)
-  const publicada = modelo?.versoes.find((v) => v.status === 'publicada')
-  const itens = publicada?.dimensoes.reduce((s, d) => s + d.itens.length, 0) ?? 0
-
-  const salvar = async () => {
-    if (!publicada) return
-    setSalvando(true)
-    const r = await nr1CampanhaService.definirInstrumento(campanha.id, modeloId, publicada.versao)
-    setSalvando(false)
-    if (r.ok) onSaved()
-    else onErro(r.message ?? 'Não foi possível alterar o instrumento.')
-  }
-
-  return (
-    <div className="flex flex-col gap-4 px-5 py-6 lg:px-6">
-      <div>
-        <p className="mb-1.5 text-[13px] font-semibold text-ink">Modelo de avaliação</p>
-        <Select
-          value={modeloId}
-          onChange={setModeloId}
-          ariaLabel="Modelo de avaliação"
-          options={modelos.map((m) => ({ value: m.id, label: m.escopo === 'yna' ? `${m.nome} (base)` : m.nome }))}
-        />
-        {modelo && <p className="mt-1.5 text-[12px] leading-relaxed text-ink-secondary">{modelo.descricao}</p>}
-      </div>
-
-      {publicada ? (
-        <div className="rounded-lg border border-border bg-surface-2 p-4">
-          <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-muted">Versão a aplicar</p>
-          <p className="mt-1 font-heading text-[15px] font-semibold text-ink">Versão {publicada.versao}</p>
-          <p className="mt-1 text-[12.5px] text-ink-secondary">
-            {itens} itens · {publicada.dimensoes.length} dimensões
-            {publicada.publicadaEm && ` · publicada em ${fmtData(publicada.publicadaEm)}`}
-          </p>
-          <p className="mt-2 text-[11.5px] leading-relaxed text-ink-muted">
-            Sempre a última versão publicada pela YNA. Versões em rascunho não vão a campo.
-          </p>
-        </div>
-      ) : (
-        <div className="rounded-lg border border-warning/30 bg-warning-bg p-4">
-          <p className="text-[12.5px] leading-relaxed text-ink-secondary">
-            Este modelo ainda não tem versão publicada e não pode ser aplicado num ciclo.
-          </p>
-        </div>
-      )}
-
-      <div className="flex gap-3 rounded-lg border border-border bg-surface p-3.5">
-        <Icon icon="ph:info-bold" width={18} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
-        <p className="text-[12px] leading-relaxed text-ink-secondary">
-          O conteúdo do questionário é definido pela YNA. Se a sua empresa precisa de itens
-          específicos, fale com o seu contato. A customização é feita no backoffice, para
-          preservar a validade do instrumento.
-        </p>
-      </div>
-
-      <div className="mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-        <Button iconLeft="ph:check-bold" disabled={!publicada || salvando} onClick={salvar}>
-          {salvando ? 'Aplicando…' : 'Aplicar no ciclo'}
-        </Button>
-      </div>
-    </div>
   )
 }
