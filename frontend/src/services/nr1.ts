@@ -27,6 +27,17 @@ import { nr1DistribuirPorItem, nr1NivelAtingeGatilho } from '../lib/nr1'
 const delay = (ms: number) => new Promise<void>((res) => setTimeout(res, ms))
 const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min
 
+/** Progresso salvo do questionário do colaborador (RF-CO-NR1-02): guardado
+   no `localStorage`, não no `AppContext` — precisa sobreviver ao reinício
+   da sessão em memória (fechar a aba, trocar de aparelho) pra permitir
+   detectar "avaliação em andamento" ao entrar de novo, mesmo sem conta
+   nem backend real neste protótipo. */
+interface Nr1ParcialSalvo {
+  respostas: Record<string, number | string>
+  atualizadoEm: string
+}
+const chaveParcial = (campanhaId: string) => `yna:nr1:parcial:${campanhaId}`
+
 /** Próximo número de versão a partir do maior existente (1.0 → 1.1 → 2.0…). */
 function proximaVersao(versoes: Nr1QuestionarioVersao[]): string {
   const nums = versoes.map((v) => v.versao.split('.').map(Number))
@@ -681,9 +692,43 @@ export const nr1ColaboradorService = {
     return { campanha, versao }
   },
 
-  /** Salvamento progressivo — o colaborador pode parar e voltar. */
-  salvarParcial: async (_campanhaId: string, _respostas: Record<string, number | string>): Promise<{ ok: boolean }> => {
+  /** Salvamento progressivo — o colaborador pode parar e voltar, inclusive
+     numa outra sessão/aparelho (ver `avaliacaoParcial`). */
+  salvarParcial: async (campanhaId: string, respostas: Record<string, number | string>): Promise<{ ok: boolean }> => {
     await delay(rand(200, 450))
+    try {
+      const parcial: Nr1ParcialSalvo = { respostas, atualizadoEm: new Date().toISOString() }
+      localStorage.setItem(chaveParcial(campanhaId), JSON.stringify(parcial))
+    } catch {
+      /* localStorage indisponível (modo privado etc.) — sem retomada entre
+         sessões, mas não impede a avaliação em curso. */
+    }
+    return { ok: true }
+  },
+
+  /** Avaliação parcialmente respondida, salva numa sessão anterior — usada
+     ao (re)começar a avaliação para oferecer "continuar de onde parei" em
+     vez de reiniciar do zero. `undefined` quando não há nada salvo. */
+  avaliacaoParcial: async (campanhaId: string): Promise<Nr1ParcialSalvo | undefined> => {
+    await delay(rand(200, 400))
+    try {
+      const raw = localStorage.getItem(chaveParcial(campanhaId))
+      if (!raw) return undefined
+      const parcial = JSON.parse(raw) as Nr1ParcialSalvo
+      return Object.keys(parcial.respostas).length > 0 ? parcial : undefined
+    } catch {
+      return undefined
+    }
+  },
+
+  /** Descarta o progresso salvo — chamado ao escolher "começar do zero" ou
+     depois que a avaliação é enviada com sucesso. */
+  limparParcial: async (campanhaId: string): Promise<{ ok: boolean }> => {
+    try {
+      localStorage.removeItem(chaveParcial(campanhaId))
+    } catch {
+      /* nada a fazer */
+    }
     return { ok: true }
   },
 
@@ -693,6 +738,11 @@ export const nr1ColaboradorService = {
     await delay(rand(700, 1300))
     const c = nr1Campanhas.find((x) => x.id === campanhaId)
     if (c) c.respostas += 1
+    try {
+      localStorage.removeItem(chaveParcial(campanhaId))
+    } catch {
+      /* nada a fazer */
+    }
     return { ok: true, protocolo: c?.protocolo ?? 'NR1-2026-000' }
   },
 

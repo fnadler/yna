@@ -35,6 +35,14 @@ interface AppContextValue {
   nr1Iniciar: (campanhaId: string) => void
   nr1Consentir: () => void
   nr1Responder: (itemId: string, valor: number | string) => void
+  /** Mescla respostas salvas numa sessão anterior (ver `avaliacaoParcial` em
+     `nr1ColaboradorService`) — usada ao escolher "continuar de onde
+     parei". */
+  nr1Retomar: (respostas: Record<string, number | string>) => void
+  /** Zera as respostas da avaliação em andamento sem perder a campanha/
+     consentimento já dados nesta sessão — usada ao escolher "começar do
+     zero" depois de detectar progresso salvo de outra sessão. */
+  nr1Reiniciar: () => void
   nr1Concluir: () => void
   nr1Limpar: () => void
 }
@@ -70,6 +78,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const nr1Responder = (itemId: string, valor: number | string) =>
     setNr1((prev) => (prev ? { ...prev, respostas: { ...prev.respostas, [itemId]: valor } } : prev))
 
+  const nr1Retomar = (respostas: Record<string, number | string>) =>
+    setNr1((prev) => (prev ? { ...prev, respostas: { ...prev.respostas, ...respostas } } : prev))
+
+  const nr1Reiniciar = () => setNr1((prev) => (prev ? { ...prev, respostas: {}, concluida: false } : prev))
+
   const nr1Concluir = () => setNr1((prev) => (prev ? { ...prev, concluida: true } : prev))
 
   const nr1Limpar = () => setNr1(null)
@@ -78,7 +91,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider
       value={{
         user, setUser, contaCriada, perfilInteresse, criarConta,
-        nr1, nr1Iniciar, nr1Consentir, nr1Responder, nr1Concluir, nr1Limpar,
+        nr1, nr1Iniciar, nr1Consentir, nr1Responder, nr1Retomar, nr1Reiniciar, nr1Concluir, nr1Limpar,
       }}
     >
       {children}

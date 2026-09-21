@@ -50,6 +50,7 @@ import { NR1BenConclusao } from './screens/NR1BenConclusao'
 import { NR1BenCanalEscuta } from './screens/NR1BenCanalEscuta'
 import { NR1BenEvolucao } from './screens/NR1BenEvolucao'
 import { ColTransicaoAvaliacao } from './screens/ColTransicaoAvaliacao'
+import { ColRetomarAvaliacao } from './screens/ColRetomarAvaliacao'
 import { ColConviteConta } from './screens/ColConviteConta'
 import { ColContaCriada } from './screens/ColContaCriada'
 
@@ -77,10 +78,10 @@ export function App() {
       <AppProvider>
         <BrowserRouter>
           <Routes>
-            {/* Tela de despedida (focus, max-w-xl, sem sidebar) */}
-            <Route element={<FocusLayout />}>
-              <Route path="/despedida" element={<Ben05Despedida />} />
-            </Route>
+            {/* Tela de despedida — standalone, sem `FocusLayout`: mesma
+                composição do questionário (gradiente vívido + card
+                centralizado, ver Ben05Despedida). */}
+            <Route path="/despedida" element={<Ben05Despedida />} />
 
             {/* Bem-vindo — único ponto de entrada do colaborador. Não há mais
                 convite por token nem apresentação em slides (ver
@@ -90,15 +91,20 @@ export function App() {
                 layout/composição próprios (mesmo padrão do RH00BemVindo). */}
             <Route path="/bem-vindo" element={<Ben00BemVindo />} />
 
-            {/* Fluxo LGPD — gradient-soft como fundo de página */}
-            <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" />}>
-              <Route path="/sigilo" element={<Ben03Lgpd />} />
-            </Route>
+            {/* Fluxo LGPD — standalone, sem `FocusLayout`: mesma composição
+                full-bleed do questionário (gradiente + card centralizado,
+                navegação dentro do card — ver Ben03Lgpd), não a barra de
+                topo/rodapé fixo que as demais telas de foco usam. */}
+            <Route path="/sigilo" element={<Ben03Lgpd />} />
 
             {/* Transições "tudo certo"/"concluído" — fecham um ciclo e abrem o
                 próximo. Standalone/full-screen, como as demais transições de
                 onboarding (ver RH05ContaCriada): sem header do FocusLayout. */}
             <Route path="/comecar" element={<ColTransicaoAvaliacao />} />
+            {/* Alerta de avaliação em andamento, detectada ao clicar em
+                "Começar avaliação" — ver ColTransicaoAvaliacao/
+                ColRetomarAvaliacao. Standalone, mesma composição. */}
+            <Route path="/avaliacao/retomar" element={<ColRetomarAvaliacao />} />
             <Route path="/avaliacao/conclusao" element={<NR1BenConclusao />} />
             <Route path="/conta-criada" element={<ColContaCriada />} />
 
@@ -122,14 +128,17 @@ export function App() {
                 demais telas de foco usam. */}
             <Route path="/avaliacao/:passo" element={<NR1BenQuestionario />} />
 
-            <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" exitTo="/despedida" />}>
-              <Route path="/avaliacao/conta" element={<ColConviteConta />} />
-            </Route>
+            {/* Standalone, sem `FocusLayout`: mesma composição do
+                questionário (gradiente vívido + card centralizado, ver
+                Ben03Lgpd/ColConviteConta) — é a última tela do fluxo antes
+                da despedida/criação de conta, mesma família visual do
+                restante da avaliação. */}
+            <Route path="/avaliacao/conta" element={<ColConviteConta />} />
 
-            {/* Criação de conta leve — só depois da avaliação já enviada. */}
-            <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" exitTo="/despedida" />}>
-              <Route path="/criar-conta" element={<ColCriarConta />} />
-            </Route>
+            {/* Criação de conta leve — só depois da avaliação já enviada.
+                Standalone, sem `FocusLayout`: mesma composição do
+                questionário (ver Ben03Lgpd/ColCriarConta). */}
+            <Route path="/criar-conta" element={<ColCriarConta />} />
 
             {/* App principal (com sidebar/bottom-nav) */}
             <Route element={<AppLayout />}>

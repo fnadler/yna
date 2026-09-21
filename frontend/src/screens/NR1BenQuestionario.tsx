@@ -5,6 +5,7 @@ import { Button } from '../components/Button'
 import { Textarea } from '../components/Textarea'
 import { Skeleton } from '../components/Skeleton'
 import { ErrorState } from '../components/ErrorState'
+import { TopoSaida } from '../components/TopoSaida'
 import { useService } from '../hooks/useService'
 import { useApp } from '../contexts/AppContext'
 import { nr1ColaboradorService } from '../services/nr1'
@@ -101,10 +102,12 @@ export function NR1BenQuestionario() {
 
 /** Fundo em gradiente + card centralizado — mesma composição da tela
    "Agora vamos começar", reutilizada aqui para o carregamento/erro nunca
-   destoarem visualmente da pergunta em si. */
+   destoarem visualmente da pergunta em si. `TopoSaida` (logo + Sair) no
+   topo, mesmo padrão do resto do fluxo (ver Ben03Lgpd/ColConviteConta). */
 function PaginaCentralizada({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center overflow-x-hidden bg-yna-gradient px-5 py-10">
+    <div className="flex min-h-dvh flex-col items-center overflow-x-hidden bg-yna-gradient px-5 py-6 lg:py-10">
+      <TopoSaida exitTo="/despedida" className="mb-4 max-w-xl lg:mb-6" />
       <div className="flex w-full max-w-xl flex-col items-center">{children}</div>
     </div>
   )

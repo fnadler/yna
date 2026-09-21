@@ -5,11 +5,21 @@ import { Button } from '../components/Button'
 import { YnaIcon } from '../components/YnaIcons'
 import { Card } from '../components/Card'
 import { Modal } from '../components/Modal'
+import { TopoSaida } from '../components/TopoSaida'
 import { useApp } from '../contexts/AppContext'
 import { nr1ColaboradorService } from '../services/nr1'
 
 type Step = 1 | 2 | 3
 
+/* Fluxo LGPD — mesma composição do questionário (`NR1BenQuestionario.tsx`):
+   fundo em gradiente cobrindo a tela, um único card branco centralizado,
+   com progresso, título e navegação (Anterior/Próximo) todos dentro do
+   card. Antes esta tela usava `FocusLayout` (barra de topo só no desktop +
+   barra de navegação fixa embaixo, fora do card) — trocado por pedido
+   explícito de padronização: as duas telas devem se parecer com o
+   questionário, não com um layout à parte. `TopoSaida` é a única coisa que
+   sobra fora do card — uma linha fina (logo + Sair), pra dar a mesma saída
+   que o `FocusLayout` oferecia sem herdar a barra inteira. */
 export function Ben03Lgpd() {
   const [step, setStep] = useState<Step>(1)
   const [accepted, setAccepted] = useState(false)
@@ -50,37 +60,16 @@ export function Ben03Lgpd() {
     navigate('/comecar')
   }
 
-  return (
-    <>
-      {/* Header: back button + progress bar (hidden on desktop, layout provides top bar) */}
-      <header className="flex lg:hidden items-center gap-3 px-5 pb-2 pt-8">
-        <button
-          onClick={handleBack}
-          aria-label="Voltar"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill border border-border bg-surface text-ink-secondary transition-colors hover:bg-surface-hover"
-        >
-          <Icon icon="ph:arrow-left-bold" width={18} aria-hidden />
-        </button>
-        <div className="flex-1">
-          <div
-            className="h-2 w-full overflow-hidden rounded-pill bg-surface-2"
-            role="progressbar"
-            aria-valuemin={1}
-            aria-valuemax={3}
-            aria-valuenow={step}
-            aria-label={`Passo ${step} de 3`}
-          >
-            <div
-              className="h-full rounded-pill bg-gradient-to-r from-primary to-pink transition-all duration-500"
-              style={{ width: `${(step / 3) * 100}%` }}
-            />
-          </div>
-        </div>
-        <span className="shrink-0 font-mono text-xs font-medium text-ink-secondary">{step} de 3</span>
-      </header>
+  const avancar = step === 1 ? () => setStep(2) : step === 2 ? () => setStep(3) : handleAccept
 
-      {/* Step content */}
-      <main key={step} className="px-5 pb-8 pt-6 lg:pt-10 lg:pb-28 animate-yna-slide-up">
+  return (
+    <div className="flex min-h-dvh flex-col items-center overflow-x-hidden bg-yna-gradient px-5 py-6 lg:py-10">
+      <TopoSaida exitTo="/despedida" className="mb-4 max-w-xl lg:mb-6" />
+
+      <div key={step} className="w-full max-w-xl animate-yna-slide-up rounded-2xl border border-border bg-surface p-6 shadow md:p-9">
+        {/* Sem barra de progresso aqui: é só um onboarding de 3 passos, não
+           faz sentido tratar como um progresso "a completar" (diferente do
+           questionário, que tem muito mais passos). */}
 
         {/* ── Passo 1: O que a YNA vê ─────────────────────────────────── */}
         {step === 1 && (
@@ -89,13 +78,10 @@ export function Ben03Lgpd() {
               <p className="mb-1 text-sm font-medium text-primary dark:text-primary-300">
                 Antes de qualquer pergunta
               </p>
-              <h1 className="mt-1 text-[26px] lg:text-[40px] font-extralight leading-[1.15] lg:leading-[1.05] tracking-[-0.02em] text-ink">
-                O que é seu{' '}
-                <span className="font-extrabold bg-yna-gradient-button bg-clip-text text-transparent">
-                  fica com você.
-                </span>
+              <h1 className="text-[19px] font-heading font-semibold leading-snug text-ink md:text-[21px]">
+                O que é seu fica com você.
               </h1>
-              <p className="mt-3 text-[15px] lg:text-[17px] leading-relaxed text-ink-secondary lg:max-w-[600px]">
+              <p className="mt-2 text-[14px] leading-relaxed text-ink-secondary">
                 Você precisa saber exatamente quem vê o quê, antes de contar qualquer coisa.
                 Sem letras miúdas. É assim que a confiança começa.
               </p>
@@ -115,12 +101,6 @@ export function Ben03Lgpd() {
                 ))}
               </ul>
             </Card>
-
-            <div className="lg:hidden">
-              <Button size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => setStep(2)}>
-                Próximo
-              </Button>
-            </div>
           </div>
         )}
 
@@ -131,14 +111,10 @@ export function Ben03Lgpd() {
               <p className="mb-1 text-sm font-medium text-primary dark:text-primary-300">
                 Sua privacidade
               </p>
-              <h1 className="text-[26px] lg:text-[40px] font-extralight leading-[1.15] lg:leading-[1.05] tracking-[-0.02em] text-ink">
-                Sua empresa{' '}
-                <span className="font-extrabold bg-yna-gradient-button bg-clip-text text-transparent">
-                  nunca vê
-                </span>{' '}
-                o que você compartilha.
+              <h1 className="text-[19px] font-heading font-semibold leading-snug text-ink md:text-[21px]">
+                Sua empresa nunca vê o que você compartilha.
               </h1>
-              <p className="mt-3 text-[15px] lg:text-[17px] leading-relaxed text-ink-secondary lg:max-w-[600px]">
+              <p className="mt-2 text-[14px] leading-relaxed text-ink-secondary">
                 Não importa o que você conte: diagnóstico, história, sentimento. Isso é seu. E fica com você.
               </p>
             </div>
@@ -159,12 +135,6 @@ export function Ben03Lgpd() {
                 ))}
               </ul>
             </Card>
-
-            <div className="lg:hidden">
-              <Button size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => setStep(3)}>
-                Próximo
-              </Button>
-            </div>
           </div>
         )}
 
@@ -175,14 +145,10 @@ export function Ben03Lgpd() {
               <p className="mb-1 text-sm font-medium text-primary dark:text-primary-300">
                 Nossas garantias
               </p>
-              <h1 className="text-[26px] lg:text-[40px] font-extralight leading-[1.15] lg:leading-[1.05] tracking-[-0.02em] text-ink">
-                Como{' '}
-                <span className="font-extrabold bg-yna-gradient-button bg-clip-text text-transparent">
-                  garantimos
-                </span>{' '}
-                tudo isso.
+              <h1 className="text-[19px] font-heading font-semibold leading-snug text-ink md:text-[21px]">
+                Como garantimos tudo isso.
               </h1>
-              <p className="mt-3 text-[15px] lg:text-[17px] leading-relaxed text-ink-secondary lg:max-w-[600px]">
+              <p className="mt-2 text-[14px] leading-relaxed text-ink-secondary">
                 O sigilo não depende de confiança cega. Ele está embutido na arquitetura de como os dados saem daqui.
               </p>
             </div>
@@ -242,54 +208,36 @@ export function Ben03Lgpd() {
                 Li e entendi como meus dados são protegidos. Aceito os Termos de Uso e a Política de Privacidade.
               </span>
             </label>
-
-            <div className="lg:hidden flex flex-col gap-3">
-              <Button size="lg" fullWidth disabled={!accepted || enviando} iconRight="ph:arrow-right-bold" onClick={handleAccept}>
-                Quero começar
-              </Button>
-              <Button variant="ghost" fullWidth onClick={() => navigate('/despedida')}>
-                Prefiro não continuar agora
-              </Button>
-              <p className="text-center text-[13px] leading-snug text-ink-secondary">
-                Tudo bem. Seu convite continua válido. Volte quando fizer sentido pra você.
-              </p>
-            </div>
           </div>
         )}
 
-      </main>
-
-      {/* Desktop bottom nav bar */}
-      <div className="hidden lg:flex fixed bottom-0 left-0 right-0 z-20 h-[72px] items-center border-t border-border bg-surface/90 px-10 backdrop-blur-sm">
-        <div className="w-40">
-          <button
-            onClick={handleBack}
-            className="flex items-center gap-2 font-heading text-sm font-medium text-ink-secondary transition-colors hover:text-ink"
-          >
-            <Icon icon="ph:arrow-left-bold" width={16} aria-hidden />
-            Voltar
-          </button>
-        </div>
-
-        <div className="flex flex-1 flex-col items-center gap-1.5">
-          <div className="h-1.5 w-52 overflow-hidden rounded-pill bg-surface-2">
-            <div
-              className="h-full rounded-pill bg-gradient-to-r from-primary to-pink transition-all duration-500"
-              style={{ width: `${(step / 3) * 100}%` }}
-            />
-          </div>
-          <span className="font-mono text-[11px] text-ink-secondary">{step} de 3</span>
-        </div>
-
-        <div className="flex w-40 justify-end">
+        {/* Navegação — Anterior/Próximo dentro do card, mesmo lugar e
+           mesmo formato (secundário + primário, lado a lado) do
+           questionário. */}
+        <div className="mt-8 flex gap-3">
+          <Button variant="secondary" className="flex-1" iconLeft="ph:arrow-left-bold" onClick={handleBack}>
+            Anterior
+          </Button>
           <Button
-            onClick={step === 1 ? () => setStep(2) : step === 2 ? () => setStep(3) : handleAccept}
+            className="flex-1"
             disabled={step === 3 && (!accepted || enviando)}
             iconRight="ph:arrow-right-bold"
+            onClick={avancar}
           >
-            {step === 3 ? 'Quero começar' : 'Próximo'}
+            {step === 3 ? 'Começar' : 'Próximo'}
           </Button>
         </div>
+
+        {step === 3 && (
+          <div className="mt-4 flex flex-col gap-2">
+            <Button variant="ghost" fullWidth onClick={() => navigate('/despedida')}>
+              Prefiro não continuar agora
+            </Button>
+            <p className="text-center text-[13px] leading-snug text-ink-secondary">
+              Tudo bem. Seu convite continua válido. Volte quando fizer sentido pra você.
+            </p>
+          </div>
+        )}
       </div>
 
       <Modal
@@ -319,6 +267,6 @@ export function Ben03Lgpd() {
           hipótese: só agregados protegidos por k-anonimato.
         </p>
       </Modal>
-    </>
+    </div>
   )
 }

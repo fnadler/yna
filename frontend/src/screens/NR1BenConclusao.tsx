@@ -38,23 +38,26 @@ export function NR1BenConclusao() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  /* A animação de celebração (ping + ícone) roda por conta própria, sem
+     esperar o envio terminar — troca de "celebrating" pra "leaving" num
+     tempo fixo. Já o card de conteúdo (`content`) só aparece quando as
+     DUAS coisas já aconteceram: a animação já passou do ponto de
+     "leaving" E as respostas já foram enviadas (`enviando` false) — o que
+     demorar mais entre as duas manda. Antes havia uma tela própria
+     ("Guardando as suas respostas com cuidado…", fundo diferente do
+     resto) só pro tempo de envio — removida: agora o envio corre por
+     baixo da mesma animação de gradiente + ping, sem uma tela visualmente
+     diferente no meio do caminho. */
   useEffect(() => {
-    if (enviando) return
     const t1 = setTimeout(() => setPhase('leaving'), 1700)
-    const t2 = setTimeout(() => setPhase('content'), 2200)
-    return () => { clearTimeout(t1); clearTimeout(t2) }
-  }, [enviando])
+    return () => clearTimeout(t1)
+  }, [])
 
-  if (enviando) {
-    return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-5 px-5 py-16 text-center">
-        <span className="flex h-14 w-14 animate-pulse items-center justify-center rounded-lg bg-primary-50 text-primary dark:text-primary-300">
-          <Icon icon="ph:heart-bold" width={26} aria-hidden />
-        </span>
-        <p className="text-[15px] text-ink-secondary">Guardando as suas respostas com cuidado…</p>
-      </main>
-    )
-  }
+  useEffect(() => {
+    if (phase !== 'leaving' || enviando) return
+    const t2 = setTimeout(() => setPhase('content'), 500)
+    return () => clearTimeout(t2)
+  }, [phase, enviando])
 
   return (
     <div className="relative flex h-dvh flex-col items-center justify-center overflow-hidden px-7 text-center bg-yna-gradient">

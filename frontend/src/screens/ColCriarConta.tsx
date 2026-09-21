@@ -1,16 +1,22 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Icon } from '@iconify/react'
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
+import { TopoSaida } from '../components/TopoSaida'
 import { useApp } from '../contexts/AppContext'
 import type { PerfilInteresseCuidado } from '../contexts/AppContext'
 
-/* Criação de conta leve (RF-B01), em 3 passos — mesmo modelo do antigo
-   cadastro do colaborador (wizard com barra de progresso, footer mobile e
-   barra inferior fixa no desktop; ver RH04CadastroConta, que segue o mesmo
-   padrão no lado do RH). Só é alcançada depois que a avaliação já foi
-   enviada de forma anônima (ver NR1BenConclusao/ColConviteConta).
+/* Criação de conta leve (RF-B01), em 3 passos. Só é alcançada depois que a
+   avaliação já foi enviada de forma anônima (ver NR1BenConclusao/
+   ColConviteConta).
+
+   Mesma composição do questionário (`NR1BenQuestionario.tsx`): fundo em
+   gradiente, um único card branco centralizado, progresso/título/
+   navegação (Anterior/Continuar) todos dentro do card. Antes usava
+   `FocusLayout` (barra de topo só no desktop + barra fixa embaixo, fora do
+   card, mesmo padrão do antigo RH04CadastroConta) — trocado por pedido
+   explícito de padronização com o questionário. `TopoSaida` é a única
+   coisa fora do card, ver mesma nota em Ben03Lgpd.
 
    Passo 3 substitui a antiga etapa de foto: são as duas perguntas opcionais
    de interesse em cuidado futuro, retiradas da tela de conclusão para não
@@ -62,36 +68,41 @@ export function ColCriarConta() {
   const step1Ok = form.nome.trim().length >= 3 && /\S+@\S+\.\S+/.test(form.email)
   const step2Ok = form.senha.length >= 8 && form.senha === form.confirmarSenha
   const nextDisabled = salvando || (step === 1 && !step1Ok) || (step === 2 && !step2Ok)
-  const ctaLabel = salvando ? 'Salvando…' : step < 3 ? 'Continuar' : 'Criar minha conta'
+  const ctaLabel = salvando ? 'Salvando…' : step < 3 ? 'Continuar' : 'Criar conta'
+  const pct = Math.round((step / 3) * 100)
 
   return (
-    <>
-      {/* Header mobile: voltar + progresso */}
-      <header className="flex lg:hidden items-center gap-3 px-5 pb-2 pt-8">
-        <button
-          onClick={handleBack}
-          aria-label="Voltar"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill border border-border bg-surface text-ink-secondary transition-colors hover:bg-surface-hover"
-        >
-          <Icon icon="ph:arrow-left-bold" width={18} aria-hidden />
-        </button>
-        <div className="flex-1">
-          <div className="h-2 w-full overflow-hidden rounded-pill bg-surface-2" role="progressbar" aria-valuemin={1} aria-valuemax={3} aria-valuenow={step} aria-label={`Passo ${step} de 3`}>
-            <div className="h-full rounded-pill bg-gradient-to-r from-primary to-pink transition-all duration-500" style={{ width: `${(step / 3) * 100}%` }} />
-          </div>
-        </div>
-        <span className="shrink-0 font-mono text-xs font-medium text-ink-secondary">{step} de 3</span>
-      </header>
+    <div className="flex min-h-dvh flex-col items-center overflow-x-hidden bg-yna-gradient px-5 py-6 lg:py-10">
+      <TopoSaida exitTo="/despedida" className="mb-4 max-w-xl lg:mb-6" />
 
-      <main key={step} className="flex-1 px-5 pt-6 pb-8 lg:pt-10 lg:pb-28 animate-yna-slide-up">
+      <div key={step} className="w-full max-w-xl animate-yna-slide-up rounded-2xl border border-border bg-surface p-6 shadow md:p-9">
+        {/* Progresso — mesmo formato do questionário. */}
+        <div>
+          <span className="text-[13px] font-medium text-ink-secondary">Passo {step} de 3</span>
+          <div
+            className="mt-2 h-2 overflow-hidden rounded-pill bg-surface-2"
+            role="progressbar"
+            aria-valuemin={1}
+            aria-valuemax={3}
+            aria-valuenow={step}
+            aria-label={`Passo ${step} de 3`}
+          >
+            <div
+              className="h-full rounded-pill bg-gradient-to-r from-primary to-pink transition-all duration-500"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <p className="mt-1 text-right font-mono text-[12px] font-semibold text-primary dark:text-primary-300">{pct}%</p>
+        </div>
+
         {step === 1 && (
-          <div className="flex flex-col gap-5">
+          <div className="mt-6 flex flex-col gap-5">
             <div>
-              <p className="mb-1 text-sm font-medium text-primary dark:text-primary-300">Passo 1 · Quem é você</p>
-              <h1 className="mt-1 text-[24px] lg:text-[40px] font-extralight leading-[1.15] lg:leading-[1.05] tracking-[-0.02em] text-ink">
-                <span className="font-extrabold bg-yna-gradient-button bg-clip-text text-transparent">Confirme</span>{' '}seus dados
+              <p className="mb-1 text-sm font-medium text-primary dark:text-primary-300">Quem é você</p>
+              <h1 className="text-[19px] font-heading font-semibold leading-snug text-ink md:text-[21px]">
+                Confirme seus dados
               </h1>
-              <p className="mt-2 text-sm lg:text-[17px] leading-relaxed text-ink-secondary lg:max-w-[600px]">
+              <p className="mt-2 text-[14px] leading-relaxed text-ink-secondary">
                 Alguns dados já vieram do convite. Verifique e ajuste o que precisar.
               </p>
             </div>
@@ -120,13 +131,13 @@ export function ColCriarConta() {
         )}
 
         {step === 2 && (
-          <div className="flex flex-col gap-5">
+          <div className="mt-6 flex flex-col gap-5">
             <div>
-              <p className="mb-1 text-sm font-medium text-primary dark:text-primary-300">Passo 2 · Acesso</p>
-              <h1 className="mt-1 text-[24px] lg:text-[40px] font-extralight leading-[1.15] lg:leading-[1.05] tracking-[-0.02em] text-ink">
-                <span className="font-extrabold bg-yna-gradient-button bg-clip-text text-transparent">Crie</span>{' '}sua senha
+              <p className="mb-1 text-sm font-medium text-primary dark:text-primary-300">Acesso</p>
+              <h1 className="text-[19px] font-heading font-semibold leading-snug text-ink md:text-[21px]">
+                Crie sua senha
               </h1>
-              <p className="mt-2 text-sm lg:text-[17px] leading-relaxed text-ink-secondary lg:max-w-[600px]">
+              <p className="mt-2 text-[14px] leading-relaxed text-ink-secondary">
                 Mínimo de 8 caracteres. Recomendamos usar um gerenciador de senhas.
               </p>
             </div>
@@ -142,13 +153,13 @@ export function ColCriarConta() {
         )}
 
         {step === 3 && (
-          <div className="flex flex-col gap-6">
+          <div className="mt-6 flex flex-col gap-6">
             <div>
-              <p className="mb-1 text-sm font-medium text-primary dark:text-primary-300">Passo 3 · Só mais duas</p>
-              <h1 className="mt-1 text-[24px] lg:text-[40px] font-extralight leading-[1.15] lg:leading-[1.05] tracking-[-0.02em] text-ink">
-                Perguntas{' '}<span className="font-extrabold bg-yna-gradient-button bg-clip-text text-transparent">opcionais</span>
+              <p className="mb-1 text-sm font-medium text-primary dark:text-primary-300">Só mais duas</p>
+              <h1 className="text-[19px] font-heading font-semibold leading-snug text-ink md:text-[21px]">
+                Perguntas opcionais
               </h1>
-              <p className="mt-2 text-sm lg:text-[17px] leading-relaxed text-ink-secondary lg:max-w-[600px]">
+              <p className="mt-2 text-[14px] leading-relaxed text-ink-secondary">
                 Não fazem parte da avaliação: não entram no inventário nem no relatório da sua
                 empresa. Servem só para a YNA entender, de forma agregada, se vale a pena trazer
                 esse serviço para cá.
@@ -199,35 +210,24 @@ export function ColCriarConta() {
             </div>
           </div>
         )}
-      </main>
 
-      {/* Footer mobile */}
-      <footer className="px-5 pb-8 lg:hidden">
-        <Button size="lg" fullWidth iconRight={step < 3 ? 'ph:arrow-right-bold' : undefined} onClick={handleNext} disabled={nextDisabled}>
-          {ctaLabel}
-        </Button>
-      </footer>
-
-      {/* Barra inferior desktop */}
-      <div className="hidden lg:flex fixed bottom-0 left-0 right-0 z-20 h-[72px] items-center border-t border-border bg-surface/90 px-10 backdrop-blur-sm">
-        <div className="w-40">
-          <button onClick={handleBack} className="flex items-center gap-2 font-heading text-sm font-medium text-ink-secondary transition-colors hover:text-ink">
-            <Icon icon="ph:arrow-left-bold" width={16} aria-hidden />
-            Voltar
-          </button>
-        </div>
-        <div className="flex flex-1 flex-col items-center gap-1.5">
-          <div className="h-1.5 w-52 overflow-hidden rounded-pill bg-surface-2">
-            <div className="h-full rounded-pill bg-gradient-to-r from-primary to-pink transition-all duration-500" style={{ width: `${(step / 3) * 100}%` }} />
-          </div>
-          <span className="font-mono text-[11px] text-ink-secondary">{step} de 3</span>
-        </div>
-        <div className="flex w-40 items-center justify-end gap-3">
-          <Button onClick={handleNext} disabled={nextDisabled} iconRight={step < 3 ? 'ph:arrow-right-bold' : undefined}>
+        {/* Navegação — Anterior/Continuar dentro do card, mesmo lugar e
+           mesmo formato (secundário + primário, lado a lado) do
+           questionário. */}
+        <div className="mt-8 flex gap-3">
+          <Button variant="secondary" className="flex-1" iconLeft="ph:arrow-left-bold" onClick={handleBack}>
+            Anterior
+          </Button>
+          <Button
+            className="flex-1"
+            iconRight={step < 3 ? 'ph:arrow-right-bold' : undefined}
+            onClick={handleNext}
+            disabled={nextDisabled}
+          >
             {ctaLabel}
           </Button>
         </div>
       </div>
-    </>
+    </div>
   )
 }

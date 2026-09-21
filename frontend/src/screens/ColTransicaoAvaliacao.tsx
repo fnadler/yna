@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { Button } from '../components/Button'
+import { useApp } from '../contexts/AppContext'
+import { nr1ColaboradorService } from '../services/nr1'
 
 /* Transição pós-LGPD (mesmo modelo do RH05ContaCriada/antigo Ben08bTransicao).
    Fecha o ciclo de consentimento e abre o ciclo da avaliação: o colaborador
@@ -9,19 +11,28 @@ import { Button } from '../components/Button'
    agora é a base da avaliação de riscos psicossociais da empresa, sem
    nomear "NR-1" (jargão de conformidade não é vocabulário do colaborador).
 
-   "Começar avaliação" leva direto para `/avaliacao/1`, sem passar por uma
-   tela de introdução própria: apresentação e sigilo já garantiram anonimato
-   e consentimento antes desta tela, então repetir os mesmos argumentos de
-   novo aqui só alongaria o fluxo sem acrescentar nada. */
+   "Começar avaliação" checa primeiro se já existe progresso salvo de uma
+   sessão anterior para a campanha ativa (RF-CO-NR1-02): se houver, manda
+   para `/avaliacao/retomar` em vez de `/avaliacao/1` direto, pra oferecer
+   "continuar de onde parei" antes de reabrir o questionário do zero. */
 export function ColTransicaoAvaliacao() {
   const [phase, setPhase] = useState<'celebrating' | 'leaving' | 'content'>('celebrating')
+  const [verificando, setVerificando] = useState(false)
   const navigate = useNavigate()
+  const { nr1 } = useApp()
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase('leaving'), 1700)
     const t2 = setTimeout(() => setPhase('content'), 2200)
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [])
+
+  const comecar = async () => {
+    if (!nr1) { navigate('/avaliacao/1'); return }
+    setVerificando(true)
+    const parcial = await nr1ColaboradorService.avaliacaoParcial(nr1.campanhaId)
+    navigate(parcial ? '/avaliacao/retomar' : '/avaliacao/1')
+  }
 
   return (
     <div className="relative flex h-dvh flex-col items-center justify-center overflow-hidden px-7 text-center bg-yna-gradient">
@@ -55,9 +66,13 @@ export function ColTransicaoAvaliacao() {
               </p>
             </div>
 
-            <div className="w-full animate-yna-slide-up animate-yna-delay-250">
-              <Button variant="gradient" size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/avaliacao/1')}>
-                Começar avaliação
+            <div className="flex w-full flex-col items-center gap-3 animate-yna-slide-up animate-yna-delay-250">
+              <span className="inline-flex items-center gap-1.5 rounded-pill bg-primary-50 px-3 py-1.5 text-[13px] font-semibold text-primary dark:text-primary-300">
+                <Icon icon="ph:clock-bold" width={15} aria-hidden />
+                Leva cerca de 8 minutos
+              </span>
+              <Button variant="gradient" size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={comecar} disabled={verificando}>
+                {verificando ? 'Verificando…' : 'Começar avaliação'}
               </Button>
             </div>
           </div>
