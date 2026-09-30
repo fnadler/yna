@@ -7,7 +7,8 @@ import { Button } from '../../components/Button'
 import { PrazoBadge } from '../../components/PrazoBadge'
 import { AcaoLinha, LISTA_GRID_COLS } from '../../components/Nr1AcaoLinha'
 import { AcaoDetalhe } from '../../components/Nr1AcaoDetalhe'
-import { AcaoForm } from '../../components/Nr1AcaoForm'
+import { AcaoForm, nr1RotuloRisco } from '../../components/Nr1AcaoForm'
+import { Toast } from '../../components/Toast'
 import { Sheet } from '../../components/Sheet'
 import { Modal } from '../../components/Modal'
 import { Select } from '../../components/Select'
@@ -86,6 +87,9 @@ export function NR1RhPlanoAcao() {
   const [form, setForm] = useState<{ acao?: Nr1Acao; riscoId: string } | null>(null)
   const [detalhe, setDetalhe] = useState<Nr1Acao | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const [excluirAlvo, setExcluirAlvo] = useState<Nr1Acao | null>(null)
+  const [excluindo, setExcluindo] = useState(false)
+  const [feedback, setFeedback] = useState<string | null>(null)
   const [filtrosMobileOpen, setFiltrosMobileOpen] = useState(false)
 
   const riscos: Nr1RiscoInventario[] = inventario.status === 'success' ? inventario.data : []
@@ -99,6 +103,13 @@ export function NR1RhPlanoAcao() {
   const acoesVigentes = todas.filter((a) => !idsSuperados.has(a.id))
 
   const responsaveis = [...new Set(acoesVigentes.map((a) => a.quem))].sort((a, b) => a.localeCompare(b))
+
+  /* Riscos registrados que ainda não têm nenhuma ação — as ações nascem da
+     análise do domínio no Inventário (mapa de calor → análise de risco),
+     então o aviso leva pra lá. */
+  const riscosSemPlano = acoes.status === 'success'
+    ? riscos.filter((r) => r.status !== 'eliminado' && !acoesVigentes.some((a) => a.riscoId === r.id))
+    : []
   const filtrosAtivos = riscoFiltro !== 'todos' || status !== 'todas' || dimensaoFiltro !== 'todas'
     || responsavelFiltro !== 'todos' || vencimentoFiltro !== 'todos'
 
@@ -161,11 +172,26 @@ export function NR1RhPlanoAcao() {
     if (editando) setDetalhe(editando)
   }
 
-  const salvarForm = (salvo: Nr1Acao) => {
+  const salvarForm = (salvo: Nr1Acao, nova: boolean) => {
     const editando = form?.acao
     setForm(null)
     acoes.reload()
+    setFeedback(nova ? 'Ação criada.' : 'Ação salva.')
     if (editando) setDetalhe(salvo)
+  }
+
+  /* Excluir fecha o detalhe antes de abrir a confirmação (o `Modal` não usa
+     portal e ficaria atrás do `Sheet`); cancelar reabre o mesmo detalhe. */
+  const pedirExclusao = (a: Nr1Acao) => { setDetalhe(null); setExcluirAlvo(a) }
+  const cancelarExclusao = () => { const a = excluirAlvo; setExcluirAlvo(null); if (a) setDetalhe(a) }
+  const confirmarExclusao = async () => {
+    if (!excluirAlvo) return
+    setExcluindo(true)
+    await nr1AcaoService.excluir(excluirAlvo.id)
+    setExcluindo(false)
+    setExcluirAlvo(null)
+    acoes.reload()
+    setFeedback('Ação excluída.')
   }
 
   const comentar = async (a: Nr1Acao, p: { texto?: string; arquivos?: string[] }) => {
@@ -262,21 +288,21 @@ export function NR1RhPlanoAcao() {
             size="md"
             options={[
               { value: 'todos', label: 'Todos os riscos' },
-              ...[...riscos].sort((a, b) => a.fator.localeCompare(b.fator)).map((r) => ({ value: r.id, label: r.fator })),
+              ...[...riscos].sort((a, b) => nr1RotuloRisco(a).localeCompare(nr1RotuloRisco(b))).map((r) => ({ value: r.id, label: nr1RotuloRisco(r) })),
             ]}
             placeholder="Todos os riscos"
-            searchPlaceholder="Buscar por risco ou grupo exposto…"
+            searchPlaceholder="Buscar por domínio ou fator…"
           />
         </div>
 
         <div className="mb-5 hidden gap-3 lg:grid lg:grid-cols-4">
           <div>
-            <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Dimensão</p>
+            <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Domínio</p>
             <Select
               value={dimensaoFiltro}
               onChange={(v) => setDimensaoFiltro(v as 'todas' | Nr1DimensaoId)}
-              ariaLabel="Filtrar por dimensão"
-              options={[{ value: 'todas', label: 'Todas as dimensões' }, ...NR1_DIMENSOES.map((d) => ({ value: d.id, label: d.nome }))]}
+              ariaLabel="Filtrar por domínio"
+              options={[{ value: 'todas', label: 'Todos os domínios' }, ...NR1_DIMENSOES.map((d) => ({ value: d.id, label: d.nome }))]}
             />
           </div>
           <div>
@@ -316,6 +342,23 @@ export function NR1RhPlanoAcao() {
           </button>
         )}
 
+        {riscosSemPlano.length > 0 && (
+          <div className="mb-5 flex flex-col gap-3 rounded-lg border border-warning/30 bg-warning-bg p-4 sm:flex-row sm:items-center">
+            <Icon icon="ph:warning-circle-bold" width={20} className="shrink-0 text-warning-ink" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold text-ink">
+                {riscosSemPlano.length} {riscosSemPlano.length === 1 ? 'risco registrado ainda não tem' : 'riscos registrados ainda não têm'} plano de ação
+              </p>
+              <p className="mt-0.5 text-[12px] leading-relaxed text-ink-secondary">
+                {riscosSemPlano.slice(0, 3).map(nr1RotuloRisco).join(' · ')}{riscosSemPlano.length > 3 ? ` · e mais ${riscosSemPlano.length - 3}` : ''}
+              </p>
+            </div>
+            <Link to="/rh/nr1/inventario" className="shrink-0">
+              <Button size="sm" variant="secondary" iconRight="ph:arrow-right-bold">Planejar no Inventário</Button>
+            </Link>
+          </div>
+        )}
+
         {(acoes.status === 'idle' || acoes.status === 'loading') && (
           <div className="flex flex-col gap-2">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}</div>
         )}
@@ -328,8 +371,13 @@ export function NR1RhPlanoAcao() {
               <p className="mx-auto mt-1 max-w-sm text-[13px] leading-relaxed text-ink-secondary">
                 {filtrosAtivos
                   ? 'Nenhuma ação combina com os filtros escolhidos.'
-                  : 'Risco priorizado sem ação registrada é o primeiro item que um auditor cobra.'}
+                  : 'As ações nascem da análise de cada domínio no Inventário de riscos: clique numa célula do mapa de calor, registre o risco e crie o plano de ação.'}
               </p>
+              {!filtrosAtivos && (
+                <Link to="/rh/nr1/inventario" className="mt-4 inline-block">
+                  <Button variant="secondary" iconRight="ph:arrow-right-bold">Ir para o Inventário</Button>
+                </Link>
+              )}
             </div>
           ) : visualizacao === 'lista' ? (
             <div className="flex flex-col gap-2">
@@ -380,6 +428,16 @@ export function NR1RhPlanoAcao() {
             </button>
             {detalhe.status !== 'concluida' && (
               <button
+                onClick={() => pedirExclusao(detalhe)}
+                aria-label="Excluir ação"
+                title="Excluir ação"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-surface-hover hover:text-danger-ink"
+              >
+                <Icon icon="ph:trash-bold" width={15} aria-hidden />
+              </button>
+            )}
+            {detalhe.status !== 'concluida' && (
+              <button
                 onClick={() => concluir(detalhe)}
                 disabled={!detalhe.comentarios.some((c) => c.arquivos && c.arquivos.length > 0)}
                 aria-label="Concluir ação"
@@ -400,6 +458,25 @@ export function NR1RhPlanoAcao() {
           />
         )}
       </Sheet>
+
+      <Modal open={excluirAlvo !== null} title="Excluir ação?" onClose={cancelarExclusao}>
+        {excluirAlvo && (
+          <div className="flex flex-col gap-4">
+            <p className="text-[13.5px] leading-relaxed text-ink-secondary">
+              A ação <strong className="font-semibold text-ink">{excluirAlvo.oQue}</strong> sai do plano de ação,
+              junto com o histórico de comentários e as versões anteriores dela. Não é possível desfazer.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={cancelarExclusao}>Cancelar</Button>
+              <Button fullWidth variant="secondary" iconLeft="ph:trash-bold" disabled={excluindo} onClick={confirmarExclusao}>
+                {excluindo ? 'Excluindo…' : 'Excluir ação'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Toast message={feedback} onClose={() => setFeedback(null)} />
 
       <Modal open={erro !== null} title="Ação não concluída" onClose={() => setErro(null)}>
         <div className="flex flex-col gap-4">
@@ -430,12 +507,12 @@ export function NR1RhPlanoAcao() {
           <div className="flex-1 overflow-y-auto px-5 py-5">
             <div className="flex flex-col gap-4">
               <div>
-                <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Dimensão</p>
+                <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Domínio</p>
                 <Select
                   value={dimensaoFiltro}
                   onChange={(v) => setDimensaoFiltro(v as 'todas' | Nr1DimensaoId)}
-                  ariaLabel="Filtrar por dimensão"
-                  options={[{ value: 'todas', label: 'Todas as dimensões' }, ...NR1_DIMENSOES.map((d) => ({ value: d.id, label: d.nome }))]}
+                  ariaLabel="Filtrar por domínio"
+                  options={[{ value: 'todas', label: 'Todos os domínios' }, ...NR1_DIMENSOES.map((d) => ({ value: d.id, label: d.nome }))]}
                 />
               </div>
               <div>
@@ -510,8 +587,8 @@ function AcaoCardKanban({ acao, risco, onClick, onDragStart }: {
         {acao.versao > 1 && <span className="ml-1.5 text-[10.5px] font-normal text-ink-muted">v{acao.versao}</span>}
       </p>
       {risco && (
-        <p className="truncate text-[11px] text-ink-secondary" title={risco.fator}>
-          {risco.fator}
+        <p className="line-clamp-2 text-[11px] text-ink-secondary" title={nr1RotuloRisco(risco)}>
+          <span className="font-medium text-ink">{risco.dimensao}</span> · {risco.fator}
         </p>
       )}
       <p className="flex items-center gap-1 text-[11px] text-ink-secondary">

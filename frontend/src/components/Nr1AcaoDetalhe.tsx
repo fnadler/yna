@@ -6,9 +6,10 @@ import { Badge } from './Badge'
 import { Avatar } from './Avatar'
 import { PrazoBadge } from './PrazoBadge'
 import { Textarea } from './Textarea'
-import { NIVEL_RISCO, ACAO_STATUS, EFETIVIDADE, fmtData } from '../lib/nr1'
+import { NIVEL_RISCO, ACAO_STATUS, EFETIVIDADE, fmtData, nr1DiasEntre, nr1UrgenciaPrazo } from '../lib/nr1'
+import { NR1_TODAY, NR1_DIMENSOES } from '../data/nr1Mock'
 import { useService } from '../hooks/useService'
-import { nr1AcaoService } from '../services/nr1'
+import { nr1AcaoService, nr1FonteGeradoraService, nr1ResultadoService } from '../services/nr1'
 import type { Nr1Acao, Nr1RiscoInventario } from '../types'
 
 /** Iniciais para o avatar do responsável (`acao.quem`, formato "Nome
@@ -36,60 +37,69 @@ export function AcaoDetalhe({ acao, risco, onComentar }: {
   onComentar: (p: { texto?: string; arquivos?: string[] }) => Promise<void>
 }) {
   const temEvidencia = acao.comentarios.some((c) => c.arquivos && c.arquivos.length > 0)
-  /* "O quê", "Quem" e "Quando" já aparecem em destaque acima (título do
-     modal, avatar do responsável, badge de prazo) — aqui só o resto do
-     5W2H, como o corpo/descrição da ação. */
-  const detalhes: [string, string, string][] = [
-    ['ph:question-bold', 'Por quê', acao.porQue],
-    ['ph:map-pin-bold', 'Onde', acao.onde],
-    ['ph:gear-bold', 'Como', acao.como],
-    ['ph:currency-circle-dollar-bold', 'Quanto', acao.quanto],
-  ]
+  const areas = acao.onde.split(',').map((x) => x.trim()).filter(Boolean)
 
   return (
     <>
       {/* Corpo — rola dentro do container do próprio Sheet (não cria um
          segundo scroll independente: `min-h-full` mais `sticky` no composer
-         abaixo já bastam para o rodapé ficar fixo, sem depender de `h-full`
-         resolver uma altura definida em cascata, o que falhava aqui dentro
-         do `max-h-[88vh]` do Sheet). */}
+         abaixo já bastam para o rodapé ficar fixo). */}
       <div className="px-5 py-6 lg:px-6">
         <div className="flex flex-col gap-5">
-          {/* Propriedades da ação — status, prazo e responsável em destaque,
-             como num card de tarefa (Asana/Trello): sempre visíveis, sem
-             precisar abrir o formulário de edição pra ver quem/quando.
-             Editar e Concluir ficam no cabeçalho do modal (ver Sheet), não
-             aqui, para não competir com essas propriedades. */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={ACAO_STATUS[acao.status].tone}>{ACAO_STATUS[acao.status].label}</Badge>
-            <PrazoBadge acao={acao} />
-            <span className="inline-flex items-center gap-1.5 rounded-pill bg-surface-2 py-1 pl-1 pr-2.5 text-[12px] font-medium text-ink">
-              <Avatar initials={iniciaisResponsavel(acao.quem)} size={20} />
-              {acao.quem}
-            </span>
-          </div>
-
-          {risco && (
-            <div className="rounded-lg bg-surface-2 p-3.5">
-              <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-muted">Risco de origem</p>
-              <p className="mt-1 text-[13px] leading-snug text-ink">{risco.fator}</p>
-              <p className="mt-1 text-[11.5px] text-ink-muted">{risco.grupoExposto} · nível {risco.nivelNum} ({NIVEL_RISCO[risco.nivel].label})</p>
-              <Link
-                to={`/rh/nr1/inventario?detalhe=${risco.id}`}
-                className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-medium text-primary hover:underline dark:text-primary-300"
-              >
-                Ver risco no inventário
-                <Icon icon="ph:arrow-right-bold" width={10} aria-hidden />
-              </Link>
-            </div>
-          )}
-
           {acao.status === 'concluida' && acao.concluidaEm && (
             <p className="flex items-center gap-2 rounded-lg bg-success-bg px-3.5 py-3 text-[12.5px] text-success-ink">
               <Icon icon="ph:check-circle-bold" width={15} aria-hidden />
               Concluída em {fmtData(acao.concluidaEm)}
             </p>
           )}
+
+          {/* Mesma ordem, rótulos e disposição do formulário 5W2H
+             (`Nr1AcaoForm`): risco no topo, depois os sete campos — Quem ao
+             lado de Quando, Quanto ao lado de Status. */}
+          {risco && (
+            <Campo rotulo="Risco que esta ação responde">
+              <RiscoOrigem risco={risco} />
+            </Campo>
+          )}
+
+          <Campo rotulo="O quê (a medida de controle)"><Valor texto={acao.oQue} destaque /></Campo>
+          <Campo rotulo="Por quê"><Valor texto={acao.porQue} /></Campo>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Campo rotulo="Quem (responsável)">
+              <div className="flex min-h-[44px] items-center gap-2 rounded-lg bg-surface-2 px-3.5 py-2">
+                <Avatar initials={iniciaisResponsavel(acao.quem)} size={22} />
+                <span className="min-w-0 text-[13.5px] leading-snug text-ink">{acao.quem}</span>
+              </div>
+            </Campo>
+            <Campo rotulo="Quando (prazo)">
+              <div className="flex min-h-[44px] flex-wrap items-center gap-2 rounded-lg bg-surface-2 px-3.5 py-2">
+                <span className="text-[13.5px] text-ink">{fmtData(acao.quando)}</span>
+                {/* Selo só quando diz algo além da data (vencida/vencendo). */}
+                {acao.status !== 'concluida' && nr1UrgenciaPrazo(nr1DiasEntre(NR1_TODAY, acao.quando)) !== 'no-prazo' && <PrazoBadge acao={acao} />}
+              </div>
+            </Campo>
+          </div>
+
+          <Campo rotulo="Onde">
+            <div className="flex min-h-[44px] flex-wrap items-center gap-1.5 rounded-lg bg-surface-2 px-3.5 py-2">
+              {areas.length === 0 && <span className="text-[13.5px] text-ink-muted">—</span>}
+              {areas.map((a) => (
+                <span key={a} className="rounded-pill bg-primary-50 px-2.5 py-0.5 text-[12.5px] font-medium text-primary dark:text-primary-300">{a}</span>
+              ))}
+            </div>
+          </Campo>
+
+          <Campo rotulo="Como"><Valor texto={acao.como} /></Campo>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Campo rotulo="Quanto (custo estimado)"><Valor texto={acao.quanto} /></Campo>
+            <Campo rotulo="Status">
+              <div className="flex min-h-[44px] items-center rounded-lg bg-surface-2 px-3.5 py-2">
+                <Badge tone={ACAO_STATUS[acao.status].tone}>{ACAO_STATUS[acao.status].label}</Badge>
+              </div>
+            </Campo>
+          </div>
 
           {acao.versao > 1 && (
             <div className="flex items-start gap-3 rounded-lg border border-border bg-surface-2 p-3.5">
@@ -104,23 +114,6 @@ export function AcaoDetalhe({ acao, risco, onComentar }: {
           )}
 
           <VersoesAnteriores acaoId={acao.id} />
-
-          <div>
-            <p className="mb-2 font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-muted">Detalhes</p>
-            <div className="flex flex-col gap-3">
-              {detalhes.map(([icon, label, valor]) => (
-                <div key={label} className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary dark:text-primary-300">
-                    <Icon icon={icon} width={14} aria-hidden />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-muted">{label}</p>
-                    <p className="mt-0.5 text-[13.5px] leading-relaxed text-ink">{valor}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
 
           <div>
             <p className="mb-1.5 font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-muted">
@@ -173,6 +166,111 @@ export function AcaoDetalhe({ acao, risco, onComentar }: {
         <ComentarioComposer onEnviar={onComentar} />
       </div>
     </>
+  )
+}
+
+/** Um campo do 5W2H em modo leitura — mesmo rótulo do formulário. */
+function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="mb-1.5 text-[13px] font-semibold text-ink">{rotulo}</p>
+      {children}
+    </div>
+  )
+}
+
+function Valor({ texto, destaque = false }: { texto: string; destaque?: boolean }) {
+  return (
+    <p className={`min-h-[44px] rounded-lg bg-surface-2 px-3.5 py-2.5 text-[13.5px] leading-relaxed ${texto ? 'text-ink' : 'text-ink-muted'} ${destaque ? 'font-medium' : ''}`}>
+      {texto || '—'}
+    </p>
+  )
+}
+
+/** O risco de origem no mesmo formato do registro feito na análise de
+   risco do Inventário (mapa de calor): domínio → fator de risco com o nível
+   (P × S) → fontes geradoras → áreas afetadas, cada uma com a nota do
+   domínio no ciclo em que o risco foi registrado. */
+function RiscoOrigem({ risco }: { risco: Nr1RiscoInventario }) {
+  const fontes = useService(() => nr1FonteGeradoraService.list(), [])
+  const mapa = useService(() => nr1ResultadoService.mapaCalor(risco.campanhaId), [risco.campanhaId])
+  const meta = NR1_DIMENSOES.find((d) => d.id === risco.dimensaoId)
+  const st = NIVEL_RISCO[risco.nivel]
+  const nomes = risco.grupoExposto.split(',').map((x) => x.trim())
+  const fontesIds = risco.fontesGeradorasIds ?? []
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="flex items-center gap-2.5 border-b border-border bg-surface-2 px-3.5 py-2.5">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary dark:text-primary-300">
+          <Icon icon={meta?.icon ?? 'ph:list-bold'} width={15} aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-ink-muted">Domínio</p>
+          <p className="truncate text-[13px] font-semibold text-ink">{risco.dimensao}</p>
+        </div>
+        <Link
+          to="/rh/nr1/inventario"
+          className="inline-flex shrink-0 items-center gap-1 text-[11.5px] font-medium text-primary hover:underline dark:text-primary-300"
+        >
+          Ver no inventário
+          <Icon icon="ph:arrow-right-bold" width={10} aria-hidden />
+        </Link>
+      </div>
+
+      <div className="flex flex-col gap-3.5 p-3.5">
+        <div className="flex items-start gap-3">
+          <span className={`flex shrink-0 flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 ${st.cls}`}>
+            <span className="font-mono text-[16px] font-bold leading-none">{risco.nivelNum}</span>
+            <span className="text-[10px] font-semibold leading-none">{st.label}</span>
+          </span>
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-ink-muted">Fator de risco</p>
+            <p className="text-[13.5px] font-semibold leading-snug text-ink">{risco.fator}</p>
+            <p className="mt-0.5 text-[11.5px] text-ink-secondary">
+              Probabilidade {risco.probabilidade} × severidade {risco.severidade} · {st.acao}
+            </p>
+          </div>
+        </div>
+
+        {fontesIds.length > 0 && (
+          <div>
+            <p className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-ink-muted">Fontes geradoras</p>
+            <div className="flex flex-wrap gap-1.5">
+              {fontesIds.map((id) => (
+                <span key={id} className="rounded-pill bg-surface-2 px-2.5 py-1 text-[12px] text-ink-secondary">
+                  {fontes.status === 'success' ? (fontes.data.find((f) => f.id === id)?.nome ?? id) : '…'}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <p className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-ink-muted">Áreas afetadas · nota do domínio</p>
+          <div className="flex flex-wrap gap-1.5">
+            {risco.departamentoIds.map((id, i) => {
+              const linha = mapa.status === 'success' ? mapa.data.find((l) => l.departamentoId === id) : undefined
+              const celula = linha && !linha.protegido ? linha.celulas.find((c) => c.dimensaoId === risco.dimensaoId) : undefined
+              return (
+                <span key={id} className="inline-flex items-center gap-1.5 rounded-pill bg-primary-50 py-1 pl-2.5 pr-1 text-[12px] font-medium text-primary dark:text-primary-300">
+                  {linha?.departamento ?? nomes[i] ?? id}
+                  {celula?.media != null && celula.nivel && (
+                    <span className={`rounded-pill px-1.5 font-mono text-[10.5px] font-semibold ${NIVEL_RISCO[celula.nivel].cls}`}>{celula.media.toFixed(1)}</span>
+                  )}
+                </span>
+              )
+            })}
+          </div>
+        </div>
+
+        {risco.danos && (
+          <p className="text-[12px] leading-relaxed text-ink-secondary">
+            <span className="font-medium text-ink">Possíveis danos:</span> {risco.danos}
+          </p>
+        )}
+      </div>
+    </div>
   )
 }
 

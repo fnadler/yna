@@ -44,7 +44,7 @@ const VISUALIZACOES: { valor: Visualizacao; label: string; icon: string }[] = [
 export function Nr1PerguntasSheet({ escopo, onClose }: { escopo: Nr1PerguntasEscopo | null; onClose: () => void }) {
   const dimensao = escopo && NR1_DIMENSOES.find((d) => d.id === escopo.dimensaoId)
   return (
-    <Sheet open={escopo !== null} onClose={onClose} title={dimensao?.nome ?? 'Detalhe da dimensão'} icon="ph:list-magnifying-glass-bold" size="md">
+    <Sheet open={escopo !== null} onClose={onClose} title={dimensao?.nome ?? 'Detalhe do domínio'} icon="ph:list-magnifying-glass-bold" size="md">
       {escopo && <Conteudo escopo={escopo} />}
     </Sheet>
   )
@@ -71,13 +71,13 @@ function Conteudo({ escopo }: { escopo: Nr1PerguntasEscopo }) {
           <span className="text-[10.5px] font-semibold leading-none">{stMedia.label}</span>
         </span>
         <p className="text-[12.5px] leading-relaxed text-ink-secondary">
-          Média da dimensão {escopo.departamento ? `em ${escopo.departamento}` : 'na empresa'} — a mesma
+          Média do domínio {escopo.departamento ? `em ${escopo.departamento}` : 'na empresa'} — a mesma
           que já aparecia na tela antes de abrir esta lista.
         </p>
       </div>
 
       {/* Mesmo padrão visual da alternância Lista/Kanban do Plano de ação. */}
-      <div className="flex gap-1 rounded-lg bg-surface-2 p-1" role="tablist" aria-label="Visualização da dimensão">
+      <div className="flex gap-1 rounded-lg bg-surface-2 p-1" role="tablist" aria-label="Visualização do domínio">
         {VISUALIZACOES.map((v) => (
           <button
             key={v.valor}
@@ -115,7 +115,7 @@ function AbaResultados({ escopo }: { escopo: Nr1PerguntasEscopo }) {
       {itens.status === 'error' && <ErrorState message={itens.message} onRetry={itens.reload} />}
       {itens.status === 'success' && itens.data.length === 0 && (
         <p className="rounded-lg bg-surface-2 px-3.5 py-3 text-[12.5px] text-ink-secondary">
-          Nenhuma pergunta encontrada para esta dimensão no instrumento aplicado neste ciclo.
+          Nenhuma pergunta encontrada para este domínio no instrumento aplicado neste ciclo.
         </p>
       )}
       {itens.status === 'success' && itens.data.length > 0 && (
@@ -141,7 +141,7 @@ function AbaResultados({ escopo }: { escopo: Nr1PerguntasEscopo }) {
       <div className="flex gap-3 rounded-lg border border-border bg-surface-2 p-4">
         <Icon icon="ph:info-bold" width={18} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
         <p className="text-[12px] leading-relaxed text-ink-secondary">
-          A pontuação de cada pergunta usa a mesma escala da dimensão (1 a 5, onde 5 é a situação
+          A pontuação de cada pergunta usa a mesma escala do domínio (1 a 5, onde 5 é a situação
           desejável) — frequência ou concordância, conforme o item. Não é uma classificação de
           probabilidade × severidade: esse é o método do Inventário de riscos, usado para
           classificar um fator de risco já identificado, não para medir uma resposta de
@@ -172,7 +172,7 @@ function AbaRiscos({ escopo }: { escopo: Nr1PerguntasEscopo }) {
   if (riscos.length === 0) {
     return (
       <p className="rounded-lg bg-surface-2 px-3.5 py-3 text-[12.5px] text-ink-secondary">
-        Nenhum risco do inventário vinculado a esta dimensão{escopo.departamento ? ` em ${escopo.departamento}` : ''} ainda.
+        Nenhum risco do inventário vinculado a este domínio{escopo.departamento ? ` em ${escopo.departamento}` : ''} ainda.
       </p>
     )
   }
@@ -237,7 +237,7 @@ function AbaAcoes({ escopo }: { escopo: Nr1PerguntasEscopo }) {
   if (vinculadas.length === 0) {
     return (
       <p className="rounded-lg bg-surface-2 px-3.5 py-3 text-[12.5px] text-ink-secondary">
-        Nenhuma ação vinculada aos riscos desta dimensão{escopo.departamento ? ` em ${escopo.departamento}` : ''} ainda.
+        Nenhuma ação vinculada aos riscos deste domínio{escopo.departamento ? ` em ${escopo.departamento}` : ''} ainda.
       </p>
     )
   }

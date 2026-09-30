@@ -92,11 +92,11 @@ export function Nr1AdicionarRiscoForm({
   return (
     <div className="flex flex-col gap-4 px-5 py-6 lg:px-6">
       <div>
-        <p className="mb-1.5 text-[13px] font-semibold text-ink">Dimensão</p>
+        <p className="mb-1.5 text-[13px] font-semibold text-ink">Domínio</p>
         <Select
           value={dimensaoId}
           onChange={(v) => setDimensaoId(v as Nr1DimensaoId)}
-          ariaLabel="Dimensão do risco"
+          ariaLabel="Domínio do risco"
           options={NR1_DIMENSOES.map((d) => ({ value: d.id, label: d.nome }))}
         />
       </div>

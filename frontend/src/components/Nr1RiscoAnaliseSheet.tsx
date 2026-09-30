@@ -46,8 +46,8 @@ function Conteudo({ leitura, onAdicionarAoInventario }: {
         </span>
         <p className="text-[12.5px] leading-relaxed text-ink-secondary">
           {disparado
-            ? 'A média da dimensão neste ciclo está no nível que faz esta sugestão "poder se aplicar" — não que ela se confirme.'
-            : 'A média da dimensão neste ciclo está abaixo do gatilho desta sugestão. Mostrada aqui para referência, não como algo identificado.'}
+            ? 'A média do domínio neste ciclo está no nível que faz esta sugestão "poder se aplicar" — não que ela se confirme.'
+            : 'A média do domínio neste ciclo está abaixo do gatilho desta sugestão. Mostrada aqui para referência, não como algo identificado.'}
         </p>
       </div>
 

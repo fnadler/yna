@@ -3,13 +3,14 @@ import type {
   Nr1RiscoInventario, Nr1Acao, Nr1Relato, Nr1Ciclo, Nr1ResponsavelTecnico,
   Nr1MinhaAvaliacao, Nr1Trilha, Nr1RelatoCategoria, Nr1Comentario,
   Nr1DimensaoId, Nr1RiscoCiclo, Nr1Severidade, Nr1NivelRisco, Nr1RiscoSugeridoLeitura,
-  Nr1RiscoStatus,
+  Nr1RiscoStatus, Nr1FatorRisco, Nr1FonteGeradora, Nr1Dimensao,
 } from '../types'
 import {
   nr1Modelos, nr1Campanhas, nr1MapaCalor, nr1Inventario, nr1Acoes, nr1Relatos,
   nr1Ciclos, nr1ResponsavelTecnico, nr1MinhasAvaliacoes, nr1DimensaoNome,
   nr1DimensoesBase, NR1_ESCALAS, NR1_PONTUACAO, NR1_TODAY, nr1NivelPorMedia,
   nr1RiscosCiclos, RISCOS, totalElegiveis, participacaoVazia,
+  nr1FatoresRisco, nr1FontesGeradoras,
 } from '../data/nr1Mock'
 import { rhEmpresa } from '../data/rhMock'
 import { NR1_RISCOS_SUGERIDOS } from '../data/nr1RiscosSugeridosMock'
@@ -179,6 +180,97 @@ export const nr1ModeloService = {
   },
 }
 
+/** Fábrica dos dois serviços de cadastro à parte (RF-A05) — fatores de risco
+   e fontes geradoras são o mesmo formato ({id, nome}) com a mesma regra de
+   uso (RF-A05: reutilizável entre dimensões, criado inline como tag), só
+   mudando o registro e em qual campo da dimensão cada um é referenciado. */
+function criarServicoTag<T extends { id: string; nome: string }>(
+  registro: T[],
+  campo: 'fatoresRiscoIds' | 'fontesGeradorasIds',
+  prefixo: string,
+) {
+  /** Onde exatamente um id está vinculado (modelo/versão/dimensão) — usado
+     tanto pro contador da lista quanto pro alerta de confirmação antes de
+     excluir. */
+  const usosDe = (id: string) => {
+    const usos: { modelo: string; versao: string; dimensao: string }[] = []
+    for (const m of nr1Modelos) for (const v of m.versoes) for (const d of v.dimensoes) {
+      if (d[campo].includes(id)) usos.push({ modelo: m.nome, versao: v.versao, dimensao: d.nome })
+    }
+    return usos
+  }
+
+  return {
+    list: async (): Promise<T[]> => {
+      await delay(rand(150, 350))
+      return registro
+    },
+
+    /** Em quantas dimensões (de qualquer modelo/versão) cada id aparece —
+       só informativo, ao lado de cada linha da lista de gerenciamento. */
+    usoPorId: async (): Promise<Record<string, number>> => {
+      await delay(rand(150, 350))
+      const contagem: Record<string, number> = {}
+      for (const t of registro) contagem[t.id] = usosDe(t.id).length
+      return contagem
+    },
+
+    /** Onde um cadastro específico está vinculado — mostrado no alerta antes
+       de excluir, pra quem for excluir saber o que vai perder o vínculo. */
+    usos: async (id: string): Promise<{ modelo: string; versao: string; dimensao: string }[]> => {
+      await delay(rand(150, 350))
+      return usosDe(id)
+    },
+
+    /** Cria um cadastro novo, ou devolve o já existente com o mesmo nome
+       (evita duplicar ao digitar algo que já existe). */
+    criar: async (nome: string): Promise<T> => {
+      await delay(rand(200, 400))
+      const existente = registro.find((f) => f.nome.toLowerCase() === nome.trim().toLowerCase())
+      if (existente) return existente
+      const novo = { id: `${prefixo}-${Date.now().toString().slice(-6)}`, nome: nome.trim() } as T
+      registro.push(novo)
+      return novo
+    },
+
+    /** Renomeia — não precisa tocar nas dimensões que já referenciam este
+       cadastro, porque elas guardam o id, não o nome. */
+    renomear: async (id: string, nome: string): Promise<T | undefined> => {
+      await delay(rand(200, 400))
+      const f = registro.find((x) => x.id === id)
+      if (f) f.nome = nome.trim()
+      return f
+    },
+
+    /** Exclui o cadastro e desvincula de toda dimensão que o referenciava,
+       em qualquer modelo/versão — inclusive publicada/arquivada: fator e
+       fonte são metadado de governança sobre a dimensão, não fazem parte do
+       instrumento que o colaborador responde, então não entram na regra de
+       imutabilidade de versão (RF-A04) que vale pra itens/escala/pontuação.
+       A confirmação com a lista de dimensões afetadas é responsabilidade da
+       UI, chamando `usos()` antes de chamar isto aqui. */
+    remover: async (id: string): Promise<{ ok: boolean }> => {
+      await delay(rand(200, 400))
+      for (const m of nr1Modelos) for (const v of m.versoes) for (const d of v.dimensoes) {
+        d[campo] = d[campo].filter((x) => x !== id)
+      }
+      const i = registro.findIndex((x) => x.id === id)
+      if (i >= 0) registro.splice(i, 1)
+      return { ok: true }
+    },
+  }
+}
+
+/** Cadastro à parte de fatores de risco — reutilizável entre dimensões de
+   qualquer modelo. Sem tela própria: criado inline no formulário de
+   dimensão, como um sistema de tags. */
+export const nr1FatorRiscoService = criarServicoTag<Nr1FatorRisco>(nr1FatoresRisco, 'fatoresRiscoIds', 'fator')
+
+/** Idem, para fontes geradoras de risco — cadastro independente (não tem
+   vínculo com fatores; as duas listas só se relacionam através da
+   dimensão que as referencia). */
+export const nr1FonteGeradoraService = criarServicoTag<Nr1FonteGeradora>(nr1FontesGeradoras, 'fontesGeradorasIds', 'fonte')
+
 export const nr1CampanhaService = {
   list: async (): Promise<Nr1Campanha[]> => {
     await delay(rand(300, 600))
@@ -308,6 +400,11 @@ export const nr1ResultadoService = {
     probabilidade: number
     severidade: Nr1Severidade
     controles: string[]
+    fatorRiscoId?: string
+    fontesGeradorasIds?: string[]
+    /** Ciclo analisado quando o risco foi registrado (análise a partir do
+       mapa de calor). */
+    campanhaId?: string
     /** Presente quando o cadastro vem da aba "Riscos sugeridos" — grava a
        rastreabilidade de que este fator nasceu de uma leitura assistida do
        questionário, não de auditoria/observação direta do SESMT. */
@@ -334,6 +431,8 @@ export const nr1ResultadoService = {
     probabilidade: number
     severidade: Nr1Severidade
     controles: string[]
+    fatorRiscoId?: string
+    fontesGeradorasIds?: string[]
     status?: Nr1RiscoStatus
   }): Promise<Nr1RiscoInventario | undefined> => {
     await delay(rand(400, 700))
@@ -385,6 +484,16 @@ export const nr1ResultadoService = {
   riscoCiclos: async (riscoId: string): Promise<Nr1RiscoCiclo[]> => {
     await delay(rand(250, 500))
     return nr1RiscosCiclos.filter((c) => c.riscoId === riscoId)
+  },
+
+  /** O domínio como está definido na versão do modelo aplicada no ciclo —
+     descrição, fatores de risco e fontes geradoras vinculados (RF-A05). */
+  dimensaoDaCampanha: async (campanhaId: string, dimensaoId: Nr1DimensaoId): Promise<Nr1Dimensao | undefined> => {
+    await delay(rand(200, 450))
+    const campanha = nr1Campanhas.find((c) => c.id === campanhaId)
+    const modelo = campanha && nr1Modelos.find((m) => m.id === campanha.modeloId)
+    const versao = modelo?.versoes.find((v) => v.versao === campanha!.versao)
+    return versao?.dimensoes.find((d) => d.id === dimensaoId)
   },
 
   /** Pontuação de cada pergunta de uma dimensão — de toda a empresa (sem
@@ -576,6 +685,21 @@ export const nr1AcaoService = {
     if (i >= 0) nr1Acoes[i] = saved
     else nr1Acoes.push(saved)
     return saved
+  },
+
+  /** Exclui uma ação e as versões anteriores dela (a cadeia de
+     `versaoAnteriorId`) — sem isso, a versão anterior voltaria a contar
+     como a vigente. */
+  excluir: async (acaoId: string): Promise<{ ok: boolean }> => {
+    await delay(rand(250, 500))
+    const ids = new Set<string>()
+    let atual = nr1Acoes.find((a) => a.id === acaoId)
+    while (atual && !ids.has(atual.id)) {
+      ids.add(atual.id)
+      atual = atual.versaoAnteriorId ? nr1Acoes.find((a) => a.id === atual!.versaoAnteriorId) : undefined
+    }
+    for (let i = nr1Acoes.length - 1; i >= 0; i--) if (ids.has(nr1Acoes[i]!.id)) nr1Acoes.splice(i, 1)
+    return { ok: ids.size > 0 }
   },
 
   /** Registra um comentário no diário de execução da ação — com ou sem

@@ -81,7 +81,7 @@ function NucleoConteudo({ modelos }: { modelos: Nr1QuestionarioModelo[] }) {
         {[
           { icon: 'ph:shield-check-bold', valor: String(totalNucleo), label: 'Itens de núcleo' },
           { icon: 'ph:list-bold', valor: String(totalItens), label: 'Itens na versão' },
-          { icon: 'ph:squares-four-bold', valor: String(versao.dimensoes.length), label: 'Dimensões cobertas' },
+          { icon: 'ph:squares-four-bold', valor: String(versao.dimensoes.length), label: 'Domínios cobertos' },
           { icon: 'ph:git-branch-bold', valor: String(derivados.length), label: 'Modelos que herdam' },
         ].map((s) => (
           <div key={s.label} className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4">
@@ -93,7 +93,7 @@ function NucleoConteudo({ modelos }: { modelos: Nr1QuestionarioModelo[] }) {
       </div>
 
       <p className="mb-3 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-ink-muted">
-        Núcleo por dimensão · Modelo YNA v{versao.versao}
+        Núcleo por domínio · Modelo YNA v{versao.versao}
       </p>
 
       <div className="flex flex-col gap-3">
@@ -125,8 +125,8 @@ function NucleoConteudo({ modelos }: { modelos: Nr1QuestionarioModelo[] }) {
 
               {semNucleo ? (
                 <p className="px-4 py-5 text-[12.5px] leading-relaxed text-ink-secondary">
-                  Nenhum item desta dimensão está marcado como núcleo. Um modelo de cliente
-                  poderia removê-la inteira e sair da cobertura das 4 dimensões do Guia do MTE.
+                  Nenhum item deste domínio está marcado como núcleo. Um modelo de cliente
+                  poderia removê-lo inteiro e sair da cobertura dos 4 domínios do Guia do MTE.
                 </p>
               ) : (
                 <ul className="divide-y divide-border">
@@ -203,7 +203,7 @@ function NucleoConteudo({ modelos }: { modelos: Nr1QuestionarioModelo[] }) {
         <p className="text-[12px] leading-relaxed text-ink-secondary">
           <strong className="font-semibold text-ink">Pendente de validação clínica.</strong> A seleção
           atual do núcleo é a proposta do rascunho v0.3 do questionário. A definição final de
-          quais dimensões e itens são não-removíveis depende da curadoria clínica.
+          quais domínios e itens são não-removíveis depende da curadoria clínica.
         </p>
       </div>
     </>

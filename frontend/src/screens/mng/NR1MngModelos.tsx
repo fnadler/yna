@@ -56,7 +56,7 @@ export function NR1MngModelos() {
           <span className="min-w-0 flex-1">
             <span className="block font-heading text-sm font-semibold text-ink">Núcleo obrigatório</span>
             <span className="mt-0.5 block text-[12.5px] leading-relaxed text-ink-secondary">
-              As dimensões e itens mínimos que garantem a defensabilidade. Modelos de cliente
+              Os domínios e itens mínimos que garantem a defensabilidade. Modelos de cliente
               podem acrescentar itens, nunca remover o núcleo.
             </span>
           </span>

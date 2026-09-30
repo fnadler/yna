@@ -77,7 +77,7 @@ function Evolucao({ avaliacoes }: { avaliacoes: Nr1MinhaAvaliacao[] }) {
           previousValues={anteriores}
           size={220}
           max={5}
-          ariaLabel={`A sua avaliação por dimensão: ${atual.scores.map((s) => `${s.nome} ${s.media.toFixed(1)} de 5`).join(', ')}`}
+          ariaLabel={`A sua avaliação por domínio: ${atual.scores.map((s) => `${s.nome} ${s.media.toFixed(1)} de 5`).join(', ')}`}
         />
         <p className="text-center text-[12px] text-ink-secondary">
           Respondido em {fmtData(atual.respondidoEm)}

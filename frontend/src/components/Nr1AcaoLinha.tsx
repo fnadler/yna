@@ -2,6 +2,7 @@ import { Icon } from '@iconify/react'
 import { Badge } from './Badge'
 import { PrazoBadge } from './PrazoBadge'
 import { ACAO_STATUS, NIVEL_RISCO } from '../lib/nr1'
+import { nr1RotuloRisco } from './Nr1AcaoForm'
 import type { Nr1Acao, Nr1RiscoInventario } from '../types'
 
 /** Colunas da linha de uma ação no desktop: nível do risco de origem, prazo,
@@ -25,8 +26,8 @@ export function AcaoLinha({ acao, risco, onClick }: {
   const nivel = risco ? NIVEL_RISCO[risco.nivel] : null
 
   const riscoTexto = risco && (
-    <p className="min-w-0 truncate text-[11.5px] text-ink-secondary" title={risco.fator}>
-      {risco.fator}
+    <p className="min-w-0 truncate text-[11.5px] text-ink-secondary" title={nr1RotuloRisco(risco)}>
+      <span className="font-medium text-ink">{risco.dimensao}</span> · {risco.fator}
     </p>
   )
 

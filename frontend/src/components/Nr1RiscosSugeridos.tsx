@@ -87,12 +87,12 @@ export function Nr1RiscosSugeridosTab({ campanhaId }: { campanhaId: string }) {
           />
         </div>
         <div>
-          <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Dimensão</p>
+          <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Domínio</p>
           <Select
             value={dimensaoFiltro}
             onChange={(v) => setDimensaoFiltro(v as 'todas' | Nr1DimensaoId)}
-            ariaLabel="Filtrar por dimensão"
-            options={[{ value: 'todas', label: 'Todas as dimensões' }, ...NR1_DIMENSOES.map((d) => ({ value: d.id, label: d.nome }))]}
+            ariaLabel="Filtrar por domínio"
+            options={[{ value: 'todas', label: 'Todos os domínios' }, ...NR1_DIMENSOES.map((d) => ({ value: d.id, label: d.nome }))]}
           />
         </div>
         <div>
@@ -132,7 +132,7 @@ export function Nr1RiscosSugeridosTab({ campanhaId }: { campanhaId: string }) {
             <div className={`hidden items-center gap-3 px-3.5 lg:grid ${SUGESTOES_GRID_COLS}`}>
               <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Nota</span>
               <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Risco</span>
-              <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Dimensão</span>
+              <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Domínio</span>
               <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Deptos.</span>
               <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Ação</span>
             </div>

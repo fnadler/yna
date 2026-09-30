@@ -3,6 +3,7 @@ import type {
   Nr1EscalaConfig, Nr1PontuacaoConfig, Nr1NivelRisco, Nr1Campanha, Nr1LinhaMapa,
   Nr1RiscoInventario, Nr1Acao, Nr1Relato, Nr1Ciclo, Nr1ResponsavelTecnico,
   Nr1MinhaAvaliacao, Nr1Severidade, Nr1RiscoCiclo, Nr1RiscoStatus,
+  Nr1FatorRisco, Nr1FonteGeradora,
 } from '../types'
 import { rhDepartamentos, rhEmpresa } from './rhMock'
 import { nr1MontarHistoricoRisco } from '../lib/nr1'
@@ -33,18 +34,97 @@ export const NR1_TODAY = '2026-06-25'
    invalidar os riscos do inventário e os itens do modelo derivado de
    cliente que já apontavam pra eles — ver ITENS_BCP e RISCOS abaixo. */
 export const NR1_DIMENSOES: { id: Nr1DimensaoId; nome: string; curto: string; descricao: string; icon: string }[] = [
-  { id: 'demandas', nome: 'Demandas no trabalho', curto: 'Demandas', descricao: 'Ritmo, carga e prazos de trabalho.', icon: 'ph:gauge-bold' },
-  { id: 'organizacao', nome: 'Organização e conteúdo do trabalho', curto: 'Organização', descricao: 'Autonomia, clareza de papel, mudanças, recursos e condições de trabalho.', icon: 'ph:stack-bold' },
-  { id: 'relacoes', nome: 'Relações interpessoais', curto: 'Relações', descricao: 'Apoio dos pares, respeito e conflito entre colegas.', icon: 'ph:users-three-bold' },
-  { id: 'lideranca', nome: 'Liderança', curto: 'Liderança', descricao: 'Apoio, retorno construtivo e incentivo da liderança direta.', icon: 'ph:megaphone-bold' },
-  { id: 'contexto', nome: 'Interface trabalho-indivíduo', curto: 'Interface', descricao: 'Interface trabalho-vida, hiperconexão e contato com público.', icon: 'ph:scales-bold' },
-  { id: 'valores', nome: 'Valores do local de trabalho', curto: 'Valores', descricao: 'Alinhamento entre valores pessoais e da organização.', icon: 'ph:compass-bold' },
-  { id: 'saude', nome: 'Saúde e bem-estar', curto: 'Saúde', descricao: 'Percepção de saúde, energia, sono e recuperação.', icon: 'ph:heartbeat-bold' },
-  { id: 'seguranca', nome: 'Segurança psicossocial', curto: 'Segurança', descricao: 'Assédio moral, bullying e hostilidade no trabalho.', icon: 'ph:shield-warning-bold' },
+  { id: 'demandas', nome: 'Demandas no trabalho', curto: 'Demandas', descricao: 'Avalia a carga, o ritmo, a complexidade e as exigências físicas, cognitivas e emocionais do trabalho.', icon: 'ph:gauge-bold' },
+  { id: 'organizacao', nome: 'Organização e conteúdo do trabalho', curto: 'Organização', descricao: 'Avalia a clareza, autonomia, participação, organização das atividades e oportunidades de desenvolvimento no trabalho.', icon: 'ph:stack-bold' },
+  { id: 'relacoes', nome: 'Relações interpessoais', curto: 'Relações', descricao: 'Avalia a qualidade das relações, colaboração, respeito, confiança e possíveis conflitos no ambiente de trabalho.', icon: 'ph:users-three-bold' },
+  { id: 'lideranca', nome: 'Liderança', curto: 'Liderança', descricao: 'Avalia o suporte, a comunicação, a orientação e a forma como as lideranças conduzem e apoiam suas equipes.', icon: 'ph:megaphone-bold' },
+  { id: 'contexto', nome: 'Interface trabalho-indivíduo', curto: 'Interface', descricao: 'Avalia o equilíbrio entre trabalho e vida pessoal, recuperação e os impactos das demandas de trabalho na vida do indivíduo.', icon: 'ph:scales-bold' },
+  { id: 'valores', nome: 'Valores do local de trabalho', curto: 'Valores', descricao: 'Avalia percepções sobre justiça, confiança, respeito, reconhecimento, ética e coerência nas práticas organizacionais.', icon: 'ph:compass-bold' },
+  { id: 'saude', nome: 'Saúde e bem-estar', curto: 'Saúde', descricao: 'Avalia aspectos relacionados ao estresse, desgaste, satisfação e percepção de saúde e bem-estar no contexto do trabalho.', icon: 'ph:heartbeat-bold' },
+  { id: 'seguranca', nome: 'Segurança psicossocial', curto: 'Segurança', descricao: 'Avalia a percepção de segurança, estabilidade, previsibilidade e proteção diante das condições e mudanças no trabalho.', icon: 'ph:shield-warning-bold' },
 ]
 
 export const nr1DimensaoNome = (id: Nr1DimensaoId) =>
   NR1_DIMENSOES.find((d) => d.id === id)?.nome ?? id
+
+/* ------------------------------------------------------------------
+   Fatores de risco e fontes geradoras do risco (RF-A05)
+   Cadastros à parte, vinculados às dimensões — nunca um ao outro
+   diretamente. Conteúdo-semente da planilha "Domínios e Fontes
+   Geradoras do Risco" (YNA, 2026): cada fator/fonte é reutilizável entre
+   dimensões, por isso o registro global é deduplicado por nome (ex.:
+   "Liderança despreparada" aparece na planilha em duas linhas — Relações
+   interpessoais e Segurança psicossocial — e vira um único cadastro
+   referenciado pelas duas).
+   ------------------------------------------------------------------ */
+
+const slugificar = (s: string) =>
+  s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+
+const FATORES_E_FONTES_POR_DIMENSAO: Record<Nr1DimensaoId, { fatores: string[]; fontes: string[] }> = {
+  demandas: {
+    fatores: ['Baixa demanda no trabalho (Subcarga)', 'Excesso de demandas no trabalho (Sobrecarga)', 'Baixo controle no trabalho / Falta de autonomia'],
+    fontes: [
+      'Subutilização de competências', 'Ociosidade', 'Má distribuição de tarefas', 'Funções pouco desafiadoras',
+      'Metas irrealistas', 'Equipe insuficiente', 'Jornadas prolongadas', 'Acúmulo de funções',
+      'Microgestão', 'Excesso de burocracia', 'Centralização de decisões', 'Baixa confiança na equipe',
+    ],
+  },
+  organizacao: {
+    fatores: ['Baixa clareza de papel/função'],
+    fontes: ['Falta de definição de responsabilidades', 'Ordens contraditórias', 'Comunicação confusa', 'Atribuições mal definidas'],
+  },
+  relacoes: {
+    fatores: ['Maus relacionamentos no local de trabalho'],
+    fontes: ['Comunicação agressiva', 'Rivalidade interna', 'Conflitos mal geridos', 'Liderança despreparada'],
+  },
+  lideranca: {
+    fatores: ['Falta de suporte/apoio no trabalho'],
+    fontes: ['Liderança ausente', 'Falta de escuta', 'Cobrança sem acompanhamento', 'Favoritismo'],
+  },
+  contexto: {
+    fatores: ['Trabalho em condições de difícil comunicação', 'Má gestão de mudanças organizacionais'],
+    fontes: [
+      'Turnos desalinhados', 'Distância física', 'Falha nos meios de comunicação', 'Fluxo de informação inadequado',
+      'Comunicação inadequada', 'Mudanças abruptas', 'Falta de planejamento', 'Insegurança quanto à estabilidade',
+    ],
+  },
+  valores: {
+    fatores: ['Baixa justiça organizacional', 'Baixas recompensas e reconhecimento'],
+    fontes: [
+      'Critérios pouco transparentes', 'Favorecimento', 'Desigualdade de tratamento', 'Decisões pouco claras',
+      'Ausência de feedback', 'Foco exclusivo em metas', 'Reconhecimento desigual', 'Falta de plano de crescimento',
+    ],
+  },
+  saude: {
+    fatores: ['Eventos violentos ou traumáticos'],
+    fontes: ['Falta de protocolos de segurança', 'Exposição a risco', 'Ausência de treinamento', 'Falta de suporte pós-evento'],
+  },
+  seguranca: {
+    fatores: ['Assédio de qualquer natureza no trabalho'],
+    fontes: ['Cultura permissiva a desrespeito', 'Ausência de canal de denúncia', 'Liderança despreparada', 'Comunicação violenta'],
+  },
+}
+
+function construirRegistro<T extends { id: string; nome: string }>(campo: 'fatores' | 'fontes', prefixo: string): T[] {
+  const porNome = new Map<string, T>()
+  for (const dim of Object.values(FATORES_E_FONTES_POR_DIMENSAO)) {
+    for (const nome of dim[campo]) {
+      if (!porNome.has(nome)) porNome.set(nome, { id: `${prefixo}-${slugificar(nome)}`, nome } as T)
+    }
+  }
+  return [...porNome.values()]
+}
+
+/** Registro global de fatores de risco — mutável: `criar()` em
+   `nr1FatorRiscoService` acrescenta aqui os fatores cadastrados na hora,
+   direto do formulário de dimensão. */
+export const nr1FatoresRisco: Nr1FatorRisco[] = construirRegistro('fatores', 'fator')
+/** Idem, para fontes geradoras. */
+export const nr1FontesGeradoras: Nr1FonteGeradora[] = construirRegistro('fontes', 'fonte')
+
+const idsPorNome = (registro: { id: string; nome: string }[], nomes: string[]) =>
+  nomes.map((nome) => registro.find((r) => r.nome === nome)!.id)
 
 /** Escalas de 5 pontos (§3 do questionário). A escala A é de frequência e a B
    de concordância — unificá-las é uma das decisões pendentes da clínica. */
@@ -193,7 +273,12 @@ const SEGURANCA: ItemSeed[] = [
 
 function dimensao(id: Nr1DimensaoId, seeds: ItemSeed[]): Nr1Dimensao {
   const meta = NR1_DIMENSOES.find((d) => d.id === id)!
-  return { id, nome: meta.nome, descricao: meta.descricao, itens: seeds.map(item) }
+  const seedRiscos = FATORES_E_FONTES_POR_DIMENSAO[id]
+  return {
+    id, nome: meta.nome, descricao: meta.descricao, itens: seeds.map(item),
+    fatoresRiscoIds: seedRiscos ? idsPorNome(nr1FatoresRisco, seedRiscos.fatores) : [],
+    fontesGeradorasIds: seedRiscos ? idsPorNome(nr1FontesGeradoras, seedRiscos.fontes) : [],
+  }
 }
 
 /** Dimensões do Modelo YNA base — recriadas a cada chamada para que uma versão
@@ -255,7 +340,7 @@ export const nr1Modelos: Nr1QuestionarioModelo[] = [
     id: 'mod-yna',
     nome: 'Modelo YNA de Riscos Psicossociais',
     escopo: 'yna',
-    descricao: 'Instrumento base da plataforma, mantido e revisado pela YNA. Cobre as 4 dimensões do Guia do MTE a partir do HSE Indicator Tool e do COPSOQ.',
+    descricao: 'Instrumento base da plataforma, mantido e revisado pela YNA. Cobre os 4 domínios do Guia do MTE a partir do HSE Indicator Tool e do COPSOQ.',
     versoes: [
       versaoYna('2.1', 'rascunho', '2026-06-18', undefined, 'Em elaboração: revisão de redação dos itens de Mudança (OT13/OT14) após retorno da curadoria clínica.'),
       versaoYna('2.0', 'publicada', '2026-04-02', '2026-04-15', 'Instrumento completo (34 itens). Inclui itens de Ambiente e recursos e os condicionais de contexto externo (CE04/CE05).'),
@@ -413,6 +498,10 @@ export type RiscoSeed = {
   id: string; dimensaoId: Nr1DimensaoId; departamentoIds: string[]
   fator: string; danos: string; probabilidade: number; severidade: Nr1Severidade
   controles: string[]
+  fatorRiscoId?: string
+  fontesGeradorasIds?: string[]
+  /** Ciclo analisado quando o risco foi registrado — ausente nos riscos-semente. */
+  campanhaId?: string
   /** Presente quando o risco nasceu da aba "Riscos sugeridos" (ver
      `nr1RiscosSugeridosMock.ts`) — repassado a `Nr1RiscoInventario` via o
      spread `...r` abaixo, sem lógica adicional aqui. */
@@ -432,8 +521,9 @@ export type RiscoSeed = {
    cache — cada chamada remapeia `RISCOS` do zero). */
 export const RISCOS: RiscoSeed[] = [
   {
-    id: 'r-01', dimensaoId: 'organizacao', departamentoIds: ['d-trading'],
-    fator: 'Ritmo de trabalho acelerado e prazos incompatíveis com a jornada, com baixa possibilidade de pausa durante o pregão.',
+    id: 'r-01', dimensaoId: 'demandas', departamentoIds: ['d-trading'],
+    fatorRiscoId: 'fator-excesso-de-demandas-no-trabalho-sobrecarga', fontesGeradorasIds: ['fonte-metas-irrealistas', 'fonte-jornadas-prolongadas', 'fonte-equipe-insuficiente'],
+    fator: 'Excesso de demandas no trabalho (Sobrecarga)',
     danos: 'Fadiga crônica, esgotamento profissional (burnout), transtornos de ansiedade, erros operacionais por sobrecarga cognitiva.',
     probabilidade: 4, severidade: 4,
     controles: [
@@ -444,7 +534,8 @@ export const RISCOS: RiscoSeed[] = [
   },
   {
     id: 'r-02', dimensaoId: 'contexto', departamentoIds: ['d-trading'],
-    fator: 'Hiperconectividade: expectativa de disponibilidade fora do horário de trabalho em função da volatilidade de mercado.',
+    fatorRiscoId: 'fator-trabalho-em-condicoes-de-dificil-comunicacao', fontesGeradorasIds: ['fonte-turnos-desalinhados', 'fonte-fluxo-de-informacao-inadequado'],
+    fator: 'Trabalho em condições de difícil comunicação',
     danos: 'Privação de sono, dificuldade de recuperação, conflito trabalho-família, adoecimento mental.',
     probabilidade: 4, severidade: 3,
     controles: [
@@ -455,7 +546,8 @@ export const RISCOS: RiscoSeed[] = [
   },
   {
     id: 'r-03', dimensaoId: 'relacoes', departamentoIds: ['d-trading', 'd-ops'],
-    fator: 'Tensão nas relações interpessoais e episódios de atrito recorrentes entre pares na operação, com reflexo direto na interface entre mesa e operações.',
+    fatorRiscoId: 'fator-maus-relacionamentos-no-local-de-trabalho', fontesGeradorasIds: ['fonte-conflitos-mal-geridos', 'fonte-rivalidade-interna'],
+    fator: 'Maus relacionamentos no local de trabalho',
     danos: 'Sofrimento psíquico, isolamento, absenteísmo, agravamento de quadros de ansiedade.',
     probabilidade: 3, severidade: 4,
     controles: [
@@ -466,7 +558,8 @@ export const RISCOS: RiscoSeed[] = [
   },
   {
     id: 'r-04', dimensaoId: 'contexto', departamentoIds: ['d-tech'],
-    fator: 'Isolamento percebido no trabalho remoto e híbrido, com baixa conexão com a equipe.',
+    fatorRiscoId: 'fator-trabalho-em-condicoes-de-dificil-comunicacao', fontesGeradorasIds: ['fonte-distancia-fisica', 'fonte-falha-nos-meios-de-comunicacao'],
+    fator: 'Trabalho em condições de difícil comunicação',
     danos: 'Solidão, queda de engajamento, sintomas depressivos.',
     probabilidade: 3, severidade: 3,
     controles: [
@@ -475,8 +568,9 @@ export const RISCOS: RiscoSeed[] = [
     ],
   },
   {
-    id: 'r-05', dimensaoId: 'organizacao', departamentoIds: ['d-ops'],
-    fator: 'Instabilidade dos sistemas e insuficiência de recursos para a execução do trabalho.',
+    id: 'r-05', dimensaoId: 'demandas', departamentoIds: ['d-ops'],
+    fatorRiscoId: 'fator-excesso-de-demandas-no-trabalho-sobrecarga', fontesGeradorasIds: ['fonte-equipe-insuficiente', 'fonte-acumulo-de-funcoes'],
+    fator: 'Excesso de demandas no trabalho (Sobrecarga)',
     danos: 'Frustração, estresse ocupacional, retrabalho e prolongamento de jornada.',
     probabilidade: 3, severidade: 2,
     controles: [
@@ -486,7 +580,8 @@ export const RISCOS: RiscoSeed[] = [
   },
   {
     id: 'r-06', dimensaoId: 'organizacao', departamentoIds: ['d-ops'],
-    fator: 'Falta de clareza de papéis e responsabilidades após a reestruturação da área.',
+    fatorRiscoId: 'fator-baixa-clareza-de-papel-funcao', fontesGeradorasIds: ['fonte-falta-de-definicao-de-responsabilidades', 'fonte-atribuicoes-mal-definidas'],
+    fator: 'Baixa clareza de papel/função',
     danos: 'Insegurança, conflito de demandas, sobrecarga percebida.',
     probabilidade: 3, severidade: 2,
     controles: [
@@ -530,12 +625,15 @@ export const nr1Inventario = (): Nr1RiscoInventario[] =>
     const ultimo = historico[historico.length - 1]
     return {
       ...r,
+      /* Risco classificado num fator do catálogo mostra o nome do catálogo —
+         renomear o fator no Manager reflete aqui também. */
+      fator: (r.fatorRiscoId && nr1FatoresRisco.find((f) => f.id === r.fatorRiscoId)?.nome) || r.fator,
       dimensao: nr1DimensaoNome(r.dimensaoId),
       grupoExposto: deps.map((d, i) => d?.nome ?? r.departamentoIds[i]).join(', '),
       respondentes: r.departamentoIds.reduce((soma, id) => soma + (PARTICIPACAO.find((p) => p.id === id)?.respostas ?? 0), 0),
       nivelNum,
       nivel: nr1NivelPorProduto(nivelNum),
-      campanhaId: 'camp-2026-1s',
+      campanhaId: r.campanhaId ?? 'camp-2026-1s',
       status: r.statusManual ?? (ultimo?.status ?? 'identificado'),
       tendencia: ultimo?.tendencia,
       variacaoPontos: ultimo?.variacaoPontos,

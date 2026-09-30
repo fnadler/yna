@@ -12,6 +12,7 @@ import { Modal } from '../../components/Modal'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
 import { Nr1AdicionarRiscoForm } from '../../components/Nr1AdicionarRiscoForm'
+import { Nr1PainelRiscoMapa } from '../../components/Nr1PainelRiscoMapa'
 import { PAGE_MAX_W } from '../../lib/layout'
 import { NIVEL_RISCO, STATUS_RISCO, ACAO_RECOMENDADA, ACAO_STATUS } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
@@ -203,6 +204,18 @@ export function NR1RhInventario() {
           </div>
         )}
 
+        {/* Mesmo bloco da Visão geral, só com ciclos finalizados — é o retrato
+           fechado que sustenta o inventário. */}
+        <div className="mb-6">
+          <Nr1PainelRiscoMapa
+            titulo="Risco por domínio e mapa de calor"
+            subtitulo="Resultado dos ciclos de avaliação finalizados. Clique num domínio ou numa área para analisar e registrar riscos e planos de ação."
+            somenteEncerrados
+            analise
+            onRiscosAlterados={() => { inventario.reload(); acoes.reload() }}
+          />
+        </div>
+
         {(inventario.status === 'idle' || inventario.status === 'loading') && (
           <div className="flex flex-col gap-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}</div>
         )}
@@ -227,12 +240,12 @@ export function NR1RhInventario() {
                 </div>
               </div>
               <div>
-                <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Dimensão</p>
+                <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Domínio</p>
                 <Select
                   value={dimensaoFiltro}
                   onChange={(v) => setDimensaoFiltro(v as 'todas' | Nr1DimensaoId)}
-                  ariaLabel="Filtrar por dimensão"
-                  options={[{ value: 'todas', label: 'Todas as dimensões' }, ...NR1_DIMENSOES.map((d) => ({ value: d.id, label: d.nome }))]}
+                  ariaLabel="Filtrar por domínio"
+                  options={[{ value: 'todas', label: 'Todos os domínios' }, ...NR1_DIMENSOES.map((d) => ({ value: d.id, label: d.nome }))]}
                 />
               </div>
               <div>
@@ -269,7 +282,7 @@ export function NR1RhInventario() {
                 <div className={`hidden items-center gap-3 px-3.5 lg:grid ${RISCOS_GRID_COLS}`}>
                   <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Nota</span>
                   <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Risco</span>
-                  <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Dimensão</span>
+                  <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Domínio</span>
                   <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Deptos.</span>
                   <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Ações</span>
                   <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Status</span>

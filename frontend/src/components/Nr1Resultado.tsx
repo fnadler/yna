@@ -236,7 +236,7 @@ export function MapaCalorTable({ dimensoes, linhas, onClickCelula }: {
       >
         <table className="w-full table-fixed border-collapse" style={{ minWidth: `${minLargura}px` }}>
           <caption className="sr-only">
-            Nível de risco psicossocial por dimensão e área, em média de 1 a 5, onde 5 é a
+            Nível de risco psicossocial por domínio e área, em média de 1 a 5, onde 5 é a
             situação desejável.
           </caption>
           <thead>

@@ -51,9 +51,9 @@ export function nr1DimensoesParaSimulacao(n: number): Nr1DimensaoMeta[] {
     const num = N_DIMENSOES_PADRAO + i + 1
     return {
       id: `sim-dim-${num}`,
-      nome: `Dimensão simulada ${num}`,
-      curto: `Simulada ${num}`,
-      descricao: 'Dimensão fictícia, só para simular a densidade da tela.',
+      nome: `Domínio simulado ${num}`,
+      curto: `Simulado ${num}`,
+      descricao: 'Domínio fictício, só para simular a densidade da tela.',
       icon: 'ph:squares-four-bold',
     }
   })

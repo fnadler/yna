@@ -1,0 +1,12 @@
+{
+  "name": "YNA Care Hub",
+  "short_name": "YNA",
+  "theme_color": "#4749A8",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "icons": [
+    { "src": "/images/favicon/favicon-48.png", "sizes": "48x48", "type": "image/png" },
+    { "src": "/images/favicon/favicon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" },
+    { "src": "/images/favicon/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

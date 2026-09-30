@@ -564,7 +564,7 @@ function CicloDetalheScreen({ campanhaId }: { campanhaId: string }) {
             )}
             {tab === 'resultado' && (
               campanha.data.status === 'em-campo'
-                ? <AbaEmColeta mensagem="O risco por dimensão e o mapa de calor ficam disponíveis quando o ciclo for encerrado." />
+                ? <AbaEmColeta mensagem="O risco por domínio e o mapa de calor ficam disponíveis quando o ciclo for encerrado." />
                 : <CampanhaResultado campanhaId={campanha.data.id} />
             )}
             {tab === 'riscos-sugeridos' && (
@@ -1029,7 +1029,7 @@ function CampanhaResultado({ campanhaId }: { campanhaId: string }) {
   return (
     <>
       <section className="mb-6">
-        <h2 className="mb-3 text-[15px] font-semibold text-ink">Risco por dimensão</h2>
+        <h2 className="mb-3 text-[15px] font-semibold text-ink">Risco por domínio</h2>
         {(dimensoes.status === 'idle' || dimensoes.status === 'loading') && (
           <div className="flex flex-col gap-2">{NR1_DIMENSOES.map((d) => <Skeleton key={d.id} className="h-10 w-full rounded-lg" />)}</div>
         )}

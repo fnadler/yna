@@ -118,7 +118,7 @@ export function NR1RhRelatorio() {
               <Linha termo="Instrumento aplicado" valor={`${campanha.data.modeloNome} · versão ${campanha.data.versao}`} />
               <Linha termo="Período de coleta" valor={`${fmtData(campanha.data.inicio)} a ${fmtData(campanha.data.fim)}`} />
               <Linha termo="Participação" valor={`${campanha.data.respostas} de ${campanha.data.elegiveis} (${pct(campanha.data.respostas, campanha.data.elegiveis)}%)`} />
-              <Linha termo="Metodologia" valor="HSE Indicator Tool + COPSOQ, mapeados às 4 dimensões do Guia do MTE" />
+              <Linha termo="Metodologia" valor="HSE Indicator Tool + COPSOQ, mapeados aos 4 domínios do Guia do MTE" />
             </dl>
           )}
           {campanha.status === 'success' && !campanha.data && (

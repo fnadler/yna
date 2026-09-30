@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { MngTopBar } from '../../components/MngTopBar'
@@ -10,14 +10,16 @@ import { Modal } from '../../components/Modal'
 import { Select } from '../../components/Select'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
+import { TagPicker } from '../../components/TagPicker'
+import { Toast } from '../../components/Toast'
 import { PAGE_MAX_W } from '../../lib/layout'
 import { VERSAO_STATUS, fmtData } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
-import { nr1ModeloService } from '../../services/nr1'
+import { nr1ModeloService, nr1FatorRiscoService, nr1FonteGeradoraService } from '../../services/nr1'
 import { NR1_DIMENSOES } from '../../data/nr1Mock'
 import type {
   Nr1QuestionarioModelo, Nr1QuestionarioVersao, Nr1Item, Nr1Dimensao,
-  Nr1EscalaId, Nr1Direcao, CampoTipo,
+  Nr1EscalaId, Nr1Direcao, CampoTipo, Nr1FatorRisco, Nr1FonteGeradora,
 } from '../../types'
 
 /* NR1-MNG-02 — Editor do modelo: dimensões e itens (RF-YN-NR1-01/05).
@@ -48,6 +50,15 @@ export function NR1MngModeloEditor() {
   /* Fica aqui, e não no conteúdo: recarregar o modelo desmonta o filho, e o
      aviso de "virou uma nova versão" sumiria justamente quando importa. */
   const [aviso, setAviso] = useState<string | null>(null)
+  /* Mesmo motivo do `aviso`: o feedback de confirmação (RF-A05) é setado
+     logo depois de `gravar()` disparar o reload, que desmonta o conteúdo —
+     setar aqui embaixo, do lado de dentro, faria o toast sumir antes de
+     aparecer. */
+  const [feedback, setFeedback] = useState<string | null>(null)
+  /* Idem: quais dimensões estão abertas na sanfona. Editar um item dentro de
+     uma dimensão aberta dispara o mesmo reload — sem isso aqui em cima, a
+     dimensão fecharia sozinha logo depois de salvar. */
+  const [dimensoesAbertas, setDimensoesAbertas] = useState<Set<string>>(new Set())
 
   return (
     <div className="min-h-full bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
@@ -73,6 +84,9 @@ export function NR1MngModeloEditor() {
             onVersaoSel={setVersaoSel}
             onReload={() => modelo.reload()}
             onAviso={setAviso}
+            onFeedback={setFeedback}
+            dimensoesAbertas={dimensoesAbertas}
+            onDimensoesAbertasChange={setDimensoesAbertas}
           />
         )}
       </div>
@@ -83,16 +97,21 @@ export function NR1MngModeloEditor() {
           <Button fullWidth onClick={() => setAviso(null)}>Entendi</Button>
         </div>
       </Modal>
+
+      <Toast message={feedback} onClose={() => setFeedback(null)} />
     </div>
   )
 }
 
-function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso }: {
+function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso, onFeedback, dimensoesAbertas, onDimensoesAbertasChange }: {
   modelo: Nr1QuestionarioModelo
   versaoSel: string | null
   onVersaoSel: (v: string) => void
   onReload: () => void
   onAviso: (m: string) => void
+  onFeedback: (m: string) => void
+  dimensoesAbertas: Set<string>
+  onDimensoesAbertasChange: (s: Set<string>) => void
 }) {
   const editavel = modelo.versoes.find((v) => v.status === 'rascunho') ?? modelo.versoes[0]!
   const versao = modelo.versoes.find((v) => v.versao === versaoSel) ?? editavel
@@ -101,9 +120,47 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso }: {
   const [itemForm, setItemForm] = useState<{ dimensaoId: string; item?: Nr1Item } | null>(null)
   const [remover, setRemover] = useState<{ dimensao: Nr1Dimensao; item: Nr1Item } | null>(null)
   const [escalaOpen, setEscalaOpen] = useState(false)
+  const [dimensaoForm, setDimensaoForm] = useState<{ dimensao?: Nr1Dimensao } | null>(null)
+  const [removerDim, setRemoverDim] = useState<Nr1Dimensao | null>(null)
+  const [gerenciarTags, setGerenciarTags] = useState<'fator' | 'fonte' | null>(null)
+
+  /* Catálogos de fatores de risco e fontes geradoras (RF-A05) — cadastros à
+     parte, carregados uma vez aqui e atualizados localmente a cada criação,
+     renomeação ou exclusão, sem precisar recarregar a versão inteira pra
+     refletir a mudança no seletor. */
+  const [fatores, setFatores] = useState<Nr1FatorRisco[]>([])
+  const [fontes, setFontes] = useState<Nr1FonteGeradora[]>([])
+  useEffect(() => {
+    void nr1FatorRiscoService.list().then(setFatores)
+    void nr1FonteGeradoraService.list().then(setFontes)
+  }, [])
+  const criarFator = async (nome: string) => {
+    const tag = await nr1FatorRiscoService.criar(nome)
+    setFatores((f) => (f.some((x) => x.id === tag.id) ? f : [...f, tag]))
+    onFeedback(`Fator de risco "${tag.nome}" adicionado.`)
+    return tag
+  }
+  const criarFonte = async (nome: string) => {
+    const tag = await nr1FonteGeradoraService.criar(nome)
+    setFontes((f) => (f.some((x) => x.id === tag.id) ? f : [...f, tag]))
+    onFeedback(`Fonte geradora "${tag.nome}" adicionada.`)
+    return tag
+  }
+
 
   const totalItens = versao.dimensoes.reduce((s, d) => s + d.itens.length, 0)
   const totalNucleo = versao.dimensoes.reduce((s, d) => s + d.itens.filter((i) => i.obrigatorioNucleo).length, 0)
+  /* Mesma trava do item de núcleo, no nível da dimensão: removê-la apagaria
+     itens do núcleo obrigatório junto — não dá pra contornar a proteção só
+     descendo um nível. */
+  const temNucleo = (d: Nr1Dimensao) => d.itens.some((i) => i.obrigatorioNucleo)
+
+  const toggleDimensao = (id: string) => {
+    const s = new Set(dimensoesAbertas)
+    if (s.has(id)) s.delete(id)
+    else s.add(id)
+    onDimensoesAbertasChange(s)
+  }
 
   /* Grava no serviço. Se a versão exibida estiver publicada, o serviço cria um
      rascunho novo — devolvemos o usuário para ele em vez de fingir que editou
@@ -135,6 +192,7 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso }: {
       }
     })
     setItemForm(null)
+    onFeedback(novo ? 'Item acrescentado.' : 'Item salvo.')
   }
 
   const removerItem = async () => {
@@ -144,6 +202,42 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso }: {
       if (d) d.itens = d.itens.filter((i) => i.id !== remover.item.id)
     })
     setRemover(null)
+    onFeedback('Item removido.')
+  }
+
+  /* Gera um id novo a partir do nome, sem colidir com os já existentes na
+     versão — mesma lógica de "slug" usada pros ids de fator/fonte em
+     `data/nr1Mock.ts`. */
+  const gerarIdDimensao = (nome: string) => {
+    const base = nome.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'dimensao'
+    let candidato = base
+    let n = 2
+    while (versao.dimensoes.some((d) => d.id === candidato)) { candidato = `${base}-${n}`; n += 1 }
+    return candidato
+  }
+
+  const salvarDimensao = async (dados: { id?: string; nome: string; descricao: string; fatoresRiscoIds: string[]; fontesGeradorasIds: string[] }, novo: boolean) => {
+    const id = dados.id ?? gerarIdDimensao(dados.nome)
+    await gravar((v) => {
+      if (novo) {
+        v.dimensoes.push({ ...dados, id, itens: [] })
+      } else {
+        const d = v.dimensoes.find((x) => x.id === id)
+        if (d) Object.assign(d, dados)
+      }
+    })
+    setDimensaoForm(null)
+    /* Abre a dimensão recém-criada — sem isso, ela nasce fechada na sanfona
+       e o próximo passo óbvio (acrescentar item) fica escondido. */
+    if (novo) onDimensoesAbertasChange(new Set(dimensoesAbertas).add(id))
+    onFeedback(novo ? 'Domínio adicionado.' : 'Domínio salvo.')
+  }
+
+  const removerDimensaoConfirmada = async () => {
+    if (!removerDim) return
+    await gravar((v) => { v.dimensoes = v.dimensoes.filter((x) => x.id !== removerDim.id) })
+    setRemoverDim(null)
+    onFeedback('Domínio removido.')
   }
 
   return (
@@ -193,12 +287,31 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso }: {
       )}
 
       {/* Dimensões e itens */}
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="font-heading text-[15px] font-semibold text-ink">Domínios</h2>
+        <Button variant="secondary" iconLeft="ph:plus-bold" onClick={() => setDimensaoForm({})}>
+          Adicionar domínio
+        </Button>
+      </div>
+
       <div className="flex flex-col gap-4">
         {versao.dimensoes.map((d) => {
           const meta = NR1_DIMENSOES.find((x) => x.id === d.id)
+          const aberta = dimensoesAbertas.has(d.id)
           return (
             <section key={d.id} className="rounded-lg border border-border bg-surface">
-              <header className="flex items-start justify-between gap-3 border-b border-border p-4 lg:p-5">
+              {/* Sanfona: a dimensão é o cabeçalho sempre visível (nome,
+                 descrição, fatores/fontes, contagem de itens); os itens em
+                 si só aparecem expandidos — dá pra ver as dimensões do
+                 modelo de relance, sem rolar por dezenas de perguntas. */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => toggleDimensao(d.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleDimensao(d.id) } }}
+                aria-expanded={aberta}
+                className="flex w-full cursor-pointer items-start justify-between gap-3 p-4 text-left lg:p-5"
+              >
                 <div className="flex min-w-0 items-start gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary dark:text-primary-300">
                     <Icon icon={meta?.icon ?? 'ph:list-bold'} width={20} aria-hidden />
@@ -206,71 +319,111 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso }: {
                   <div className="min-w-0">
                     <h2 className="font-heading text-[15px] font-semibold text-ink">{d.nome}</h2>
                     <p className="mt-0.5 text-[12.5px] text-ink-secondary">{d.descricao}</p>
+                    {(d.fatoresRiscoIds.length > 0 || d.fontesGeradorasIds.length > 0) && (
+                      <div className="mt-2 flex flex-col gap-1 text-[11.5px] leading-relaxed text-ink-secondary">
+                        {d.fatoresRiscoIds.length > 0 && (
+                          <p><strong className="font-semibold text-ink">Fatores de risco:</strong> {d.fatoresRiscoIds.map((id) => fatores.find((f) => f.id === id)?.nome ?? id).join(', ')}</p>
+                        )}
+                        {d.fontesGeradorasIds.length > 0 && (
+                          <p><strong className="font-semibold text-ink">Fontes geradoras:</strong> {d.fontesGeradorasIds.map((id) => fontes.find((f) => f.id === id)?.nome ?? id).join(', ')}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <span className="shrink-0 font-mono text-[11px] text-ink-muted">{d.itens.length} itens</span>
-              </header>
-
-              <ul className="divide-y divide-border">
-                {d.itens.map((i) => (
-                  <li key={i.id} className="flex items-start gap-3 px-4 py-3 lg:px-5">
-                    <span className="mt-0.5 shrink-0 font-mono text-[11px] font-semibold text-ink-muted">{i.id}</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13.5px] leading-snug text-ink">{i.texto}</p>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        {i.obrigatorioNucleo && (
-                          <span className="inline-flex items-center gap-1 rounded-pill bg-primary-50 px-2 py-0.5 text-[10.5px] font-semibold text-primary dark:text-primary-300">
-                            <Icon icon="ph:shield-check-fill" width={10} aria-hidden />
-                            Núcleo
-                          </span>
-                        )}
-                        {i.origemCliente && (
-                          <span className="rounded-pill bg-lavender/40 px-2 py-0.5 text-[10.5px] font-semibold text-ink-secondary dark:bg-surface-2">Item do cliente</span>
-                        )}
-                        {i.sensivel && (
-                          <span className="inline-flex items-center gap-1 rounded-pill bg-warning-bg px-2 py-0.5 text-[10.5px] font-semibold text-warning-ink">
-                            <Icon icon="ph:warning-bold" width={10} aria-hidden />
-                            Sensível
-                          </span>
-                        )}
-                        {i.condicional && (
-                          <span className="rounded-pill bg-surface-2 px-2 py-0.5 text-[10.5px] font-medium text-ink-secondary">Condicional</span>
-                        )}
-                        <span className="text-[11px] text-ink-muted">
-                          Escala {i.escala} · {i.direcao === 'reverso' ? 'reverso' : 'positivo'} · {i.referencia}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        onClick={() => setItemForm({ dimensaoId: d.id, item: i })}
-                        aria-label={`Editar item ${i.id}`}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink"
-                      >
-                        <Icon icon="ph:pencil-simple-bold" width={16} aria-hidden />
-                      </button>
-                      <button
-                        onClick={() => !i.obrigatorioNucleo && setRemover({ dimensao: d, item: i })}
-                        disabled={i.obrigatorioNucleo}
-                        aria-label={i.obrigatorioNucleo ? `${i.id} pertence ao núcleo obrigatório e não pode ser removido` : `Remover item ${i.id}`}
-                        title={i.obrigatorioNucleo ? 'Item do núcleo obrigatório, não removível' : undefined}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:text-danger-ink disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:text-ink-muted"
-                      >
-                        <Icon icon={i.obrigatorioNucleo ? 'ph:lock-simple-bold' : 'ph:trash-bold'} width={16} aria-hidden />
-                      </button>
-                    </div>
-                  </li>
-                ))}
-                {d.itens.length === 0 && (
-                  <li className="px-4 py-8 text-center text-[13px] text-ink-secondary lg:px-5">Nenhum item nesta dimensão ainda.</li>
-                )}
-              </ul>
-
-              <div className="border-t border-border p-3 lg:px-5">
-                <Button size="sm" variant="ghost" iconLeft="ph:plus-bold" onClick={() => setItemForm({ dimensaoId: d.id })}>
-                  Acrescentar item
-                </Button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <span className="font-mono text-[11px] text-ink-muted">{d.itens.length} itens</span>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setDimensaoForm({ dimensao: d }) }}
+                    aria-label={`Editar domínio ${d.nome}`}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink"
+                  >
+                    <Icon icon="ph:pencil-simple-bold" width={16} aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); !temNucleo(d) && setRemoverDim(d) }}
+                    disabled={temNucleo(d)}
+                    aria-label={temNucleo(d) ? `${d.nome} tem itens do núcleo obrigatório e não pode ser removido` : `Remover domínio ${d.nome}`}
+                    title={temNucleo(d) ? 'Domínio com itens do núcleo obrigatório, não removível' : undefined}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:text-danger-ink disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:text-ink-muted"
+                  >
+                    <Icon icon={temNucleo(d) ? 'ph:lock-simple-bold' : 'ph:trash-bold'} width={16} aria-hidden />
+                  </button>
+                  <Icon
+                    icon="ph:caret-down-bold"
+                    width={16}
+                    className={`ml-1 shrink-0 text-ink-muted transition-transform ${aberta ? 'rotate-180' : ''}`}
+                    aria-hidden
+                  />
+                </div>
               </div>
+
+              {aberta && (
+                <div className="animate-yna-slide-up border-t border-border">
+                  <ul className="divide-y divide-border">
+                    {d.itens.map((i) => (
+                      <li key={i.id} className="flex items-start gap-3 px-4 py-3 lg:px-5">
+                        <span className="mt-0.5 shrink-0 font-mono text-[11px] font-semibold text-ink-muted">{i.id}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13.5px] leading-snug text-ink">{i.texto}</p>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            {i.obrigatorioNucleo && (
+                              <span className="inline-flex items-center gap-1 rounded-pill bg-primary-50 px-2 py-0.5 text-[10.5px] font-semibold text-primary dark:text-primary-300">
+                                <Icon icon="ph:shield-check-fill" width={10} aria-hidden />
+                                Núcleo
+                              </span>
+                            )}
+                            {i.origemCliente && (
+                              <span className="rounded-pill bg-lavender/40 px-2 py-0.5 text-[10.5px] font-semibold text-ink-secondary dark:bg-surface-2">Item do cliente</span>
+                            )}
+                            {i.sensivel && (
+                              <span className="inline-flex items-center gap-1 rounded-pill bg-warning-bg px-2 py-0.5 text-[10.5px] font-semibold text-warning-ink">
+                                <Icon icon="ph:warning-bold" width={10} aria-hidden />
+                                Sensível
+                              </span>
+                            )}
+                            {i.condicional && (
+                              <span className="rounded-pill bg-surface-2 px-2 py-0.5 text-[10.5px] font-medium text-ink-secondary">Condicional</span>
+                            )}
+                            <span className="text-[11px] text-ink-muted">
+                              Escala {i.escala} · {i.direcao === 'reverso' ? 'reverso' : 'positivo'} · {i.referencia}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            onClick={() => setItemForm({ dimensaoId: d.id, item: i })}
+                            aria-label={`Editar item ${i.id}`}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink"
+                          >
+                            <Icon icon="ph:pencil-simple-bold" width={16} aria-hidden />
+                          </button>
+                          <button
+                            onClick={() => !i.obrigatorioNucleo && setRemover({ dimensao: d, item: i })}
+                            disabled={i.obrigatorioNucleo}
+                            aria-label={i.obrigatorioNucleo ? `${i.id} pertence ao núcleo obrigatório e não pode ser removido` : `Remover item ${i.id}`}
+                            title={i.obrigatorioNucleo ? 'Item do núcleo obrigatório, não removível' : undefined}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:text-danger-ink disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:text-ink-muted"
+                          >
+                            <Icon icon={i.obrigatorioNucleo ? 'ph:lock-simple-bold' : 'ph:trash-bold'} width={16} aria-hidden />
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                    {d.itens.length === 0 && (
+                      <li className="px-4 py-8 text-center text-[13px] text-ink-secondary lg:px-5">Nenhum item neste domínio ainda.</li>
+                    )}
+                  </ul>
+
+                  <div className="border-t border-border p-3 lg:px-5">
+                    <Button size="sm" variant="ghost" iconLeft="ph:plus-bold" onClick={() => setItemForm({ dimensaoId: d.id })}>
+                      Acrescentar item
+                    </Button>
+                  </div>
+                </div>
+              )}
             </section>
           )
         })}
@@ -312,6 +465,50 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso }: {
         <EscalaView versao={versao} />
       </Sheet>
 
+      {/* Editor da dimensão */}
+      <Sheet
+        open={dimensaoForm !== null}
+        onClose={() => setDimensaoForm(null)}
+        title={dimensaoForm?.dimensao ? `Editar domínio · ${dimensaoForm.dimensao.nome}` : 'Novo domínio'}
+        icon="ph:stack-bold"
+        size="md"
+      >
+        {dimensaoForm && (
+          <DimensaoForm
+            inicial={dimensaoForm.dimensao}
+            fatores={fatores}
+            fontes={fontes}
+            onCriarFator={criarFator}
+            onCriarFonte={criarFonte}
+            onGerenciarFatores={() => setGerenciarTags('fator')}
+            onGerenciarFontes={() => setGerenciarTags('fonte')}
+            onClose={() => setDimensaoForm(null)}
+            onSave={salvarDimensao}
+          />
+        )}
+      </Sheet>
+
+      {/* Gerenciar cadastros de fatores/fontes — renomear e excluir. Aberto
+         de dentro do editor de dimensão, mas é uma tela à parte porque afeta
+         o catálogo inteiro, não só a dimensão em edição. */}
+      <Sheet
+        open={gerenciarTags !== null}
+        onClose={() => setGerenciarTags(null)}
+        title={gerenciarTags === 'fator' ? 'Gerenciar fatores de risco' : 'Gerenciar fontes geradoras de risco'}
+        icon="ph:tag-bold"
+        size="md"
+      >
+        {gerenciarTags && (
+          <GerenciarTagsView
+            tipo={gerenciarTags}
+            tags={gerenciarTags === 'fator' ? fatores : fontes}
+            service={gerenciarTags === 'fator' ? nr1FatorRiscoService : nr1FonteGeradoraService}
+            onChange={gerenciarTags === 'fator' ? setFatores : setFontes}
+            onFeedback={onFeedback}
+          />
+        )}
+      </Sheet>
+
       <Modal open={remover !== null} title="Remover item" onClose={() => setRemover(null)}>
         {remover && (
           <div className="flex flex-col gap-4">
@@ -322,6 +519,24 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso }: {
             <div className="flex gap-2">
               <Button variant="ghost" onClick={() => setRemover(null)}>Cancelar</Button>
               <Button fullWidth variant="secondary" iconLeft="ph:trash-bold" onClick={removerItem}>Remover item</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={removerDim !== null} title="Remover domínio" onClose={() => setRemoverDim(null)}>
+        {removerDim && (
+          <div className="flex flex-col gap-4">
+            <p className="text-[13.5px] leading-relaxed text-ink-secondary">
+              Remover <span className="font-semibold text-ink">{removerDim.nome}</span>?
+              {removerDim.itens.length > 0 && (
+                <> Os <strong className="font-semibold text-ink">{removerDim.itens.length} itens</strong> deste domínio são removidos junto.</>
+              )}{' '}
+              As campanhas que já aplicaram versões anteriores não são afetadas.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={() => setRemoverDim(null)}>Cancelar</Button>
+              <Button fullWidth variant="secondary" iconLeft="ph:trash-bold" onClick={removerDimensaoConfirmada}>Remover domínio</Button>
             </div>
           </div>
         )}
@@ -446,6 +661,255 @@ function ItemForm({ inicial, dimensaoId, escopo, onClose, onSave }: {
   )
 }
 
+/* Formulário da dimensão (RF-A05) — nome, descrição e as duas listas de
+   risco. Fatores de risco e fontes geradoras são cadastros à parte: não
+   têm vínculo entre si, só com a dimensão que os referencia; o processo de
+   cadastro acontece direto aqui, como tags (ver `TagPicker`). */
+function DimensaoForm({ inicial, fatores, fontes, onCriarFator, onCriarFonte, onGerenciarFatores, onGerenciarFontes, onClose, onSave }: {
+  inicial?: Nr1Dimensao
+  fatores: Nr1FatorRisco[]
+  fontes: Nr1FonteGeradora[]
+  onCriarFator: (nome: string) => Promise<Nr1FatorRisco>
+  onCriarFonte: (nome: string) => Promise<Nr1FonteGeradora>
+  onGerenciarFatores: () => void
+  onGerenciarFontes: () => void
+  onClose: () => void
+  onSave: (dados: { id?: string; nome: string; descricao: string; fatoresRiscoIds: string[]; fontesGeradorasIds: string[] }, novo: boolean) => void
+}) {
+  const novo = !inicial
+  const [nome, setNome] = useState(inicial?.nome ?? '')
+  const [descricao, setDescricao] = useState(inicial?.descricao ?? '')
+  const [fatorIds, setFatorIds] = useState<string[]>(inicial?.fatoresRiscoIds ?? [])
+  const [fonteIds, setFonteIds] = useState<string[]>(inicial?.fontesGeradorasIds ?? [])
+  const [salvando, setSalvando] = useState(false)
+
+  /* Se um fator/fonte selecionado aqui for excluído do catálogo (pela tela
+     de "Gerenciar", aberta em cima deste formulário), tira ele da seleção —
+     sem isso, salvar recriaria a referência que acabou de ser removida. */
+  useEffect(() => { setFatorIds((ids) => ids.filter((id) => fatores.some((f) => f.id === id))) }, [fatores])
+  useEffect(() => { setFonteIds((ids) => ids.filter((id) => fontes.some((f) => f.id === id))) }, [fontes])
+
+  const valido = nome.trim().length >= 3 && descricao.trim().length >= 10
+
+  const salvar = () => {
+    if (!valido) return
+    setSalvando(true)
+    onSave({ id: inicial?.id, nome: nome.trim(), descricao: descricao.trim(), fatoresRiscoIds: fatorIds, fontesGeradorasIds: fonteIds }, novo)
+  }
+
+  return (
+    <div className="flex flex-col gap-4 px-5 py-6 lg:px-6">
+      <label className="block">
+        <span className="mb-1.5 block text-[13px] font-semibold text-ink">Nome do domínio</span>
+        <input className={inputCls} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Demandas no trabalho" />
+      </label>
+
+      <label className="block">
+        <span className="mb-1.5 block text-[13px] font-semibold text-ink">O que é avaliado neste domínio</span>
+        <textarea className={inputCls} rows={3} value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: Avalia a carga, o ritmo e as exigências físicas, cognitivas e emocionais do trabalho." />
+      </label>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <span className="text-[13px] font-semibold text-ink">Fatores de risco</span>
+          <button type="button" onClick={onGerenciarFatores} className="inline-flex items-center gap-1 text-[12px] font-medium text-primary transition-colors hover:underline dark:text-primary-300">
+            <Icon icon="ph:gear-six-bold" width={13} aria-hidden />
+            Gerenciar
+          </button>
+        </div>
+        <TagPicker catalogo={fatores} selecionados={fatorIds} onChange={setFatorIds} onCriar={onCriarFator} placeholder="Buscar ou criar um fator de risco…" />
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <span className="text-[13px] font-semibold text-ink">Fontes geradoras de risco</span>
+          <button type="button" onClick={onGerenciarFontes} className="inline-flex items-center gap-1 text-[12px] font-medium text-primary transition-colors hover:underline dark:text-primary-300">
+            <Icon icon="ph:gear-six-bold" width={13} aria-hidden />
+            Gerenciar
+          </button>
+        </div>
+        <TagPicker catalogo={fontes} selecionados={fonteIds} onChange={setFonteIds} onCriar={onCriarFonte} placeholder="Buscar ou criar uma fonte geradora…" />
+        <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-muted">
+          Fatores e fontes são cadastros independentes — não têm vínculo entre si, só com o domínio.
+        </p>
+      </div>
+
+      <div className="mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+        <Button iconLeft="ph:check-bold" disabled={!valido || salvando} onClick={salvar}>
+          {salvando ? 'Salvando…' : novo ? 'Acrescentar domínio' : 'Salvar domínio'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/* Gerenciamento do catálogo de fatores/fontes (RF-A05) — renomear e
+   excluir. Excluir é sempre permitido, mesmo vinculado a dimensões: quem
+   decide é quem gerencia, não a UI — só mostra um alerta com a lista de
+   dimensões afetadas antes de remover o vínculo junto com o cadastro.
+
+   O alerta é uma sub-view aqui dentro (não um `Modal` à parte): este
+   componente já vive dentro de um `Sheet` portalado pro fim do `<body>`, e
+   um `Modal` (que não é portal) renderizado como filho dele ficaria preso
+   atrás — visível no DOM, mas coberto visualmente. Trocar de view dentro do
+   mesmo Sheet evita o problema de raiz. */
+function GerenciarTagsView<T extends { id: string; nome: string }>({ tipo, tags, service, onChange, onFeedback }: {
+  tipo: 'fator' | 'fonte'
+  tags: T[]
+  service: {
+    usoPorId: () => Promise<Record<string, number>>
+    usos: (id: string) => Promise<{ modelo: string; versao: string; dimensao: string }[]>
+    renomear: (id: string, nome: string) => Promise<T | undefined>
+    remover: (id: string) => Promise<{ ok: boolean }>
+  }
+  onChange: (tags: T[]) => void
+  onFeedback: (mensagem: string) => void
+}) {
+  const [usos, setUsos] = useState<Record<string, number>>({})
+  const [editando, setEditando] = useState<string | null>(null)
+  const [nomeEdit, setNomeEdit] = useState('')
+  const [confirmando, setConfirmando] = useState<{ tag: T; usos: { modelo: string; versao: string; dimensao: string }[] } | null>(null)
+  const [excluindo, setExcluindo] = useState(false)
+
+  const rotulo = tipo === 'fator' ? 'Fator de risco' : 'Fonte geradora'
+  const sufixo = tipo === 'fator' ? 'o' : 'a'
+
+  useEffect(() => { void service.usoPorId().then(setUsos) }, [service, tags.length])
+
+  const iniciarEdicao = (t: T) => { setEditando(t.id); setNomeEdit(t.nome) }
+
+  const salvarEdicao = async () => {
+    if (!editando || nomeEdit.trim().length < 2) return
+    const atualizado = await service.renomear(editando, nomeEdit.trim())
+    if (atualizado) onChange(tags.map((t) => (t.id === editando ? atualizado : t)))
+    setEditando(null)
+    onFeedback(`${rotulo} renomead${sufixo}.`)
+  }
+
+  const pedirExclusao = async (t: T) => {
+    const detalhes = await service.usos(t.id)
+    setConfirmando({ tag: t, usos: detalhes })
+  }
+
+  const confirmarExclusao = async () => {
+    if (!confirmando) return
+    setExcluindo(true)
+    await service.remover(confirmando.tag.id)
+    onChange(tags.filter((t) => t.id !== confirmando.tag.id))
+    setExcluindo(false)
+    setConfirmando(null)
+    onFeedback(`${rotulo} excluíd${sufixo}.`)
+  }
+
+  if (confirmando) {
+    return (
+      <div className="flex flex-col gap-4 px-5 py-6 lg:px-6">
+        <p className="text-[13.5px] leading-relaxed text-ink-secondary">
+          Excluir <span className="font-semibold text-ink">{confirmando.tag.nome}</span>?
+        </p>
+
+        {confirmando.usos.length > 0 && (
+          <div className="rounded-lg border border-warning/30 bg-warning-bg p-3.5">
+            <p className="mb-2 flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
+              <Icon icon="ph:link-bold" width={14} className="shrink-0 text-warning-ink" aria-hidden />
+              Vinculado a {confirmando.usos.length} {confirmando.usos.length === 1 ? 'domínio' : 'domínios'}
+            </p>
+            <ul className="flex flex-col gap-1">
+              {confirmando.usos.map((u, i) => (
+                <li key={i} className="text-[12.5px] leading-snug text-ink-secondary">
+                  {u.dimensao} <span className="text-ink-muted">· {u.modelo} · v{u.versao}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[12px] leading-relaxed text-ink-secondary">
+              O vínculo é removido desses domínios junto com a exclusão.
+            </p>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={() => setConfirmando(null)}>Cancelar</Button>
+          <Button fullWidth variant="secondary" iconLeft="ph:trash-bold" disabled={excluindo} onClick={confirmarExclusao}>
+            {excluindo ? 'Excluindo…' : 'Excluir'}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-3 px-5 py-6 lg:px-6">
+      <p className="text-[12.5px] leading-relaxed text-ink-secondary">
+        Excluir um {tipo === 'fator' ? 'fator' : 'fonte'} vinculado a algum domínio remove o vínculo junto — a
+        confirmação mostra onde ele está vinculado antes de você decidir.
+      </p>
+
+      <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+        {tags.map((t) => {
+          const numUsos = usos[t.id] ?? 0
+          return (
+            <li key={t.id} className="flex items-center gap-2 px-3.5 py-2.5">
+              {editando === t.id ? (
+                <>
+                  <input
+                    className={`${inputCls} py-1.5`}
+                    value={nomeEdit}
+                    onChange={(e) => setNomeEdit(e.target.value)}
+                    autoFocus
+                    onKeyDown={(e) => { if (e.key === 'Enter') void salvarEdicao(); if (e.key === 'Escape') setEditando(null) }}
+                  />
+                  <button
+                    onClick={salvarEdicao}
+                    disabled={nomeEdit.trim().length < 2}
+                    aria-label="Salvar nome"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-primary transition-colors hover:bg-primary-50 disabled:opacity-40 dark:text-primary-300"
+                  >
+                    <Icon icon="ph:check-bold" width={16} aria-hidden />
+                  </button>
+                  <button
+                    onClick={() => setEditando(null)}
+                    aria-label="Cancelar edição"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink"
+                  >
+                    <Icon icon="ph:x-bold" width={16} aria-hidden />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">{t.nome}</span>
+                  {numUsos > 0 && (
+                    <span className="shrink-0 text-[11px] text-ink-muted">
+                      {numUsos} {numUsos === 1 ? 'domínio' : 'domínios'}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => iniciarEdicao(t)}
+                    aria-label={`Editar ${t.nome}`}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink"
+                  >
+                    <Icon icon="ph:pencil-simple-bold" width={15} aria-hidden />
+                  </button>
+                  <button
+                    onClick={() => pedirExclusao(t)}
+                    aria-label={`Excluir ${t.nome}`}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:text-danger-ink"
+                  >
+                    <Icon icon="ph:trash-bold" width={15} aria-hidden />
+                  </button>
+                </>
+              )}
+            </li>
+          )
+        })}
+        {tags.length === 0 && (
+          <li className="px-3.5 py-8 text-center text-[13px] text-ink-secondary">Nenhum cadastro ainda.</li>
+        )}
+      </ul>
+    </div>
+  )
+}
+
 function Toggle({ checked, onChange, label, hint, disabled }: {
   checked: boolean
   onChange: (v: boolean) => void
@@ -498,7 +962,7 @@ function EscalaView({ versao }: { versao: Nr1QuestionarioVersao }) {
       ))}
 
       <section>
-        <h3 className="font-heading text-[14px] font-semibold text-ink">Cortes de risco por dimensão</h3>
+        <h3 className="font-heading text-[14px] font-semibold text-ink">Cortes de risco por domínio</h3>
         <p className="mt-0.5 text-[12px] leading-relaxed text-ink-secondary">
           Pontuação de 1 a 5, onde 5 é a situação desejável. Itens reversos são invertidos antes
           da média.

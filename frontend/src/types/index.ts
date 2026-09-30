@@ -329,11 +329,30 @@ export interface Nr1Item {
   opcoes?: string[]
 }
 
+/** Fator de risco — cadastro à parte (RF-A05), reutilizável entre dimensões
+   de qualquer modelo. Não tem vínculo com fontes geradoras: as duas listas
+   só se relacionam através da dimensão que as referencia. */
+export interface Nr1FatorRisco {
+  id: string
+  nome: string
+}
+
+/** Fonte geradora de risco — mesmo formato/uso de `Nr1FatorRisco`, cadastro
+   independente. */
+export interface Nr1FonteGeradora {
+  id: string
+  nome: string
+}
+
 export interface Nr1Dimensao {
   id: Nr1DimensaoId
   nome: string
   descricao: string
   itens: Nr1Item[]
+  /** Ids de `Nr1FatorRisco` associados a esta dimensão (RF-A05). */
+  fatoresRiscoIds: string[]
+  /** Ids de `Nr1FonteGeradora` associados a esta dimensão (RF-A05). */
+  fontesGeradorasIds: string[]
 }
 
 export interface Nr1EscalaOpcao { valor: number; rotulo: string }
@@ -469,8 +488,13 @@ export interface Nr1RiscoInventario {
   id: string
   dimensaoId: Nr1DimensaoId
   dimensao: string
-  /** Descrição do fator/perigo psicossocial. */
+  /** Descrição do fator/perigo psicossocial — o nome do fator do catálogo
+     quando `fatorRiscoId` está presente; texto livre nos riscos antigos. */
   fator: string
+  /** Fator do catálogo (`Nr1FatorRisco`) que este risco classifica. */
+  fatorRiscoId?: string
+  /** Fontes geradoras (`Nr1FonteGeradora`) apontadas para este risco. */
+  fontesGeradorasIds?: string[]
   /** Possíveis danos à saúde. */
   danos: string
   /** Grupo de trabalhadores exposto (departamento/GHE) — nomes de
