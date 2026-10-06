@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { Sheet } from './Sheet'
@@ -23,6 +23,8 @@ export interface Nr1PerguntasEscopo {
   departamentoId?: string
   departamento?: string
   media: number
+  /** Pergunta clicada na lista de perguntas críticas — fica marcada. */
+  itemId?: string
 }
 
 type Visualizacao = 'resultados' | 'riscos' | 'acoes'
@@ -106,6 +108,13 @@ function AbaResultados({ escopo }: { escopo: Nr1PerguntasEscopo }) {
     () => nr1ResultadoService.itensPorDimensao(escopo.campanhaId, escopo.dimensaoId, escopo.departamentoId),
     [escopo.campanhaId, escopo.dimensaoId, escopo.departamentoId],
   )
+  /* Leva a pergunta clicada para a vista só uma vez, não a cada render. */
+  const rolou = useRef(false)
+  const rolarAteMarcada = useCallback((el: HTMLLIElement | null) => {
+    if (!el || rolou.current) return
+    rolou.current = true
+    el.scrollIntoView({ block: 'center' })
+  }, [])
 
   return (
     <>
@@ -122,10 +131,22 @@ function AbaResultados({ escopo }: { escopo: Nr1PerguntasEscopo }) {
         <ul className="flex flex-col gap-2">
           {[...itens.data].sort((a, b) => a.media - b.media).map((it) => {
             const st = NIVEL_RISCO[it.nivel]
+            const marcada = it.itemId === escopo.itemId
             return (
-              <li key={it.itemId} className="flex items-start justify-between gap-3 rounded-lg border border-border bg-surface p-3.5">
+              <li
+                key={it.itemId}
+                ref={marcada ? rolarAteMarcada : undefined}
+                aria-current={marcada || undefined}
+                className={`flex items-start justify-between gap-3 rounded-lg border p-3.5 ${marcada ? 'border-primary bg-primary-50 ring-1 ring-primary' : 'border-border bg-surface'}`}
+              >
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13.5px] leading-snug text-ink">{it.texto}</p>
+                  {marcada && (
+                    <p className="mb-1 inline-flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-primary dark:text-primary-300">
+                      <Icon icon="ph:cursor-click-bold" width={11} aria-hidden />
+                      Pergunta selecionada
+                    </p>
+                  )}
+                  <p className={`text-[13.5px] leading-snug text-ink ${marcada ? 'font-semibold' : ''}`}>{it.texto}</p>
                   <p className="mt-1 text-[11px] text-ink-muted">{it.referencia}</p>
                 </div>
                 <span className={`flex shrink-0 flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 ${st.cls}`}>
@@ -142,7 +163,7 @@ function AbaResultados({ escopo }: { escopo: Nr1PerguntasEscopo }) {
         <Icon icon="ph:info-bold" width={18} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
         <p className="text-[12px] leading-relaxed text-ink-secondary">
           A pontuação de cada pergunta usa a mesma escala do domínio (1 a 5, onde 5 é a situação
-          desejável) — frequência ou concordância, conforme o item. Não é uma classificação de
+          desejável), qualquer que seja a escala de resposta do item. Não é uma classificação de
           probabilidade × severidade: esse é o método do Inventário de riscos, usado para
           classificar um fator de risco já identificado, não para medir uma resposta de
           questionário.

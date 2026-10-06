@@ -15,6 +15,7 @@ export function Select({
   id,
   ariaLabel,
   className = '',
+  size = 'md',
 }: {
   value: string
   options: SelectOption[]
@@ -22,6 +23,8 @@ export function Select({
   id?: string
   ariaLabel?: string
   className?: string
+  /** `sm`: versão compacta, para caber numa linha de lista. */
+  size?: 'sm' | 'md'
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -43,7 +46,7 @@ export function Select({
         aria-expanded={open}
         aria-label={ariaLabel}
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2.5 text-left text-sm font-medium text-ink transition-colors hover:bg-surface-hover focus:border-primary focus:outline-none"
+        className={`flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-surface text-left font-medium text-ink ${size === 'sm' ? 'px-2.5 py-1.5 text-[12.5px]' : 'px-3 py-2.5 text-sm'} transition-colors hover:bg-surface-hover focus:border-primary focus:outline-none`}
       >
         <span className="truncate">{selected?.label ?? 'Selecionar…'}</span>
         <Icon

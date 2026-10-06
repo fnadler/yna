@@ -6,15 +6,18 @@ export interface MultiSelectOption { value: string; label: string }
 /* Droplist de múltipla escolha — mesmo trigger do `SearchSelect`/campos de
    formulário (borda 1,5px, painel flutuante shadow-lg), com os itens
    escolhidos como pílulas no próprio campo. */
-export function MultiSelect({ values, onChange, options, placeholder = 'Selecionar', ariaLabel }: {
+export function MultiSelect({ values, onChange, options, placeholder = 'Selecionar', ariaLabel, disabled = false }: {
   values: string[]
   onChange: (v: string[]) => void
   options: MultiSelectOption[]
   placeholder?: string
   ariaLabel?: string
+  disabled?: boolean
 }) {
   const [aberto, setAberto] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { if (disabled) setAberto(false) }, [disabled])
 
   useEffect(() => {
     if (!aberto) return
@@ -34,10 +37,11 @@ export function MultiSelect({ values, onChange, options, placeholder = 'Selecion
       <button
         type="button"
         onClick={() => setAberto((a) => !a)}
+        disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={aberto}
         aria-label={ariaLabel}
-        className={`flex min-h-[44px] w-full items-center gap-2 rounded border-[1.5px] bg-surface px-2.5 py-1.5 text-left outline-none transition-colors hover:border-border-strong ${aberto ? 'border-primary' : 'border-border'}`}
+        className={`flex min-h-[44px] w-full items-center gap-2 rounded border-[1.5px] bg-surface px-2.5 py-1.5 text-left outline-none transition-colors hover:border-border-strong disabled:cursor-not-allowed disabled:bg-surface-2 disabled:hover:border-border ${aberto ? 'border-primary' : 'border-border'}`}
       >
         <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
           {selecionados.length === 0 && <span className="px-1 text-sm text-ink-muted">{placeholder}</span>}

@@ -15,15 +15,16 @@ import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
 import { RiscoPorDimensaoGrid, MapaCalorTable } from '../../components/Nr1Resultado'
 import { Nr1CicloStatusCard } from '../../components/Nr1CicloStatusCard'
-import { Nr1PerguntasSheet, type Nr1PerguntasEscopo } from '../../components/Nr1PerguntasSheet'
-import { Nr1RiscosSugeridosTab } from '../../components/Nr1RiscosSugeridos'
+import { Nr1AnaliseRiscoModal, type Nr1AnaliseEscopo } from '../../components/Nr1AnaliseRisco'
+import { cicloLabelCurto } from '../../components/Nr1PainelRiscoMapa'
+import { Nr1PerguntasCriticas } from '../../components/Nr1PerguntasCriticas'
 import { PAGE_MAX_W } from '../../lib/layout'
 import { pct } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
 import { nr1CampanhaService, nr1ModeloService, nr1ResultadoService } from '../../services/nr1'
 import { rhColaboradorService, rhDepartamentoService } from '../../services/rh'
 import { NR1_DIMENSOES } from '../../data/nr1Mock'
-import type { Nr1Campanha, RhColaboradorStatus } from '../../types'
+import type { Nr1Campanha, Nr1DimensaoId, RhColaboradorStatus } from '../../types'
 
 /** Link único do ciclo — identifica empresa e ciclo pelo próprio protocolo
    (já único e já no formato "NR1-{empresa}-{ano}-{sequencial}"), sem
@@ -103,11 +104,6 @@ function EncerrarCicloModal({ nome, open, encerrando, onClose, onConfirm }: {
    O RH escolhe o modelo + versão a aplicar e acompanha a participação por
    área em tempo real. O que ele NÃO faz aqui: editar o questionário. Toda a
    configuração do instrumento vive no backoffice da YNA.
-
-   Terceira aba "Riscos sugeridos" (`components/Nr1RiscosSugeridos.tsx`): 7
-   leituras de padrão psicossocial (triagem assistida, com possível
-   enquadramento CID-11) calculadas a partir do mesmo dado do "Risco por
-   dimensão"/mapa de calor deste ciclo — nunca um diagnóstico automático.
 
    Nomenclatura: só a identidade voltada ao RH mudou (rótulo do menu, rota,
    títulos de página). O tipo de dado por trás continua `Nr1Campanha` — não
@@ -464,13 +460,12 @@ function CompartilharLinkOpcoes({ link, campanhaId }: { link: string; campanhaId
 const TABS = [
   { key: 'engajamento', label: 'Engajamento' },
   { key: 'resultado', label: 'Resultado' },
-  { key: 'riscos-sugeridos', label: 'Riscos sugeridos' },
   { key: 'colaboradores', label: 'Colaboradores habilitados' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
 
-/** Estado vazio das abas "Resultado" e "Riscos sugeridos" enquanto o ciclo
-   está em campo — o dado por trás (`nr1MapaCalor`/`NR1_RISCOS_SUGERIDOS`)
+/** Estado vazio da aba "Resultado" enquanto o ciclo
+   está em campo — o dado por trás (`nr1MapaCalor`)
    já existe pra qualquer campanha independente do status, mas mostrá-lo
    antes do ciclo encerrar passaria uma falsa sensação de resultado
    fechado, quando na prática a participação ainda está em andamento (e o
@@ -565,12 +560,7 @@ function CicloDetalheScreen({ campanhaId }: { campanhaId: string }) {
             {tab === 'resultado' && (
               campanha.data.status === 'em-campo'
                 ? <AbaEmColeta mensagem="O risco por domínio e o mapa de calor ficam disponíveis quando o ciclo for encerrado." />
-                : <CampanhaResultado campanhaId={campanha.data.id} />
-            )}
-            {tab === 'riscos-sugeridos' && (
-              campanha.data.status === 'em-campo'
-                ? <AbaEmColeta mensagem="As leituras de risco sugeridas ficam disponíveis quando o ciclo for encerrado." />
-                : <Nr1RiscosSugeridosTab campanhaId={campanha.data.id} />
+                : <CampanhaResultado campanha={campanha.data} />
             )}
             {tab === 'colaboradores' && <CampanhaColaboradoresHabilitados campanha={campanha.data} />}
           </>
@@ -1020,11 +1010,20 @@ function CampanhaColaboradoresHabilitados({ campanha }: { campanha: Nr1Campanha 
 }
 
 /* Aba "Resultado" — risco por dimensão (macro) + mapa de calor por área,
-   ambos do ciclo selecionado, não sempre o retrato mais recente. */
-function CampanhaResultado({ campanhaId }: { campanhaId: string }) {
+   ambos do ciclo selecionado, não sempre o retrato mais recente, e as
+   perguntas da mais crítica para a menos crítica (`Nr1PerguntasCriticas`).
+   Clicar num card, numa célula ou numa pergunta abre a mesma análise de
+   risco em tela cheia da Matriz de risco (`Nr1AnaliseRiscoModal`). */
+function CampanhaResultado({ campanha }: { campanha: Nr1Campanha }) {
+  const campanhaId = campanha.id
   const dimensoes = useService(() => nr1ResultadoService.mediaPorDimensao(campanhaId), [campanhaId])
   const mapa = useService(() => nr1ResultadoService.mapaCalor(campanhaId), [campanhaId])
-  const [perguntas, setPerguntas] = useState<Nr1PerguntasEscopo | null>(null)
+  const [analise, setAnalise] = useState<Nr1AnaliseEscopo | null>(null)
+
+  const abrirAnalise = (dimensaoId: Nr1DimensaoId, departamentoId?: string, itemId?: string) => {
+    if (mapa.status !== 'success') return
+    setAnalise({ campanhaId, cicloLabel: cicloLabelCurto(campanha), dimensaoId, departamentoId, itemId, linhas: mapa.data })
+  }
 
   return (
     <>
@@ -1037,15 +1036,12 @@ function CampanhaResultado({ campanhaId }: { campanhaId: string }) {
         {dimensoes.status === 'success' && (
           <RiscoPorDimensaoGrid
             dimensoes={dimensoes.data}
-            onClickDimensao={(dimensaoId) => {
-              const d = dimensoes.data.find((x) => x.dimensaoId === dimensaoId)!
-              setPerguntas({ campanhaId, dimensaoId, media: d.media })
-            }}
+            onClickDimensao={(dimensaoId) => abrirAnalise(dimensaoId)}
           />
         )}
         <p className="mt-2 text-[11px] text-ink-muted">
           Média de 1 a 5, onde 5 é a situação desejável. Áreas com menos de 4 respondentes não
-          entram no cálculo. Clique num card para ver a pontuação por pergunta.
+          entram no cálculo. Clique num card para analisar o domínio e registrar riscos.
         </p>
       </section>
 
@@ -1057,17 +1053,24 @@ function CampanhaResultado({ campanhaId }: { campanhaId: string }) {
           <MapaCalorTable
             dimensoes={NR1_DIMENSOES}
             linhas={mapa.data}
-            onClickCelula={(dimensaoId, departamentoId, departamento) => {
-              const linha = mapa.data.find((l) => l.departamentoId === departamentoId)!
-              const media = linha.celulas.find((c) => c.dimensaoId === dimensaoId)!.media ?? 0
-              setPerguntas({ campanhaId, dimensaoId, departamentoId, departamento, media })
-            }}
+            onClickCelula={(dimensaoId, departamentoId) => abrirAnalise(dimensaoId, departamentoId)}
           />
         )}
-        <p className="mt-2 text-[11px] text-ink-muted">Clique numa célula para ver a pontuação por pergunta daquela área.</p>
+        <p className="mt-2 text-[11px] text-ink-muted">Clique numa célula para analisar o domínio naquela área e registrar riscos.</p>
       </section>
 
-      <Nr1PerguntasSheet escopo={perguntas} onClose={() => setPerguntas(null)} />
+      {mapa.status === 'success' && (
+        <div className="mt-6">
+          <Nr1PerguntasCriticas
+            campanhaId={campanhaId}
+            linhas={mapa.data}
+            onClickPergunta={({ dimensaoId, itemId, departamentoId }) => abrirAnalise(dimensaoId, departamentoId, itemId)}
+            dicaClique={(dep) => `Clique numa pergunta para analisar o domínio${dep ? ` em ${dep}` : ''} e registrar riscos.`}
+          />
+        </div>
+      )}
+
+      <Nr1AnaliseRiscoModal escopo={analise} onClose={() => setAnalise(null)} />
     </>
   )
 }

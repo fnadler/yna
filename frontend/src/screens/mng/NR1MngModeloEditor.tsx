@@ -16,7 +16,7 @@ import { PAGE_MAX_W } from '../../lib/layout'
 import { VERSAO_STATUS, fmtData } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
 import { nr1ModeloService, nr1FatorRiscoService, nr1FonteGeradoraService } from '../../services/nr1'
-import { NR1_DIMENSOES } from '../../data/nr1Mock'
+import { NR1_DIMENSOES, NR1_ESCALAS } from '../../data/nr1Mock'
 import type {
   Nr1QuestionarioModelo, Nr1QuestionarioVersao, Nr1Item, Nr1Dimensao,
   Nr1EscalaId, Nr1Direcao, CampoTipo, Nr1FatorRisco, Nr1FonteGeradora,
@@ -609,7 +609,7 @@ function ItemForm({ inicial, dimensaoId, escopo, onClose, onSave }: {
             value={escala}
             onChange={(v) => setEscala(v as Nr1EscalaId)}
             ariaLabel="Escala do item"
-            options={[{ value: 'A', label: 'A · Frequência' }, { value: 'B', label: 'B · Concordância' }]}
+            options={(Object.keys(NR1_ESCALAS) as Nr1EscalaId[]).map((k) => ({ value: k, label: `${k} · ${NR1_ESCALAS[k].nome}` }))}
           />
         </div>
       </div>
@@ -947,7 +947,7 @@ function Toggle({ checked, onChange, label, hint, disabled }: {
 function EscalaView({ versao }: { versao: Nr1QuestionarioVersao }) {
   return (
     <div className="flex flex-col gap-6 px-5 py-6 lg:px-6">
-      {(['A', 'B'] as Nr1EscalaId[]).map((k) => (
+      {(Object.keys(versao.escala) as Nr1EscalaId[]).map((k) => (
         <section key={k}>
           <h3 className="font-heading text-[14px] font-semibold text-ink">Escala {k} de {versao.escala[k].nome.toLowerCase()}</h3>
           <ol className="mt-2 flex flex-col gap-1.5">

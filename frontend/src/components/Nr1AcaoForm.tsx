@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Icon } from '@iconify/react'
 import { Button } from './Button'
 import { Input } from './Input'
 import { Select } from './Select'
@@ -10,6 +11,9 @@ import { useService } from '../hooks/useService'
 import { nr1AcaoService } from '../services/nr1'
 import { rhColaboradorService, rhDepartamentoService } from '../services/rh'
 import type { Nr1Acao, Nr1RiscoInventario, Nr1AcaoStatus } from '../types'
+
+/** "Onde" de uma ação que vale para todas as áreas. */
+const TODA_EMPRESA = 'Toda a empresa'
 
 /** Valor sentinela para "o responsável atual não corresponde a nenhum
    colaborador da lista" (ação antiga, texto livre de antes deste campo virar
@@ -79,9 +83,12 @@ export function AcaoForm({
   const [porQue, setPorQue] = useState(inicial?.porQue ?? porQuePadrao ?? '')
   const responsavel = useResponsavelField(inicial?.quem)
   const [quando, setQuando] = useState(inicial?.quando ?? '')
-  const [onde, setOnde] = useState<string[]>(
-    inicial ? inicial.onde.split(',').map((x) => x.trim()).filter(Boolean) : (ondePadrao ?? []),
-  )
+  const ondeInicial = inicial ? inicial.onde.split(',').map((x) => x.trim()).filter(Boolean) : (ondePadrao ?? [])
+  /* "Toda a empresa" é gravado no próprio `onde`, no lugar da lista de
+     áreas. Marcado, o campo de áreas fica desabilitado — as áreas que
+     estavam escolhidas ficam guardadas e voltam se a pessoa desmarcar. */
+  const [todaEmpresa, setTodaEmpresa] = useState(ondeInicial.includes(TODA_EMPRESA))
+  const [onde, setOnde] = useState<string[]>(ondeInicial.filter((x) => x !== TODA_EMPRESA))
   const [ondeTocado, setOndeTocado] = useState(false)
   const [como, setComo] = useState(inicial?.como ?? '')
   const [quanto, setQuanto] = useState(inicial?.quanto ?? '')
@@ -105,7 +112,7 @@ export function AcaoForm({
 
   const valido = oQue.trim().length >= 5 && responsavel.quemId !== '' && quando.length > 0
 
-  const retrato = JSON.stringify([risco, oQue, porQue, responsavel.quemId, quando, como, quanto, status])
+  const retrato = JSON.stringify([risco, oQue, porQue, responsavel.quemId, quando, como, quanto, status, todaEmpresa])
   const retratoInicial = useRef(retrato)
   const sujo = retrato !== retratoInicial.current || ondeTocado
   useEffect(() => { onSujo?.(sujo) }, [sujo, onSujo])
@@ -117,7 +124,7 @@ export function AcaoForm({
       id: inicial?.id ?? '',
       riscoId: risco,
       oQue: oQue.trim(), porQue: porQue.trim(), quem: responsavel.quemFinal, quando,
-      onde: onde.join(', '), como: como.trim(), quanto: quanto.trim(),
+      onde: todaEmpresa ? TODA_EMPRESA : onde.join(', '), como: como.trim(), quanto: quanto.trim(),
       status,
       comentarios: inicial?.comentarios ?? [],
       concluidaEm: inicial?.concluidaEm,
@@ -179,12 +186,25 @@ export function AcaoForm({
       <div>
         <p className="mb-1.5 text-[13px] font-semibold text-ink">Onde</p>
         <MultiSelect
-          values={onde}
+          values={todaEmpresa ? [] : onde}
           onChange={(v) => { setOndeTocado(true); setOnde(v) }}
           options={opcoesOnde}
-          placeholder="Selecionar áreas"
+          placeholder={todaEmpresa ? 'Todas as áreas da empresa' : 'Selecionar áreas'}
           ariaLabel="Onde (áreas)"
+          disabled={todaEmpresa}
         />
+        <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-[13px] text-ink">
+          <span className="relative flex h-[18px] w-[18px] shrink-0">
+            <input
+              type="checkbox"
+              checked={todaEmpresa}
+              onChange={(e) => { setOndeTocado(true); setTodaEmpresa(e.target.checked) }}
+              className="peer h-[18px] w-[18px] cursor-pointer appearance-none rounded-xs border-[1.5px] border-border-strong bg-surface transition-colors checked:border-primary checked:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
+            />
+            <Icon icon="ph:check-bold" width={12} className="pointer-events-none absolute inset-0 m-auto hidden text-white peer-checked:block" aria-hidden />
+          </span>
+          Toda a empresa
+        </label>
       </div>
 
       <label className="block">

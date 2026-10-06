@@ -31,8 +31,8 @@ export const NR1_RISCOS_SUGERIDOS: Nr1RiscoSugerido[] = [
     nome: 'Pressão por meta / sobrecarga de trabalho',
     nomeCurto: 'Pressão / sobrecarga',
     descricao: 'Demanda quantitativa acima do sustentável: ritmo acelerado, prazos incompatíveis com a jornada e dificuldade real de fazer pausas.',
-    dimensaoId: 'organizacao',
-    itensRelacionados: ['OT01', 'OT02', 'OT03', 'OT04'],
+    dimensaoId: 'demandas',
+    itensRelacionados: ['COP-01A', 'COP-01B', 'COP-02A', 'COP-02B'],
     nivelGatilho: 'atencao',
     acoesRecomendadas: [
       'Revisar metas e prazos com a liderança da área — uma redução de 15–25% é um ponto de partida comum',
@@ -55,7 +55,7 @@ export const NR1_RISCOS_SUGERIDOS: Nr1RiscoSugerido[] = [
     nomeCurto: 'Falta de autonomia',
     descricao: 'Baixo controle sobre o próprio ritmo e forma de trabalho; pouca margem de decisão mesmo em tarefas rotineiras; ambiente de desconfiança na supervisão.',
     dimensaoId: 'organizacao',
-    itensRelacionados: ['OT06', 'OT07', 'OT08', 'OT09'],
+    itensRelacionados: ['COP-04A', 'COP-04B'],
     nivelGatilho: 'atencao',
     acoesRecomendadas: [
       'Delegar responsabilidades de forma progressiva, com suporte',
@@ -76,8 +76,8 @@ export const NR1_RISCOS_SUGERIDOS: Nr1RiscoSugerido[] = [
     nome: 'Isolamento social / falta de suporte',
     nomeCurto: 'Isolamento social',
     descricao: 'Ausência de apoio de chefias ou colegas, atrito recorrente entre pares e sinais de possível hostilidade ou assédio moral — padrão que pede investigação, não só monitoramento.',
-    dimensaoId: 'relacoes',
-    itensRelacionados: ['RL01', 'RL05', 'RL10', 'RL11'],
+    dimensaoId: 'lideranca',
+    itensRelacionados: ['COP-12A', 'COP-12B'],
     nivelGatilho: 'risco',
     acoesRecomendadas: [
       'Investigar possível conflito ou assédio junto ao canal de escuta e à área jurídica',
@@ -100,7 +100,7 @@ export const NR1_RISCOS_SUGERIDOS: Nr1RiscoSugerido[] = [
     nomeCurto: 'Conflito trabalho-vida',
     descricao: 'O trabalho invade a vida pessoal: expectativa de disponibilidade fora do horário, dificuldade de desconexão no descanso.',
     dimensaoId: 'contexto',
-    itensRelacionados: ['CE01', 'CE02', 'CE03'],
+    itensRelacionados: ['COP-14A', 'COP-14B'],
     nivelGatilho: 'atencao',
     acoesRecomendadas: [
       'Publicar política de desconexão, com regras claras por área',
@@ -122,8 +122,8 @@ export const NR1_RISCOS_SUGERIDOS: Nr1RiscoSugerido[] = [
     nome: 'Desalinhamento de valores / cultura tóxica',
     nomeCurto: 'Desalinhamento de valores',
     descricao: 'Tensão e atrito nas relações de trabalho que apontam para um problema de cultura, não só de convivência pontual — falta de transparência ou comportamentos corporativos questionáveis.',
-    dimensaoId: 'relacoes',
-    itensRelacionados: ['RL08', 'RL09'],
+    dimensaoId: 'valores',
+    itensRelacionados: ['COP-15A', 'COP-15B', 'COP-16A', 'COP-16B'],
     nivelGatilho: 'atencao',
     acoesRecomendadas: [
       'Revisar ou reforçar o código de conduta com a liderança',
@@ -145,8 +145,8 @@ export const NR1_RISCOS_SUGERIDOS: Nr1RiscoSugerido[] = [
     nome: 'Burnout / esgotamento profissional',
     nomeCurto: 'Burnout',
     descricao: 'Sobrecarga persistente sem alívio: o mesmo padrão de demanda excessiva de "Pressão/sobrecarga", mas já com sinais de esgotamento acumulado — risco de maior urgência clínica, não só operacional.',
-    dimensaoId: 'organizacao',
-    itensRelacionados: ['OT01', 'OT02', 'OT03', 'OT04'],
+    dimensaoId: 'saude',
+    itensRelacionados: ['COP-18A', 'COP-18B', 'COP-19A'],
     nivelGatilho: 'risco',
     acoesRecomendadas: [
       'Acompanhamento psicológico semanal ou quinzenal para quem está mais exposto',
@@ -171,7 +171,7 @@ export const NR1_RISCOS_SUGERIDOS: Nr1RiscoSugerido[] = [
     nomeCurto: 'Desengajamento',
     descricao: 'Falta de clareza sobre como o trabalho se conecta a algo maior; ausência de identificação com os objetivos da área — um padrão de apatia, diferente da sobrecarga.',
     dimensaoId: 'organizacao',
-    itensRelacionados: ['OT10', 'OT11', 'OT12'],
+    itensRelacionados: ['COP-06A', 'COP-06B', 'COP-07A', 'COP-07B'],
     nivelGatilho: 'atencao',
     acoesRecomendadas: [
       'Revisar a alocação em projetos ou times junto à liderança',

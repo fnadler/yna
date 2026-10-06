@@ -4,13 +4,9 @@ import { Icon } from '@iconify/react'
 import { RhTopBar } from '../../components/RhTopBar'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
-import { Button } from '../../components/Button'
-import { Sheet } from '../../components/Sheet'
-import { Modal } from '../../components/Modal'
 import { Nr1CicloStatusCard } from '../../components/Nr1CicloStatusCard'
 import { AcaoLinha } from '../../components/Nr1AcaoLinha'
-import { AcaoDetalhe } from '../../components/Nr1AcaoDetalhe'
-import { AcaoForm } from '../../components/Nr1AcaoForm'
+import { Nr1AcaoDetalheModal } from '../../components/Nr1AcaoDetalhe'
 import { Nr1PainelRiscoMapa } from '../../components/Nr1PainelRiscoMapa'
 import { Toast } from '../../components/Toast'
 import { PAGE_MAX_W } from '../../lib/layout'
@@ -62,10 +58,6 @@ export function NR1RhCockpit() {
   const acoes = useService(() => nr1AcaoService.list(), [])
   const inventario = useService(() => nr1ResultadoService.inventario(), [])
   const [detalhe, setDetalhe] = useState<Nr1Acao | null>(null)
-  const [form, setForm] = useState<{ acao?: Nr1Acao; riscoId: string } | null>(null)
-  const [erro, setErro] = useState<string | null>(null)
-  const [excluirAlvo, setExcluirAlvo] = useState<Nr1Acao | null>(null)
-  const [excluindo, setExcluindo] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
 
   const firstName = usuario.nome.split(' ')[0]
@@ -102,50 +94,6 @@ export function NR1RhCockpit() {
     inventario.status === 'success' ? inventario.data.find((r) => r.id === riscoId) : undefined
 
   const riscos = inventario.status === 'success' ? inventario.data : []
-
-  /* Mesma lógica de `NR1RhPlanoAcao.tsx` para editar/concluir/comentar uma
-     ação a partir do detalhe — clicar num item de "Seus planos de ação"
-     agora abre o modal aqui mesmo, em vez de só navegar pra lista completa
-     (que continua existindo, alcançável por "Ver todos"). */
-  const concluir = async (a: Nr1Acao) => {
-    const r = await nr1AcaoService.concluir(a.id)
-    if (!r.ok) { setErro(r.message ?? 'Não foi possível concluir a ação.'); return }
-    setDetalhe(null)
-    acoes.reload()
-  }
-
-  const fecharForm = () => {
-    const editando = form?.acao
-    setForm(null)
-    if (editando) setDetalhe(editando)
-  }
-
-  const salvarForm = (salvo: Nr1Acao) => {
-    const editando = form?.acao
-    setForm(null)
-    acoes.reload()
-    setFeedback('Ação salva.')
-    if (editando) setDetalhe(salvo)
-  }
-
-  /* Mesmo fluxo de exclusão do Plano de ação: fecha o detalhe, confirma,
-     cancelar reabre o detalhe. */
-  const cancelarExclusao = () => { const a = excluirAlvo; setExcluirAlvo(null); if (a) setDetalhe(a) }
-  const confirmarExclusao = async () => {
-    if (!excluirAlvo) return
-    setExcluindo(true)
-    await nr1AcaoService.excluir(excluirAlvo.id)
-    setExcluindo(false)
-    setExcluirAlvo(null)
-    acoes.reload()
-    setFeedback('Ação excluída.')
-  }
-
-  const comentar = async (a: Nr1Acao, p: { texto?: string; arquivos?: string[] }) => {
-    await nr1AcaoService.comentar(a.id, { autor: usuario.nome, ...p })
-    acoes.reload()
-    setDetalhe({ ...a })
-  }
 
   return (
     <div className="min-h-full bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
@@ -216,91 +164,16 @@ export function NR1RhCockpit() {
         </div>
       </div>
 
-      <Sheet
-        open={detalhe !== null}
+      {/* Detalhe da ação em tela cheia — o mesmo do Plano de ação. */}
+      <Nr1AcaoDetalheModal
+        acao={detalhe}
+        riscos={riscos}
         onClose={() => setDetalhe(null)}
-        title={detalhe?.oQue ?? 'Detalhe da ação'}
-        icon="ph:list-checks-bold"
-        size="md"
-        headerActions={detalhe && (
-          <>
-            <button
-              onClick={() => { setForm({ acao: detalhe, riscoId: detalhe.riscoId }); setDetalhe(null) }}
-              aria-label="Editar ação"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink"
-            >
-              <Icon icon="ph:pencil-simple-bold" width={15} aria-hidden />
-            </button>
-            {detalhe.status !== 'concluida' && (
-              <button
-                onClick={() => { setExcluirAlvo(detalhe); setDetalhe(null) }}
-                aria-label="Excluir ação"
-                title="Excluir ação"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-surface-hover hover:text-danger-ink"
-              >
-                <Icon icon="ph:trash-bold" width={15} aria-hidden />
-              </button>
-            )}
-            {detalhe.status !== 'concluida' && (
-              <button
-                onClick={() => concluir(detalhe)}
-                disabled={!detalhe.comentarios.some((c) => c.arquivos && c.arquivos.length > 0)}
-                aria-label="Concluir ação"
-                title="Concluir ação"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-primary-600 disabled:pointer-events-none disabled:opacity-50"
-              >
-                <Icon icon="ph:check-bold" width={15} aria-hidden />
-              </button>
-            )}
-          </>
-        )}
-      >
-        {detalhe && (
-          <AcaoDetalhe
-            acao={detalhe}
-            risco={riscoDaAcao(detalhe.riscoId)}
-            onComentar={(p) => comentar(detalhe, p)}
-          />
-        )}
-      </Sheet>
-
-      <Sheet open={form !== null} onClose={fecharForm} title="Editar ação" icon="ph:list-checks-bold" size="md">
-        {form && (
-          <AcaoForm
-            inicial={form.acao}
-            riscoId={form.riscoId}
-            riscos={riscos}
-            onClose={fecharForm}
-            onSaved={salvarForm}
-          />
-        )}
-      </Sheet>
-
-      <Modal open={excluirAlvo !== null} title="Excluir ação?" onClose={cancelarExclusao}>
-        {excluirAlvo && (
-          <div className="flex flex-col gap-4">
-            <p className="text-[13.5px] leading-relaxed text-ink-secondary">
-              A ação <strong className="font-semibold text-ink">{excluirAlvo.oQue}</strong> sai do plano de ação,
-              junto com o histórico de comentários e as versões anteriores dela. Não é possível desfazer.
-            </p>
-            <div className="flex gap-2">
-              <Button variant="ghost" onClick={cancelarExclusao}>Cancelar</Button>
-              <Button fullWidth variant="secondary" iconLeft="ph:trash-bold" disabled={excluindo} onClick={confirmarExclusao}>
-                {excluindo ? 'Excluindo…' : 'Excluir ação'}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+        onAlterado={() => acoes.reload()}
+      />
 
       <Toast message={feedback} onClose={() => setFeedback(null)} />
 
-      <Modal open={erro !== null} title="Ação não concluída" onClose={() => setErro(null)}>
-        <div className="flex flex-col gap-4">
-          <p className="text-[13.5px] leading-relaxed text-ink-secondary">{erro}</p>
-          <Button fullWidth onClick={() => setErro(null)}>Entendi</Button>
-        </div>
-      </Modal>
     </div>
   )
 }

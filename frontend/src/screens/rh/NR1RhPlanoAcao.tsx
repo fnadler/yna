@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { RhTopBar } from '../../components/RhTopBar'
@@ -6,7 +6,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { Button } from '../../components/Button'
 import { PrazoBadge } from '../../components/PrazoBadge'
 import { AcaoLinha, LISTA_GRID_COLS } from '../../components/Nr1AcaoLinha'
-import { AcaoDetalhe } from '../../components/Nr1AcaoDetalhe'
+import { Nr1AcaoDetalheModal } from '../../components/Nr1AcaoDetalhe'
 import { AcaoForm, nr1RotuloRisco } from '../../components/Nr1AcaoForm'
 import { Toast } from '../../components/Toast'
 import { Sheet } from '../../components/Sheet'
@@ -16,11 +16,10 @@ import { SearchSelect } from '../../components/SearchSelect'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
 import { PAGE_MAX_W } from '../../lib/layout'
-import { NIVEL_RISCO, nr1DiasEntre, nr1UrgenciaPrazo } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
-import { useRh } from '../../contexts/RhContext'
 import { nr1AcaoService, nr1ResultadoService } from '../../services/nr1'
-import { NR1_DIMENSOES, NR1_TODAY } from '../../data/nr1Mock'
+import { rhDepartamentoService } from '../../services/rh'
+import { NR1_DIMENSOES } from '../../data/nr1Mock'
 import type { Nr1Acao, Nr1RiscoInventario, Nr1AcaoStatus, Nr1DimensaoId } from '../../types'
 
 /* NR1-RH-04 — Plano de ação 5W2H (RF-E01/E02).
@@ -28,9 +27,11 @@ import type { Nr1Acao, Nr1RiscoInventario, Nr1AcaoStatus, Nr1DimensaoId } from '
    Cada ação nasce vinculada a um risco do inventário — é esse vínculo que
    fecha a cadeia risco → ação exigida pela norma.
 
-   Regra que a UI e o serviço aplicam juntos: uma ação só pode ser concluída
-   com evidência anexada. "Evidência de execução registrada" é exatamente o
-   que a fiscalização verifica; sem ela o plano é só intenção.
+   Concluir uma ação sem nenhum comentário nem evidência é permitido, mas
+   pede confirmação: "evidência de execução registrada" é o que a
+   fiscalização verifica, então a pessoa é avisada de que está concluindo
+   sem esse registro (botão "Concluir ação" e soltar em "Concluída" no
+   Kanban passam pela mesma pergunta).
 
    Duas visualizações, por pedido explícito — o modelo de card único (uma
    coluna, um card grande por ação) ficava difícil de acompanhar execução
@@ -43,7 +44,7 @@ import type { Nr1Acao, Nr1RiscoInventario, Nr1AcaoStatus, Nr1DimensaoId } from '
      sempre; o kanban aqui é uma visualização, não um novo mecanismo de
      edição. Se isso vier a fazer falta, é um pedido separado.
 
-   O controle de vencimento (badge de prazo, e o filtro correspondente) é
+   O controle de vencimento (badge de prazo) é
    deliberadamente independente do status manual da ação: um "vencendo"/
    "vencida" é uma leitura objetiva de `quando` vs. hoje (`nr1UrgenciaPrazo`,
    `lib/nr1.ts`), não do status 5W2H que a pessoa escolheu — os dois podem
@@ -59,17 +60,9 @@ const STATUS_FILTROS: { value: string; label: string }[] = [
   { value: 'concluida', label: 'Concluídas' },
 ]
 
-const VENCIMENTO_FILTROS: { value: string; label: string }[] = [
-  { value: 'todos', label: 'Qualquer prazo' },
-  { value: 'vencida', label: 'Vencidas' },
-  { value: 'vencendo', label: 'Vencendo em breve' },
-  { value: 'no-prazo', label: 'No prazo' },
-]
-
 type Visualizacao = 'lista' | 'kanban'
 
 export function NR1RhPlanoAcao() {
-  const { usuario } = useRh()
   const [params] = useSearchParams()
   /* Só para decidir o "voltar" do topo (veio de um deep-link do Inventário
      ou não) — o filtro de risco em si vira estado próprio abaixo, para
@@ -77,18 +70,22 @@ export function NR1RhPlanoAcao() {
   const veioDoInventario = params.get('risco') !== null
 
   const acoes = useService(() => nr1AcaoService.list(), [])
+  const departamentos = useService(() => rhDepartamentoService.list(), [])
   const inventario = useService(() => nr1ResultadoService.inventario(), [])
   const [visualizacao, setVisualizacao] = useState<Visualizacao>('lista')
   const [status, setStatus] = useState('todas')
   const [riscoFiltro, setRiscoFiltro] = useState(params.get('risco') ?? 'todos')
   const [dimensaoFiltro, setDimensaoFiltro] = useState<'todas' | Nr1DimensaoId>('todas')
   const [responsavelFiltro, setResponsavelFiltro] = useState('todos')
-  const [vencimentoFiltro, setVencimentoFiltro] = useState('todos')
+  const [departamentoFiltro, setDepartamentoFiltro] = useState('todos')
   const [form, setForm] = useState<{ acao?: Nr1Acao; riscoId: string } | null>(null)
   const [detalhe, setDetalhe] = useState<Nr1Acao | null>(null)
   const [erro, setErro] = useState<string | null>(null)
-  const [excluirAlvo, setExcluirAlvo] = useState<Nr1Acao | null>(null)
-  const [excluindo, setExcluindo] = useState(false)
+  /* Conclusão aguardando confirmação (card solto em "Concluída" no Kanban,
+     ação sem comentário nem evidência). No detalhe, a mesma pergunta vive
+     dentro do próprio modal (`Nr1AcaoDetalheModal`). */
+  const [confirmarConclusao, setConfirmarConclusao] = useState<Nr1Acao | null>(null)
+  const [concluindo, setConcluindo] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [filtrosMobileOpen, setFiltrosMobileOpen] = useState(false)
 
@@ -104,20 +101,19 @@ export function NR1RhPlanoAcao() {
 
   const responsaveis = [...new Set(acoesVigentes.map((a) => a.quem))].sort((a, b) => a.localeCompare(b))
 
-  /* Riscos registrados que ainda não têm nenhuma ação — as ações nascem da
-     análise do domínio no Inventário (mapa de calor → análise de risco),
-     então o aviso leva pra lá. */
+  /* Riscos registrados que ainda não têm nenhuma ação — só um aviso, sem
+     atalho: a ação pode ser criada por "Nova ação" ou no detalhe do risco. */
   const riscosSemPlano = acoes.status === 'success'
     ? riscos.filter((r) => r.status !== 'eliminado' && !acoesVigentes.some((a) => a.riscoId === r.id))
     : []
   const filtrosAtivos = riscoFiltro !== 'todos' || status !== 'todas' || dimensaoFiltro !== 'todas'
-    || responsavelFiltro !== 'todos' || vencimentoFiltro !== 'todos'
+    || responsavelFiltro !== 'todos' || departamentoFiltro !== 'todos'
 
-  /* No mobile/tablet, dimensão/responsável/status/vencimento ficam dentro do
+  /* No mobile/tablet, domínio/departamento/responsável/status ficam dentro do
      modal "Filtrar" (risco é o único sempre visível, na linha de cima) — a
      contagem aqui vira o badge do botão, pra dar pra ver de fora do modal se
      algum deles está ativo sem precisar abrir. */
-  const filtrosSecundariosCount = [dimensaoFiltro !== 'todas', responsavelFiltro !== 'todos', status !== 'todas', vencimentoFiltro !== 'todos']
+  const filtrosSecundariosCount = [dimensaoFiltro !== 'todas', departamentoFiltro !== 'todos', responsavelFiltro !== 'todos', status !== 'todas']
     .filter(Boolean).length
 
   useEffect(() => {
@@ -129,15 +125,21 @@ export function NR1RhPlanoAcao() {
     return () => { document.body.style.overflow = prev; document.removeEventListener('keydown', onKey) }
   }, [filtrosMobileOpen])
 
+  const listaDepartamentos = departamentos.status === 'success'
+    ? [...departamentos.data].sort((a, b) => a.nome.localeCompare(b.nome))
+    : []
+
   const filtradas = acoesVigentes
     .filter((a) => (riscoFiltro === 'todos' ? true : a.riscoId === riscoFiltro))
     .filter((a) => (status === 'todas' ? true : a.status === status))
     .filter((a) => (dimensaoFiltro === 'todas' ? true : risco(a.riscoId)?.dimensaoId === dimensaoFiltro))
     .filter((a) => (responsavelFiltro === 'todos' ? true : a.quem === responsavelFiltro))
     .filter((a) => {
-      if (vencimentoFiltro === 'todos') return true
-      if (a.status === 'concluida') return false
-      return nr1UrgenciaPrazo(nr1DiasEntre(NR1_TODAY, a.quando)) === vencimentoFiltro
+      if (departamentoFiltro === 'todos') return true
+      /* "Onde" guarda nomes (ver `AcaoForm`); uma ação para toda a empresa
+         também envolve o departamento escolhido. */
+      const onde = a.onde.split(',').map((x) => x.trim())
+      return onde.includes('Toda a empresa') || onde.includes(departamentoFiltro)
     })
 
   /* Ordenação por urgência de prazo — o que vence primeiro (ou já venceu)
@@ -152,69 +154,44 @@ export function NR1RhPlanoAcao() {
 
   const limparFiltros = () => {
     setRiscoFiltro('todos'); setStatus('todas'); setDimensaoFiltro('todas')
-    setResponsavelFiltro('todos'); setVencimentoFiltro('todos')
+    setDepartamentoFiltro('todos'); setResponsavelFiltro('todos')
   }
 
-  const concluir = async (a: Nr1Acao) => {
-    const r = await nr1AcaoService.concluir(a.id)
+  const confirmarConclusaoSemRegistro = async () => {
+    if (!confirmarConclusao) return
+    setConcluindo(true)
+    const r = await nr1AcaoService.concluir(confirmarConclusao.id, { semRegistro: true })
+    setConcluindo(false)
+    setConfirmarConclusao(null)
     if (!r.ok) { setErro(r.message ?? 'Não foi possível concluir a ação.'); return }
-    setDetalhe(null)
     acoes.reload()
+    setFeedback('Ação concluída.')
   }
 
-  /* Fecha o formulário de edição/criação. Se ele foi aberto a partir do
-     detalhe de uma ação existente ("Editar", no cabeçalho do modal — ver
-     `form.acao`), volta pro detalhe em vez de fechar tudo; "Nova ação" (sem
-     `acao`) não tem detalhe pra voltar, então só fecha, como antes. */
-  const fecharForm = () => {
-    const editando = form?.acao
-    setForm(null)
-    if (editando) setDetalhe(editando)
-  }
+  const cancelarConclusao = () => setConfirmarConclusao(null)
 
-  const salvarForm = (salvo: Nr1Acao, nova: boolean) => {
-    const editando = form?.acao
+  /* Formulário de "Nova ação" — editar uma ação existente acontece dentro
+     do detalhe em tela cheia. */
+  const fecharForm = () => setForm(null)
+
+  const salvarForm = (_salvo: Nr1Acao, nova: boolean) => {
     setForm(null)
     acoes.reload()
     setFeedback(nova ? 'Ação criada.' : 'Ação salva.')
-    if (editando) setDetalhe(salvo)
-  }
-
-  /* Excluir fecha o detalhe antes de abrir a confirmação (o `Modal` não usa
-     portal e ficaria atrás do `Sheet`); cancelar reabre o mesmo detalhe. */
-  const pedirExclusao = (a: Nr1Acao) => { setDetalhe(null); setExcluirAlvo(a) }
-  const cancelarExclusao = () => { const a = excluirAlvo; setExcluirAlvo(null); if (a) setDetalhe(a) }
-  const confirmarExclusao = async () => {
-    if (!excluirAlvo) return
-    setExcluindo(true)
-    await nr1AcaoService.excluir(excluirAlvo.id)
-    setExcluindo(false)
-    setExcluirAlvo(null)
-    acoes.reload()
-    setFeedback('Ação excluída.')
-  }
-
-  const comentar = async (a: Nr1Acao, p: { texto?: string; arquivos?: string[] }) => {
-    await nr1AcaoService.comentar(a.id, { autor: usuario.nome, ...p })
-    acoes.reload()
-    /* `a.comentarios` é a MESMA referência mutada dentro do serviço (o mock
-       não devolve uma cópia) — reconstruir o array aqui (`[...a.comentarios,
-       novo]`) duplicaria a entrada, já empurrada por lá. Um shallow spread
-       de `a` já é suficiente para o React perceber a mudança de identidade
-       e re-renderizar com o array (já atualizado) como está. */
-    setDetalhe({ ...a })
   }
 
   /* Move uma ação para outra coluna do kanban — a mesma regra de negócio do
-     botão "Concluir ação" se aplica ao soltar em "Concluída" (exige
-     evidência); as demais colunas são só o status mudando de lugar. Soltar
+     botão "Concluir ação" se aplica ao soltar em "Concluída" (sem comentário
+     nem evidência, pergunta antes; cancelar deixa o card onde estava); as demais colunas são só o status mudando de lugar. Soltar
      fora de "Concluída" some com `concluidaEm`, para uma ação "des-concluída"
      por engano não ficar com data de conclusão órfã. */
   const moverStatus = async (a: Nr1Acao, novoStatus: Nr1AcaoStatus) => {
     if (a.status === novoStatus) return
     if (novoStatus === 'concluida') {
       const r = await nr1AcaoService.concluir(a.id)
+      if (r.semRegistro) { setConfirmarConclusao(a); return }
       if (!r.ok) { setErro(r.message ?? 'Não foi possível concluir a ação.'); return }
+      setFeedback('Ação concluída.')
     } else {
       await nr1AcaoService.salvar({ ...a, status: novoStatus, concluidaEm: undefined })
     }
@@ -268,7 +245,7 @@ export function NR1RhPlanoAcao() {
           ))}
         </div>
 
-        {/* Filtros — risco, dimensão, responsável, status e vencimento,
+        {/* Filtros — risco, domínio, departamento, responsável e status,
            todos combináveis, aplicados às duas visualizações. Risco vem
            sempre em linha própria, ocupando a largura toda, com busca por
            palavra-chave (`SearchSelect`) — é o filtro mais usado pra chegar
@@ -306,21 +283,28 @@ export function NR1RhPlanoAcao() {
             />
           </div>
           <div>
-            <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Responsável</p>
+            <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Departamento</p>
             <Select
+              value={departamentoFiltro}
+              onChange={setDepartamentoFiltro}
+              ariaLabel="Filtrar por departamento"
+              options={[{ value: 'todos', label: 'Todos os departamentos' }, ...listaDepartamentos.map((d) => ({ value: d.nome, label: d.nome }))]}
+            />
+          </div>
+          <div>
+            <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Responsável</p>
+            <SearchSelect
               value={responsavelFiltro}
               onChange={setResponsavelFiltro}
-              ariaLabel="Filtrar por responsável"
-              options={[{ value: 'todos', label: 'Todos os responsáveis' }, ...responsaveis.map((q) => ({ value: q, label: q }))]}
+              size="md"
+              options={[{ value: 'todos', label: 'Todos os responsáveis' }, ...[...responsaveis].sort((a, b) => a.localeCompare(b)).map((q) => ({ value: q, label: q }))]}
+              placeholder="Todos os responsáveis"
+              searchPlaceholder="Buscar pelo nome…"
             />
           </div>
           <div>
             <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Status</p>
             <Select value={status} onChange={setStatus} ariaLabel="Filtrar por status" options={STATUS_FILTROS} />
-          </div>
-          <div>
-            <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Vencimento</p>
-            <Select value={vencimentoFiltro} onChange={setVencimentoFiltro} ariaLabel="Filtrar por vencimento" options={VENCIMENTO_FILTROS} />
           </div>
         </div>
 
@@ -353,9 +337,6 @@ export function NR1RhPlanoAcao() {
                 {riscosSemPlano.slice(0, 3).map(nr1RotuloRisco).join(' · ')}{riscosSemPlano.length > 3 ? ` · e mais ${riscosSemPlano.length - 3}` : ''}
               </p>
             </div>
-            <Link to="/rh/nr1/inventario" className="shrink-0">
-              <Button size="sm" variant="secondary" iconRight="ph:arrow-right-bold">Planejar no Inventário</Button>
-            </Link>
           </div>
         )}
 
@@ -371,22 +352,17 @@ export function NR1RhPlanoAcao() {
               <p className="mx-auto mt-1 max-w-sm text-[13px] leading-relaxed text-ink-secondary">
                 {filtrosAtivos
                   ? 'Nenhuma ação combina com os filtros escolhidos.'
-                  : 'As ações nascem da análise de cada domínio no Inventário de riscos: clique numa célula do mapa de calor, registre o risco e crie o plano de ação.'}
+                  : 'Nenhuma ação criada ainda. Use "Nova ação" para criar a primeira.'}
               </p>
-              {!filtrosAtivos && (
-                <Link to="/rh/nr1/inventario" className="mt-4 inline-block">
-                  <Button variant="secondary" iconRight="ph:arrow-right-bold">Ir para o Inventário</Button>
-                </Link>
-              )}
             </div>
           ) : visualizacao === 'lista' ? (
             <div className="flex flex-col gap-2">
               {/* Cabeçalho das colunas — só no desktop, onde a grade existe de
                  fato; no mobile cada linha já se organiza em pilha. */}
               <div className={`hidden items-center gap-3 px-3.5 lg:grid ${LISTA_GRID_COLS}`}>
-                <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Nível</span>
                 <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Prazo</span>
                 <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Ação</span>
+                <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Deptos.</span>
                 <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Status</span>
               </div>
               {ordenadas.map((a) => (
@@ -399,7 +375,7 @@ export function NR1RhPlanoAcao() {
         )}
       </div>
 
-      <Sheet open={form !== null} onClose={fecharForm} title={form?.acao ? 'Editar ação' : 'Nova ação'} icon="ph:list-checks-bold" size="md">
+      <Sheet open={form !== null} onClose={fecharForm} title="Nova ação" icon="ph:list-checks-bold" size="md">
         {form && (
           <AcaoForm
             inicial={form.acao}
@@ -411,72 +387,32 @@ export function NR1RhPlanoAcao() {
         )}
       </Sheet>
 
-      <Sheet
-        open={detalhe !== null}
+      <Nr1AcaoDetalheModal
+        acao={detalhe}
+        riscos={riscos}
         onClose={() => setDetalhe(null)}
-        title={detalhe?.oQue ?? 'Detalhe da ação'}
-        icon="ph:list-checks-bold"
-        size="md"
-        headerActions={detalhe && (
-          <>
-            <button
-              onClick={() => { setForm({ acao: detalhe, riscoId: detalhe.riscoId }); setDetalhe(null) }}
-              aria-label="Editar ação"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink"
-            >
-              <Icon icon="ph:pencil-simple-bold" width={15} aria-hidden />
-            </button>
-            {detalhe.status !== 'concluida' && (
-              <button
-                onClick={() => pedirExclusao(detalhe)}
-                aria-label="Excluir ação"
-                title="Excluir ação"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-surface-hover hover:text-danger-ink"
-              >
-                <Icon icon="ph:trash-bold" width={15} aria-hidden />
-              </button>
-            )}
-            {detalhe.status !== 'concluida' && (
-              <button
-                onClick={() => concluir(detalhe)}
-                disabled={!detalhe.comentarios.some((c) => c.arquivos && c.arquivos.length > 0)}
-                aria-label="Concluir ação"
-                title="Concluir ação"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-primary-600 disabled:pointer-events-none disabled:opacity-50"
-              >
-                <Icon icon="ph:check-bold" width={15} aria-hidden />
-              </button>
-            )}
-          </>
-        )}
-      >
-        {detalhe && (
-          <AcaoDetalhe
-            acao={detalhe}
-            risco={risco(detalhe.riscoId)}
-            onComentar={(p) => comentar(detalhe, p)}
-          />
-        )}
-      </Sheet>
+        onAlterado={() => { acoes.reload(); inventario.reload() }}
+      />
 
-      <Modal open={excluirAlvo !== null} title="Excluir ação?" onClose={cancelarExclusao}>
-        {excluirAlvo && (
+      <Toast message={feedback} onClose={() => setFeedback(null)} />
+
+      <Modal open={confirmarConclusao !== null} title="Concluir sem registro?" onClose={cancelarConclusao}>
+        {confirmarConclusao && (
           <div className="flex flex-col gap-4">
             <p className="text-[13.5px] leading-relaxed text-ink-secondary">
-              A ação <strong className="font-semibold text-ink">{excluirAlvo.oQue}</strong> sai do plano de ação,
-              junto com o histórico de comentários e as versões anteriores dela. Não é possível desfazer.
+              A ação <strong className="font-semibold text-ink">{confirmarConclusao.oQue}</strong> não tem nenhum
+              comentário nem evidência anexada. A evidência de execução é o que comprova a ação numa fiscalização.
+              Quer concluir mesmo assim?
             </p>
             <div className="flex gap-2">
-              <Button variant="ghost" onClick={cancelarExclusao}>Cancelar</Button>
-              <Button fullWidth variant="secondary" iconLeft="ph:trash-bold" disabled={excluindo} onClick={confirmarExclusao}>
-                {excluindo ? 'Excluindo…' : 'Excluir ação'}
+              <Button variant="ghost" disabled={concluindo} onClick={cancelarConclusao}>Cancelar</Button>
+              <Button fullWidth iconLeft="ph:check-bold" disabled={concluindo} onClick={confirmarConclusaoSemRegistro}>
+                {concluindo ? 'Concluindo…' : 'Concluir mesmo assim'}
               </Button>
             </div>
           </div>
         )}
       </Modal>
-
-      <Toast message={feedback} onClose={() => setFeedback(null)} />
 
       <Modal open={erro !== null} title="Ação não concluída" onClose={() => setErro(null)}>
         <div className="flex flex-col gap-4">
@@ -488,8 +424,8 @@ export function NR1RhPlanoAcao() {
       {/* Painel de filtros — mobile/tablet. Em tela cheia (não o bottom-sheet
          do `Modal`, que vira centralizado a partir de `md`): aqui precisa
          continuar em tela cheia até `lg`, o mesmo ponto de corte do botão
-         "Filtrar" que abre este painel. Dimensão/responsável/status/
-         vencimento aplicam na hora (mesmo estado da grade do desktop); os
+         "Filtrar" que abre este painel. Domínio/departamento/responsável/
+         status aplicam na hora (mesmo estado da grade do desktop); os
          botões do rodapé só fecham o painel ou limpam tudo. */}
       {filtrosMobileOpen && (
         <div className="fixed inset-0 z-50 flex flex-col bg-surface lg:hidden" role="dialog" aria-modal aria-label="Filtros">
@@ -516,21 +452,28 @@ export function NR1RhPlanoAcao() {
                 />
               </div>
               <div>
-                <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Responsável</p>
+                <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Departamento</p>
                 <Select
+                  value={departamentoFiltro}
+                  onChange={setDepartamentoFiltro}
+                  ariaLabel="Filtrar por departamento"
+                  options={[{ value: 'todos', label: 'Todos os departamentos' }, ...listaDepartamentos.map((d) => ({ value: d.nome, label: d.nome }))]}
+                />
+              </div>
+              <div>
+                <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Responsável</p>
+                <SearchSelect
                   value={responsavelFiltro}
                   onChange={setResponsavelFiltro}
-                  ariaLabel="Filtrar por responsável"
-                  options={[{ value: 'todos', label: 'Todos os responsáveis' }, ...responsaveis.map((q) => ({ value: q, label: q }))]}
+                  size="md"
+                  options={[{ value: 'todos', label: 'Todos os responsáveis' }, ...[...responsaveis].sort((a, b) => a.localeCompare(b)).map((q) => ({ value: q, label: q }))]}
+                  placeholder="Todos os responsáveis"
+                  searchPlaceholder="Buscar pelo nome…"
                 />
               </div>
               <div>
                 <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Status</p>
                 <Select value={status} onChange={setStatus} ariaLabel="Filtrar por status" options={STATUS_FILTROS} />
-              </div>
-              <div>
-                <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Vencimento</p>
-                <Select value={vencimentoFiltro} onChange={setVencimentoFiltro} ariaLabel="Filtrar por vencimento" options={VENCIMENTO_FILTROS} />
               </div>
             </div>
           </div>
@@ -564,8 +507,6 @@ function AcaoCardKanban({ acao, risco, onClick, onDragStart }: {
   onClick: () => void
   onDragStart: (e: React.DragEvent) => void
 }) {
-  const nivel = risco ? NIVEL_RISCO[risco.nivel] : null
-
   return (
     <div
       role="button"
@@ -576,12 +517,6 @@ function AcaoCardKanban({ acao, risco, onClick, onDragStart }: {
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
       className="flex w-full cursor-grab flex-col gap-2 rounded-lg border border-border bg-surface p-3 text-left transition-colors hover:border-border-strong hover:bg-surface-hover active:cursor-grabbing"
     >
-      {nivel && (
-        <span className={`inline-flex w-fit items-center gap-1 rounded-pill px-2 py-0.5 text-[10.5px] font-bold ${nivel.cls}`}>
-          {risco!.nivelNum}
-          <span className="font-normal">{nivel.label}</span>
-        </span>
-      )}
       <p className="text-[13px] font-semibold leading-snug text-ink">
         {acao.oQue}
         {acao.versao > 1 && <span className="ml-1.5 text-[10.5px] font-normal text-ink-muted">v{acao.versao}</span>}
@@ -601,7 +536,7 @@ function AcaoCardKanban({ acao, risco, onClick, onDragStart }: {
 
 /** As mesmas ações da lista, agrupadas em colunas por status. Arrastar um
    card para outra coluna muda o status (soltar em "Concluída" passa pela
-   mesma regra do botão "Concluir ação": exige evidência). O id da ação
+   mesma regra do botão "Concluir ação": sem comentário nem evidência, pede confirmação). O id da ação
    arrastada viaja pelo próprio `DataTransfer` nativo do navegador — sem
    biblioteca de drag-and-drop, o projeto não tinha nenhuma e o pedido era
    sobre mover cards entre colunas, não sobre uma biblioteca específica. */
@@ -628,43 +563,125 @@ function AcoesKanban({ acoes, risco, onOpen, onMoverStatus }: {
     if (acao) onMoverStatus(acao, status)
   }
 
+  /* Desktop: as quatro colunas dividem a largura (sem rolagem lateral);
+     abaixo de `lg` continuam lado a lado com rolagem horizontal, que é o
+     gesto natural no celular. */
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2">
-      {colunas.map((c) => {
-        const itens = acoes.filter((a) => a.status === c.status)
-        return (
-          <div
-            key={c.status}
-            onDragOver={(e) => e.preventDefault()}
-            onDragEnter={() => setColunaAlvo(c.status)}
-            onDragLeave={() => setColunaAlvo((atual) => (atual === c.status ? null : atual))}
-            onDrop={(e) => soltar(e, c.status)}
-            className={`flex w-[280px] shrink-0 flex-col gap-2.5 rounded-lg p-3 transition-colors ${
-              colunaAlvo === c.status ? 'bg-primary-50 ring-2 ring-primary/40' : 'bg-surface-2'
-            }`}
-          >
-            <div className="flex items-center justify-between px-1">
-              <h3 className="font-heading text-[13px] font-semibold text-ink">{c.titulo}</h3>
-              <span className="rounded-pill bg-surface px-2 py-0.5 font-mono text-[11px] font-semibold text-ink-secondary">{itens.length}</span>
-            </div>
-            <div className="flex flex-col gap-2">
-              {itens.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-[11.5px] text-ink-muted">
-                  {colunaAlvo === c.status ? 'Solte aqui' : 'Nada aqui'}
-                </p>
-              ) : itens.map((a) => (
-                <AcaoCardKanban
-                  key={a.id}
-                  acao={a}
-                  risco={risco(a.riscoId)}
-                  onClick={() => onOpen(a)}
-                  onDragStart={(e) => e.dataTransfer.setData('text/plain', a.id)}
-                />
-              ))}
-            </div>
-          </div>
-        )
-      })}
+    <div className="flex gap-3 overflow-x-auto pb-2 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
+      {colunas.map((c) => (
+        <KanbanColuna
+          key={c.status}
+          titulo={c.titulo}
+          itens={acoes.filter((a) => a.status === c.status)}
+          alvo={colunaAlvo === c.status}
+          risco={risco}
+          onOpen={onOpen}
+          onDragOver={(e) => e.preventDefault()}
+          onDragEnter={() => setColunaAlvo(c.status)}
+          onDragLeave={() => setColunaAlvo((atual) => (atual === c.status ? null : atual))}
+          onDrop={(e) => soltar(e, c.status)}
+        />
+      ))}
+    </div>
+  )
+}
+
+/** Cards por "página" de uma coluna do Kanban. */
+const KANBAN_PAGINA = 6
+
+/** Uma coluna do Kanban. Os cards rolam dentro da própria coluna (altura
+   limitada à tela) e chegam em páginas: ao rolar até o fim, um sentinela
+   observado (`IntersectionObserver`, com a coluna como raiz) carrega a
+   próxima página. Mudou o conjunto de ações (filtro, status movido) →
+   volta para a primeira página. */
+function KanbanColuna({ titulo, itens, alvo, risco, onOpen, onDragOver, onDragEnter, onDragLeave, onDrop }: {
+  titulo: string
+  itens: Nr1Acao[]
+  alvo: boolean
+  risco: (id: string) => Nr1RiscoInventario | undefined
+  onOpen: (acao: Nr1Acao) => void
+  onDragOver: (e: React.DragEvent) => void
+  onDragEnter: () => void
+  onDragLeave: () => void
+  onDrop: (e: React.DragEvent) => void
+}) {
+  const [visiveis, setVisiveis] = useState(KANBAN_PAGINA)
+  const [carregando, setCarregando] = useState(false)
+  const rolagemRef = useRef<HTMLDivElement>(null)
+  const sentinelaRef = useRef<HTMLDivElement>(null)
+  const temMais = visiveis < itens.length
+
+  const assinatura = itens.map((a) => a.id).join('|')
+  useEffect(() => { setVisiveis(KANBAN_PAGINA) }, [assinatura])
+
+  useEffect(() => {
+    const el = sentinelaRef.current
+    if (!el || !temMais || carregando) return
+    const obs = new IntersectionObserver((entradas) => {
+      if (!entradas[0]?.isIntersecting) return
+      setCarregando(true)
+    }, { root: rolagemRef.current, rootMargin: '0px 0px 120px 0px' })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [temMais, carregando, visiveis])
+
+  /* Simula a latência da próxima página (mesmo `delay` dos serviços mock). */
+  useEffect(() => {
+    if (!carregando) return
+    const t = window.setTimeout(() => {
+      setVisiveis((v) => v + KANBAN_PAGINA)
+      setCarregando(false)
+    }, 450)
+    return () => window.clearTimeout(t)
+  }, [carregando])
+
+  return (
+    <div
+      onDragOver={onDragOver}
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={`flex w-[280px] shrink-0 flex-col gap-2.5 rounded-lg p-3 transition-colors lg:w-auto lg:min-w-0 ${
+        alvo ? 'bg-primary-50 ring-2 ring-primary/40' : 'bg-surface-2'
+      }`}
+    >
+      <div className="flex items-center justify-between px-1">
+        <h3 className="font-heading text-[13px] font-semibold text-ink">{titulo}</h3>
+        <span className="rounded-pill bg-surface px-2 py-0.5 font-mono text-[11px] font-semibold text-ink-secondary">{itens.length}</span>
+      </div>
+      <div ref={rolagemRef} className="-mx-1 flex max-h-[70vh] flex-col gap-2 overflow-y-auto px-1 pb-0.5">
+        {itens.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-[11.5px] text-ink-muted">
+            {alvo ? 'Solte aqui' : 'Nada aqui'}
+          </p>
+        ) : (
+          <>
+            {itens.slice(0, visiveis).map((a) => (
+              <AcaoCardKanban
+                key={a.id}
+                acao={a}
+                risco={risco(a.riscoId)}
+                onClick={() => onOpen(a)}
+                onDragStart={(e) => e.dataTransfer.setData('text/plain', a.id)}
+              />
+            ))}
+            {temMais && (
+              <div ref={sentinelaRef} className="flex flex-col gap-2" aria-live="polite">
+                {carregando ? (
+                  <>
+                    <Skeleton className="h-24 w-full rounded-lg" />
+                    <p className="text-center text-[11px] text-ink-muted">Carregando mais…</p>
+                  </>
+                ) : (
+                  <p className="py-1 text-center text-[11px] text-ink-muted">
+                    {visiveis} de {itens.length} · role para ver mais
+                  </p>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }

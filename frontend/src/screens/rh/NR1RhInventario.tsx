@@ -1,32 +1,34 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { createPortal } from 'react-dom'
+import { useSearchParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { RhTopBar } from '../../components/RhTopBar'
 import { PageHeader } from '../../components/PageHeader'
 import { Button } from '../../components/Button'
-import { Badge } from '../../components/Badge'
 import { Select } from '../../components/Select'
-import { PrazoBadge } from '../../components/PrazoBadge'
 import { Sheet } from '../../components/Sheet'
 import { Modal } from '../../components/Modal'
+import { Toast } from '../../components/Toast'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
+import { Nr1DepartamentosPopover } from '../../components/Nr1DepartamentosPopover'
 import { Nr1AdicionarRiscoForm } from '../../components/Nr1AdicionarRiscoForm'
-import { Nr1PainelRiscoMapa } from '../../components/Nr1PainelRiscoMapa'
+import { Nr1AnaliseRiscoModal, Nr1RiscoDetalheModal, type Nr1AnaliseInicio } from '../../components/Nr1AnaliseRisco'
+import { cicloLabelCurto } from '../../components/Nr1PainelRiscoMapa'
 import { PAGE_MAX_W } from '../../lib/layout'
-import { NIVEL_RISCO, STATUS_RISCO, ACAO_RECOMENDADA, ACAO_STATUS } from '../../lib/nr1'
+import { NIVEL_RISCO } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
 import { useRh } from '../../contexts/RhContext'
-import { nr1ResultadoService, nr1AcaoService } from '../../services/nr1'
+import { nr1ResultadoService, nr1AcaoService, nr1CampanhaService } from '../../services/nr1'
 import { rhDepartamentoService } from '../../services/rh'
-import { NR1_DIMENSOES } from '../../data/nr1Mock'
-import type { Nr1RiscoInventario, Nr1Acao, Nr1Tendencia, Nr1DimensaoId, RhDepartamento } from '../../types'
+import { NR1_DIMENSOES, nr1NivelPorProduto } from '../../data/nr1Mock'
+import type { Nr1RiscoInventario, Nr1Acao, Nr1DimensaoId, Nr1NivelRisco, Nr1Severidade, RhDepartamento } from '../../types'
 
 /** Colunas da tabela de riscos no desktop: nota, título do risco, dimensão,
    departamentos afetados, ações vinculadas e status — mesmo padrão de
    `LISTA_GRID_COLS` do Plano de ação, uma constante para o cabeçalho e cada
    linha nunca desalinharem entre si. */
-const RISCOS_GRID_COLS = 'grid-cols-[76px_1fr_150px_120px_100px_140px]'
+const RISCOS_GRID_COLS = 'grid-cols-[1fr_150px_80px_64px_120px_136px_72px]'
 
 /* NR1-RH-03 — Inventário de riscos psicossociais para o PGR (RF-D01/02/03).
 
@@ -37,8 +39,10 @@ const RISCOS_GRID_COLS = 'grid-cols-[76px_1fr_150px_120px_100px_140px]'
    A citação do instrumento (modelo + versão + protocolo) aparece no topo e vai
    junto na exportação: sem ela o inventário não se sustenta em fiscalização.
 
-   "Adicionar risco" cobre o caso de um risco identificado fora da pesquisa
-   (auditoria, observação direta do SESMT) — nasce sem histórico de ciclos,
+   "Adicionar risco" abre a mesma análise da Matriz de risco, começando pela
+   escolha do domínio. Sem ciclo finalizado, cai no formulário avulso — risco
+   identificado fora da pesquisa (auditoria, observação direta do SESMT) —
+   que nasce sem histórico de ciclos,
    então aparece como "Identificado", sem tendência/sugestão ainda (essas só
    existem a partir do 2º ciclo com dado, ver `nr1AnalisarEvolucao`). */
 
@@ -51,14 +55,11 @@ export function NR1RhInventario() {
   const departamentos = useService(() => rhDepartamentoService.list(), [])
   const [detalhe, setDetalhe] = useState<Nr1RiscoInventario | null>(null)
   const [novoRiscoOpen, setNovoRiscoOpen] = useState(false)
-  const [editando, setEditando] = useState<Nr1RiscoInventario | null>(null)
-  const [excluirAlvo, setExcluirAlvo] = useState<Nr1RiscoInventario | null>(null)
-  const [excluindo, setExcluindo] = useState(false)
-  const [excluirErro, setExcluirErro] = useState<{ risco: Nr1RiscoInventario; message: string } | null>(null)
-  const [concluirAlvo, setConcluirAlvo] = useState<Nr1RiscoInventario | null>(null)
-  const [concluindo, setConcluindo] = useState(false)
+  const [analiseInicio, setAnaliseInicio] = useState<Nr1AnaliseInicio | null>(null)
+  const [preparandoNovo, setPreparandoNovo] = useState(false)
   const [exportando, setExportando] = useState<'pdf' | 'planilha' | null>(null)
   const [exportado, setExportado] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<string | null>(null)
   const [busca, setBusca] = useState('')
   const [dimensaoFiltro, setDimensaoFiltro] = useState<'todas' | Nr1DimensaoId>('todas')
   const [departamentoFiltro, setDepartamentoFiltro] = useState('todos')
@@ -74,6 +75,43 @@ export function NR1RhInventario() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detalheParam, inventario.status])
 
+  /* "Adicionar risco" abre a mesma análise da Matriz de risco, no último
+     ciclo finalizado: primeiro a escolha do domínio (visão da empresa),
+     depois o registro guiado. Sem ciclo finalizado não há resultado para
+     mostrar ao lado — cai no formulário avulso. */
+  const adicionarRisco = async () => {
+    setPreparandoNovo(true)
+    const campanhas = await nr1CampanhaService.list()
+    const ciclo = [...campanhas].filter((c) => c.status === 'encerrada').sort((a, b) => b.inicio.localeCompare(a.inicio))[0]
+    if (!ciclo) {
+      setPreparandoNovo(false)
+      setNovoRiscoOpen(true)
+      return
+    }
+    const linhas = await nr1ResultadoService.mapaCalor(ciclo.id)
+    setPreparandoNovo(false)
+    setAnaliseInicio({ campanhaId: ciclo.id, cicloLabel: cicloLabelCurto(ciclo), linhas })
+  }
+
+  /* Severidade editada direto na lista — o nível (P × S) é recalculado pelo
+     inventário e o risco muda de célula na matriz assim que a lista recarrega. */
+  const alterarSeveridade = async (r: Nr1RiscoInventario, severidade: Nr1Severidade) => {
+    if (severidade === r.severidade) return
+    const salvo = await nr1ResultadoService.editarRisco(r.id, {
+      dimensaoId: r.dimensaoId,
+      departamentoIds: r.departamentoIds,
+      fator: r.fator,
+      fatorRiscoId: r.fatorRiscoId,
+      fontesGeradorasIds: r.fontesGeradorasIds,
+      danos: r.danos,
+      probabilidade: r.probabilidade,
+      severidade,
+      controles: r.controles,
+    })
+    inventario.reload()
+    if (salvo) setFeedback(`Severidade atualizada. Nota ${salvo.nivelNum} · ${NIVEL_RISCO[salvo.nivel].label}.`)
+  }
+
   const exportar = async (formato: 'pdf' | 'planilha') => {
     setExportando(formato)
     const r = await nr1ResultadoService.exportarInventario(formato)
@@ -83,74 +121,6 @@ export function NR1RhInventario() {
 
   const acoesDoRisco = (riscoId: string): Nr1Acao[] =>
     acoes.status === 'success' ? acoes.data.filter((a) => a.riscoId === riscoId) : []
-
-  /* Fecha o formulário de edição. Volta para o detalhe do risco que estava
-     sendo editado — mesma ideia de `fecharForm` no Plano de ação. */
-  const fecharEdicao = () => {
-    const r = editando
-    setEditando(null)
-    if (r) setDetalhe(r)
-  }
-
-  const salvarEdicao = (salvo?: Nr1RiscoInventario) => {
-    setEditando(null)
-    inventario.reload()
-    if (salvo) setDetalhe(salvo)
-  }
-
-  /* Excluir e concluir fecham o Sheet de detalhe antes de abrir o modal de
-     confirmação (em vez de empilhar o modal por cima) — `Modal` não usa
-     portal como `Sheet` usa, então um modal aberto com o Sheet ainda de pé
-     renderiza visualmente ATRÁS dele. Cancelar reabre o detalhe do mesmo
-     risco, igual a `fecharEdicao`. */
-  const cancelarExclusao = () => {
-    const r = excluirAlvo
-    setExcluirAlvo(null)
-    if (r) setDetalhe(r)
-  }
-
-  const fecharExcluirErro = () => {
-    const e = excluirErro
-    setExcluirErro(null)
-    if (e) setDetalhe(e.risco)
-  }
-
-  /* Excluir só é permitido sem ações vinculadas — a checagem de verdade é do
-     serviço (`excluirRisco`); aqui só reagimos ao resultado. Se vier
-     bloqueado, reabre o detalhe do risco por trás do aviso (ver
-     `fecharExcluirErro`), para a pessoa não perder onde estava. */
-  const confirmarExclusao = async () => {
-    if (!excluirAlvo) return
-    const alvo = excluirAlvo
-    setExcluindo(true)
-    const r = await nr1ResultadoService.excluirRisco(alvo.id)
-    setExcluindo(false)
-    setExcluirAlvo(null)
-    if (!r.ok) { setExcluirErro({ risco: alvo, message: r.message ?? 'Não foi possível excluir o risco.' }); return }
-    inventario.reload()
-  }
-
-  const cancelarConclusao = () => {
-    const r = concluirAlvo
-    setConcluirAlvo(null)
-    if (r) setDetalhe(r)
-  }
-
-  /* "Concluir risco" força o status para "Eliminado" — a única exceção à
-     regra de que esse status só vem da evolução entre ciclos (ver
-     `RiscoSeed.concluidoManualmente`). Reabre o detalhe já com o status
-     atualizado, para o botão "Concluir" sumir do cabeçalho sem precisar um
-     segundo clique. */
-  const confirmarConclusao = async () => {
-    if (!concluirAlvo) return
-    const alvo = concluirAlvo
-    setConcluindo(true)
-    await nr1ResultadoService.concluirRisco(alvo.id)
-    setConcluindo(false)
-    setConcluirAlvo(null)
-    inventario.reload()
-    setDetalhe({ ...alvo, status: 'eliminado' })
-  }
 
   const listaDepartamentos = departamentos.status === 'success'
     ? [...departamentos.data].sort((a, b) => a.nome.localeCompare(b.nome))
@@ -178,8 +148,8 @@ export function NR1RhInventario() {
           subtitle="Os fatores de risco psicossocial, prontos para incorporar ao seu PGR."
           action={
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="primary" iconLeft="ph:plus-bold" onClick={() => setNovoRiscoOpen(true)}>
-                <span className="hidden sm:inline">Adicionar risco</span>
+              <Button variant="primary" iconLeft="ph:plus-bold" disabled={preparandoNovo} onClick={adicionarRisco}>
+                <span className="hidden sm:inline">{preparandoNovo ? 'Abrindo…' : 'Adicionar risco'}</span>
               </Button>
               <div className="hidden gap-2 sm:flex">
                 <Button variant="ghost" iconLeft="ph:file-xls-bold" disabled={exportando !== null} onClick={() => exportar('planilha')}>
@@ -204,18 +174,6 @@ export function NR1RhInventario() {
           </div>
         )}
 
-        {/* Mesmo bloco da Visão geral, só com ciclos finalizados — é o retrato
-           fechado que sustenta o inventário. */}
-        <div className="mb-6">
-          <Nr1PainelRiscoMapa
-            titulo="Risco por domínio e mapa de calor"
-            subtitulo="Resultado dos ciclos de avaliação finalizados. Clique num domínio ou numa área para analisar e registrar riscos e planos de ação."
-            somenteEncerrados
-            analise
-            onRiscosAlterados={() => { inventario.reload(); acoes.reload() }}
-          />
-        </div>
-
         {(inventario.status === 'idle' || inventario.status === 'loading') && (
           <div className="flex flex-col gap-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}</div>
         )}
@@ -223,7 +181,8 @@ export function NR1RhInventario() {
 
         {inventario.status === 'success' && (
           <>
-            {/* Filtros — palavra-chave, dimensão e departamento, combináveis. */}
+            {/* Filtros — palavra-chave, dimensão e departamento, combináveis.
+               Valem para a matriz e para a lista abaixo dela. */}
             <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
                 <p className="mb-1 text-[11.5px] font-medium text-ink-secondary">Palavra-chave</p>
@@ -276,16 +235,21 @@ export function NR1RhInventario() {
                 </p>
               </div>
             ) : (
+              <>
+              <div className="mb-5">
+                <MatrizProbabilidadeSeveridade riscos={filtrados} onAbrir={setDetalhe} />
+              </div>
               <div className="flex flex-col gap-2">
                 {/* Cabeçalho das colunas — só no desktop, onde a grade existe de
                    fato; no mobile cada linha já se organiza em pilha. */}
                 <div className={`hidden items-center gap-3 px-3.5 lg:grid ${RISCOS_GRID_COLS}`}>
-                  <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Nota</span>
                   <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Risco</span>
                   <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Domínio</span>
                   <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Deptos.</span>
                   <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Ações</span>
-                  <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Status</span>
+                  <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Probabilidade</span>
+                  <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Severidade</span>
+                  <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Nota</span>
                 </div>
                 {filtrados.map((r) => (
                   <RiscoLinha
@@ -294,9 +258,11 @@ export function NR1RhInventario() {
                     vinculadas={acoesDoRisco(r.id)}
                     departamentos={listaDepartamentos}
                     onClick={() => setDetalhe(r)}
+                    onSeveridade={(sev) => alterarSeveridade(r, sev)}
                   />
                 ))}
               </div>
+              </>
             )}
 
             {/* Exportação — mobile */}
@@ -321,44 +287,12 @@ export function NR1RhInventario() {
         )}
       </div>
 
-      {/* Detalhe do risco */}
-      <Sheet
-        open={detalhe !== null}
+      {/* Detalhe do risco — análise em tela cheia: dados à esquerda, ações à direita. */}
+      <Nr1RiscoDetalheModal
+        risco={detalhe}
         onClose={() => setDetalhe(null)}
-        title="Detalhe do risco"
-        icon="ph:clipboard-text-bold"
-        size="md"
-        headerActions={detalhe && (
-          <>
-            <button
-              onClick={() => { setEditando(detalhe); setDetalhe(null) }}
-              aria-label="Editar risco"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink"
-            >
-              <Icon icon="ph:pencil-simple-bold" width={15} aria-hidden />
-            </button>
-            <button
-              onClick={() => { setExcluirAlvo(detalhe); setDetalhe(null) }}
-              aria-label="Excluir risco"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-danger/10 hover:text-danger-ink"
-            >
-              <Icon icon="ph:trash-bold" width={15} aria-hidden />
-            </button>
-            {detalhe.status !== 'eliminado' && (
-              <button
-                onClick={() => { setConcluirAlvo(detalhe); setDetalhe(null) }}
-                aria-label="Concluir risco"
-                title="Concluir risco"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-primary-600"
-              >
-                <Icon icon="ph:check-bold" width={15} aria-hidden />
-              </button>
-            )}
-          </>
-        )}
-      >
-        {detalhe && <RiscoDetalhe key={detalhe.id} risco={detalhe} acoes={acoesDoRisco(detalhe.id)} />}
-      </Sheet>
+        onAlterado={() => { inventario.reload(); acoes.reload() }}
+      />
 
       {/* Adicionar risco */}
       <Sheet open={novoRiscoOpen} onClose={() => setNovoRiscoOpen(false)} title="Adicionar risco" icon="ph:plus-bold" size="md">
@@ -368,48 +302,13 @@ export function NR1RhInventario() {
         />
       </Sheet>
 
-      {/* Editar risco */}
-      <Sheet open={editando !== null} onClose={fecharEdicao} title="Editar risco" icon="ph:pencil-simple-bold" size="md">
-        {editando && <Nr1AdicionarRiscoForm inicial={editando} onClose={fecharEdicao} onSaved={salvarEdicao} />}
-      </Sheet>
+      <Nr1AnaliseRiscoModal
+        escopo={analiseInicio}
+        onClose={() => setAnaliseInicio(null)}
+        onRiscosAlterados={() => { inventario.reload(); acoes.reload() }}
+      />
 
-      <Modal open={excluirAlvo !== null} title="Excluir risco" onClose={cancelarExclusao}>
-        <div className="flex flex-col gap-4">
-          <p className="text-[13.5px] leading-relaxed text-ink-secondary">
-            Tem certeza que deseja excluir este risco do inventário? Essa ação não pode ser
-            desfeita.
-          </p>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="ghost" onClick={cancelarExclusao}>Cancelar</Button>
-            <Button variant="danger" iconLeft="ph:trash-bold" disabled={excluindo} onClick={confirmarExclusao}>
-              {excluindo ? 'Excluindo…' : 'Excluir risco'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal open={excluirErro !== null} title="Risco não excluído" onClose={fecharExcluirErro}>
-        <div className="flex flex-col gap-4">
-          <p className="text-[13.5px] leading-relaxed text-ink-secondary">{excluirErro?.message}</p>
-          <Button fullWidth onClick={fecharExcluirErro}>Entendi</Button>
-        </div>
-      </Modal>
-
-      <Modal open={concluirAlvo !== null} title="Concluir risco" onClose={cancelarConclusao}>
-        <div className="flex flex-col gap-4">
-          <p className="text-[13.5px] leading-relaxed text-ink-secondary">
-            Concluir marca este risco como <span className="font-medium text-ink">Eliminado</span>,
-            indicando que ele foi resolvido, independente do que o próximo ciclo da pesquisa
-            mostrar. Use quando o RH/SST já confirmou que o risco não existe mais.
-          </p>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="ghost" onClick={cancelarConclusao}>Cancelar</Button>
-            <Button iconLeft="ph:check-bold" disabled={concluindo} onClick={confirmarConclusao}>
-              {concluindo ? 'Concluindo…' : 'Concluir risco'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      <Toast message={feedback} onClose={() => setFeedback(null)} />
 
       <Modal open={exportado !== null} title="Arquivo gerado" onClose={() => setExportado(null)}>
         <div className="flex flex-col gap-4">
@@ -429,23 +328,39 @@ export function NR1RhInventario() {
 }
 
 /** Linha de um risco — a visualização em tabela do inventário. No desktop,
-   seis colunas alinhadas com o cabeçalho (`RISCOS_GRID_COLS`): nota, título
-   do risco, dimensão, departamentos afetados (contagem, com um popover para
-   ver a lista completa — `DepartamentosPopover`), ações vinculadas e status.
+   sete colunas alinhadas com o cabeçalho (`RISCOS_GRID_COLS`): título do
+   risco, domínio, departamentos afetados (contagem, com um popover para ver
+   a lista completa — `Nr1DepartamentosPopover`), ações vinculadas,
+   probabilidade, severidade (editável) e, por último, a nota P × S.
    Abaixo de `lg`, os mesmos dados em pilha compacta.
 
-   Clicar em qualquer parte da linha abre o detalhe do risco (mesmo Sheet de
-   sempre) — só o botão do popover de departamentos precisa impedir a
+   Clicar em qualquer parte da linha abre o detalhe do risco em tela cheia
+   (`Nr1RiscoDetalheModal`) — só o botão do popover de departamentos precisa impedir a
    propagação do clique, senão abrir a lista de departamentos também abriria
    o detalhe. */
-function RiscoLinha({ risco, vinculadas, departamentos, onClick }: {
+function RiscoLinha({ risco, vinculadas, departamentos, onClick, onSeveridade }: {
   risco: Nr1RiscoInventario
   vinculadas: Nr1Acao[]
   departamentos: RhDepartamento[]
   onClick: () => void
+  onSeveridade: (s: Nr1Severidade) => void
 }) {
   const nivel = NIVEL_RISCO[risco.nivel]
-  const status = STATUS_RISCO[risco.status]
+  const nomesDeps = risco.departamentoIds.map((id) => departamentos.find((d) => d.id === id)?.nome ?? id)
+  const probabilidade = `${risco.probabilidade} · ${PROBABILIDADE_ROTULOS[risco.probabilidade - 1]}`
+  /* O droplist fica dentro da linha clicável — clique e teclado nele não
+     podem abrir o detalhe. */
+  const severidade = (
+    <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+      <Select
+        size="sm"
+        value={String(risco.severidade)}
+        onChange={(v) => onSeveridade(Number(v) as Nr1Severidade)}
+        ariaLabel={`Severidade de ${risco.fator}`}
+        options={SEVERIDADE_ROTULOS.map((r, i) => ({ value: String(i + 1), label: `${i + 1} · ${r}` }))}
+      />
+    </div>
+  )
 
   return (
     <div
@@ -457,40 +372,46 @@ function RiscoLinha({ risco, vinculadas, departamentos, onClick }: {
     >
       {/* Desktop — colunas */}
       <div className={`hidden items-center gap-3 lg:grid ${RISCOS_GRID_COLS}`}>
-        <span className={`flex w-fit flex-col items-center gap-0.5 rounded-lg px-2.5 py-1.5 ${nivel.cls}`}>
-          <span className="font-mono text-[14px] font-bold leading-none">{risco.nivelNum}</span>
-          <span className="text-[9px] font-semibold leading-none">{nivel.label}</span>
-        </span>
         <div className="min-w-0">
           <p className="text-[13.5px] leading-snug text-ink">{risco.fator}</p>
           <p className="mt-0.5 text-[11px] text-ink-muted">{risco.respondentes} respondentes</p>
         </div>
         <p className="min-w-0 truncate text-[12.5px] text-ink-secondary">{risco.dimensao}</p>
-        <DepartamentosPopover ids={risco.departamentoIds} departamentos={departamentos} />
+        <Nr1DepartamentosPopover nomes={nomesDeps} />
         <span className="inline-flex w-fit items-center gap-1 text-[12.5px] text-ink-secondary">
           <Icon icon="ph:list-checks-bold" width={13} className="shrink-0 text-ink-muted" aria-hidden />
           {vinculadas.length}
         </span>
-        <div><Badge tone={status.tone} icon={status.icon}>{status.label}</Badge></div>
+        <p className="text-[12.5px] text-ink-secondary">{probabilidade}</p>
+        {severidade}
+        <span className={`flex w-fit flex-col items-center gap-0.5 rounded-lg px-2.5 py-1.5 ${nivel.cls}`}>
+          <span className="font-mono text-[14px] font-bold leading-none">{risco.nivelNum}</span>
+          <span className="text-[9px] font-semibold leading-none">{nivel.label}</span>
+        </span>
       </div>
 
       {/* Mobile/tablet — pilha compacta */}
       <div className="flex items-start gap-3 lg:hidden">
-        <span className={`mt-0.5 flex shrink-0 flex-col items-center gap-0.5 rounded-lg px-2 py-1 ${nivel.cls}`}>
-          <span className="font-mono text-[12px] font-bold leading-none">{risco.nivelNum}</span>
-        </span>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-start justify-between gap-2">
             <p className="min-w-0 text-[13.5px] font-medium leading-snug text-ink">{risco.fator}</p>
-            <Badge tone={status.tone} className="shrink-0">{status.label}</Badge>
+            <span className={`flex shrink-0 flex-col items-center gap-0.5 rounded-lg px-2 py-1 ${nivel.cls}`}>
+              <span className="font-mono text-[12px] font-bold leading-none">{risco.nivelNum}</span>
+            </span>
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11.5px] text-ink-secondary">
             <span className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-ink-muted">{risco.dimensao}</span>
-            <DepartamentosPopover ids={risco.departamentoIds} departamentos={departamentos} />
+            <Nr1DepartamentosPopover nomes={nomesDeps} />
             <span className="inline-flex items-center gap-1 whitespace-nowrap">
               <Icon icon="ph:list-checks-bold" width={11} aria-hidden />
               {vinculadas.length} {vinculadas.length === 1 ? 'ação' : 'ações'}
             </span>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11.5px] text-ink-secondary">
+            <span>Probabilidade {probabilidade}</span>
+            <span className="text-ink-muted">·</span>
+            <span>Severidade</span>
+            <div className="w-36">{severidade}</div>
           </div>
         </div>
         <Icon icon="ph:caret-right-bold" width={14} className="mt-1 shrink-0 text-ink-muted" aria-hidden />
@@ -499,268 +420,186 @@ function RiscoLinha({ risco, vinculadas, departamentos, onClick }: {
   )
 }
 
-/** Contagem de departamentos afetados por um risco, com um popover que
-   mostra a lista completa ao clicar — evita ter que abrir o detalhe do
-   risco só para ver quais departamentos estão expostos. */
-function DepartamentosPopover({ ids, departamentos }: { ids: string[]; departamentos: RhDepartamento[] }) {
-  const [open, setOpen] = useState(false)
-  const nomes = ids.map((id) => departamentos.find((d) => d.id === id)?.nome ?? id)
+/* ------------------------------------------------------------------
+   Visualização "Matriz de risco" — probabilidade (eixo Y, de 5 no topo a 1
+   embaixo) × severidade (eixo X, de 1 a 5). Cada risco cai na célula da sua
+   pontuação; a cor da célula é o nível do produto P × S (mesmos cortes de
+   `nr1NivelPorProduto`). Clicar num risco abre o mesmo detalhe da lista.
+   ------------------------------------------------------------------ */
 
-  return (
-    <div className="relative w-fit">
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
-        aria-expanded={open}
-        aria-label={`${ids.length} ${ids.length === 1 ? 'departamento afetado' : 'departamentos afetados'}, ver lista`}
-        className="inline-flex items-center gap-1 rounded-pill bg-surface-2 px-2 py-1 text-[12px] font-medium text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink"
-      >
-        <Icon icon="ph:buildings-bold" width={12} className="shrink-0" aria-hidden />
-        {ids.length}
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-30" onClick={(e) => { e.stopPropagation(); setOpen(false) }} />
-          <div
-            role="menu"
-            onClick={(e) => e.stopPropagation()}
-            className="absolute left-0 top-full z-40 mt-1.5 w-56 rounded-lg border border-border bg-surface p-2 shadow-lg"
-          >
-            <p className="mb-1 px-2 pt-1 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted">
-              Departamentos afetados
-            </p>
-            <ul className="flex flex-col gap-0.5">
-              {nomes.map((nome, i) => (
-                <li key={i} className="rounded px-2 py-1.5 text-[12.5px] text-ink">{nome}</li>
-              ))}
-            </ul>
-          </div>
-        </>
-      )}
-    </div>
-  )
+const PROBABILIDADE_ROTULOS = ['Rara', 'Improvável', 'Possível', 'Provável', 'Quase certa']
+const SEVERIDADE_ROTULOS = ['Leve', 'Menor', 'Moderada', 'Grave', 'Extrema']
+
+/** Fundo de cada célula — tons suaves do nível, para os cards de risco
+   continuarem legíveis por cima. */
+const CELULA_NIVEL: Record<Nr1NivelRisco, string> = {
+  baixo: 'bg-success/20',
+  atencao: 'bg-warning/30',
+  risco: 'bg-danger/20',
+  critico: 'bg-danger/45',
 }
 
-type RiscoAba = 'dados' | 'acoes'
+/** Cards visíveis por célula antes do "+N". */
+const POR_CELULA = 2
 
-/** Detalhe do risco, em duas abas — "Dados do risco" (o que é, o nível, os
-   controles recomendados) e "Planos de ação" (as ações vinculadas, ver
-   `RiscoAcoesTab`). Separar em abas tirou "Ações vinculadas" de dentro dos
-   dados do risco (fazia mais sentido como sua própria aba, do tamanho que
-   quiser crescer, do que uma seção a mais no fim de uma lista já longa). */
-function RiscoDetalhe({ risco, acoes }: { risco: Nr1RiscoInventario; acoes: Nr1Acao[] }) {
-  const [aba, setAba] = useState<RiscoAba>('dados')
-  const st = NIVEL_RISCO[risco.nivel]
-
-  const abas: { valor: RiscoAba; label: string; icon: string }[] = [
-    { valor: 'dados', label: 'Dados do risco', icon: 'ph:clipboard-text-bold' },
-    { valor: 'acoes', label: 'Planos de ação', icon: 'ph:list-checks-bold' },
-  ]
+function MatrizProbabilidadeSeveridade({ riscos, onAbrir }: {
+  riscos: Nr1RiscoInventario[]
+  onAbrir: (r: Nr1RiscoInventario) => void
+}) {
+  const [expandida, setExpandida] = useState<string | null>(null)
+  const [dica, setDica] = useState<Dica | null>(null)
+  /* A posição é fixa na tela — rolar com o tooltip aberto o descolaria do card. */
+  useEffect(() => {
+    if (!dica) return
+    const fechar = () => setDica(null)
+    window.addEventListener('scroll', fechar, true)
+    return () => window.removeEventListener('scroll', fechar, true)
+  }, [dica])
 
   return (
-    <>
-      <div className="mx-5 mt-5 flex gap-1 rounded-lg bg-surface-2 p-1 lg:mx-6" role="tablist" aria-label="Detalhe do risco">
-        {abas.map((t) => (
-          <button
-            key={t.valor}
-            role="tab"
-            aria-selected={aba === t.valor}
-            onClick={() => setAba(t.valor)}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 font-heading text-sm font-semibold transition-all ${
-              aba === t.valor ? 'bg-surface text-ink shadow-xs' : 'text-ink-secondary hover:text-ink'
-            }`}
-          >
-            <Icon icon={t.icon} width={15} aria-hidden />
-            {t.label}
-            {t.valor === 'acoes' && acoes.length > 0 && (
-              <span className="rounded-pill bg-surface px-1.5 py-0.5 font-mono text-[10px] font-semibold text-ink-secondary">{acoes.length}</span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {aba === 'dados' ? (
-        <div className="flex flex-col gap-5 px-5 py-6 lg:px-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <EvolucaoBadges risco={risco} />
-          </div>
-
-          <Campo label="Descrição do fator / perigo">{risco.fator}</Campo>
-          <Campo label="Possíveis danos à saúde">{risco.danos}</Campo>
-          <Campo label="Grupo de trabalhadores exposto">
-            {risco.grupoExposto} · {risco.respondentes} respondentes
-          </Campo>
-
-          <div>
-            <p className="mb-1.5 font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-muted">
-              Nível de risco
-            </p>
-            <div className="flex items-center gap-3">
-              <span className={`flex flex-col items-center gap-0.5 rounded-lg px-4 py-2.5 ${st.cls}`}>
-                <span className="font-mono text-[20px] font-bold leading-none">{risco.nivelNum}</span>
-                <span className="text-[11px] font-semibold leading-none">{st.label}</span>
-              </span>
-              <div className="text-[12.5px] text-ink-secondary">
-                <p>Probabilidade {risco.probabilidade} × severidade {risco.severidade}</p>
-                <p className="mt-0.5 font-medium text-ink">{st.acao}</p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-1.5 font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-muted">
-              Controles recomendados
-            </p>
-            <ul className="flex flex-col gap-1.5">
-              {risco.controles.map((c, i) => (
-                <li key={i} className="flex items-start gap-2 rounded-lg bg-surface-2 px-3.5 py-2.5 text-[13px] leading-snug text-ink-secondary">
-                  <Icon icon="ph:check-bold" width={13} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
-                  {c}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      ) : (
-        <RiscoAcoesTab riscoId={risco.id} acoes={acoes} />
-      )}
-    </>
-  )
-}
-
-/** Aba "Planos de ação" do detalhe do risco — as ações vinculadas, numa
-   organização parecida com a visualização "Lista" da tela de Planos de ação
-   (`NR1RhPlanoAcao.tsx`): prazo, ação (título + responsável) e status, em
-   colunas no desktop e empilhado no mobile. Cada linha leva para o Plano de
-   ação filtrado por este risco — gerenciar a ação (editar, comentar,
-   concluir) continua acontecendo lá, não é duplicado aqui dentro do modal. */
-function RiscoAcoesTab({ riscoId, acoes }: { riscoId: string; acoes: Nr1Acao[] }) {
-  return (
-    <div className="flex flex-col gap-4 px-5 py-6 lg:px-6">
-      <div className="flex items-center justify-between gap-2">
-        <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-muted">
-          {acoes.length} {acoes.length === 1 ? 'ação vinculada' : 'ações vinculadas'}
-        </p>
-        <Link
-          to={`/rh/nr1/plano-acao?risco=${riscoId}`}
-          className="inline-flex items-center gap-1 text-[11.5px] font-medium text-primary hover:underline dark:text-primary-300"
-        >
-          {acoes.length > 0 ? 'Ver no Plano de ação' : 'Definir ação'}
-          <Icon icon="ph:arrow-right-bold" width={10} aria-hidden />
-        </Link>
-      </div>
-
-      {acoes.length === 0 ? (
-        <p className="rounded-lg bg-surface-2 px-3.5 py-3 text-[12.5px] text-ink-secondary">
-          Nenhuma ação definida ainda. Priorizar um risco e não agir sobre ele deixa a cadeia pela
-          metade.
-        </p>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {acoes.map((a) => <RiscoAcaoLinha key={a.id} acao={a} riscoId={riscoId} />)}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/** Colunas de `RiscoAcaoLinha` no desktop — prazo, ação e status. Sem a
-   coluna de nível que `AcaoLinha` (Plano de ação) tem: aqui todas as linhas
-   são do mesmo risco, então o nível já apareceu uma vez na aba "Dados do
-   risco" e repeti-lo em toda linha só adicionaria ruído. */
-const RISCO_ACOES_GRID_COLS = 'grid-cols-[130px_1fr_120px]'
-
-function RiscoAcaoLinha({ acao, riscoId }: { acao: Nr1Acao; riscoId: string }) {
-  const st = ACAO_STATUS[acao.status]
-  return (
-    <Link
-      to={`/rh/nr1/plano-acao?risco=${riscoId}`}
-      className="block rounded-lg border border-border bg-surface p-3.5 transition-colors hover:border-border-strong hover:bg-surface-hover"
-    >
-      {/* Desktop — colunas */}
-      <div className={`hidden items-center gap-3 lg:grid ${RISCO_ACOES_GRID_COLS}`}>
-        <div><PrazoBadge acao={acao} /></div>
-        <div className="min-w-0">
-          <p className="font-heading text-[13.5px] font-semibold text-ink">
-            {acao.oQue}
-            {acao.versao > 1 && <span className="ml-1.5 text-[10.5px] font-normal text-ink-muted">v{acao.versao}</span>}
-          </p>
-          <p className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-muted">
-            <Icon icon="ph:user-bold" width={10} aria-hidden />{acao.quem}
-          </p>
-        </div>
-        <div><Badge tone={st.tone}>{st.label}</Badge></div>
-      </div>
-
-      {/* Mobile/tablet — pilha compacta */}
-      <div className="flex items-start gap-3 lg:hidden">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="min-w-0 font-heading text-[13.5px] font-semibold text-ink">
-              {acao.oQue}
-              {acao.versao > 1 && <span className="ml-1.5 text-[10.5px] font-normal text-ink-muted">v{acao.versao}</span>}
-            </p>
-            <Badge tone={st.tone} className="shrink-0">{st.label}</Badge>
-          </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11.5px] text-ink-secondary">
-            <span className="inline-flex items-center gap-1 whitespace-nowrap">
-              <Icon icon="ph:user-bold" width={11} aria-hidden />{acao.quem}
+    <div className="rounded-lg border border-border bg-surface p-4 lg:p-5">
+      {dica && <TooltipRisco dica={dica} />}
+      <div className="overflow-x-auto">
+        <div className="grid min-w-[680px] grid-cols-[24px_104px_repeat(5,minmax(0,1fr))] gap-1">
+          {/* Título do eixo Y, ao longo das 5 linhas */}
+          <div className="row-span-5 flex items-center justify-center">
+            <span className="-rotate-90 whitespace-nowrap font-mono text-[10.5px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+              Probabilidade
             </span>
-            <PrazoBadge acao={acao} />
           </div>
-        </div>
-        <Icon icon="ph:caret-right-bold" width={14} className="mt-1.5 shrink-0 text-ink-muted" aria-hidden />
-      </div>
-    </Link>
-  )
-}
 
-function Campo({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="mb-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-muted">{label}</p>
-      <p className="text-[13.5px] leading-relaxed text-ink">{children}</p>
+          {[5, 4, 3, 2, 1].map((p) => (
+            <MatrizLinha key={p} p={p} riscos={riscos} expandida={expandida} onExpandir={setExpandida} onAbrir={onAbrir} onDica={setDica} />
+          ))}
+
+          {/* Eixo X */}
+          <div />
+          <div />
+          {SEVERIDADE_ROTULOS.map((r, i) => (
+            <p key={r} className="pt-0.5 text-center text-[11px] text-ink-secondary">
+              <span className="font-mono font-semibold text-ink">{i + 1}</span> · {r}
+            </p>
+          ))}
+          <div />
+          <div />
+          <p className="col-span-5 text-center font-mono text-[10.5px] font-semibold uppercase tracking-[0.14em] text-ink-muted">Severidade</p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3 text-[11.5px] text-ink-secondary">
+        <span className="font-medium text-ink">Nível (P × S):</span>
+        {(['baixo', 'atencao', 'risco', 'critico'] as Nr1NivelRisco[]).map((n) => (
+          <span key={n} className="inline-flex items-center gap-1.5">
+            <span className={`h-3 w-3 rounded-[3px] ${CELULA_NIVEL[n]} ring-1 ring-inset ring-border`} aria-hidden />
+            {NIVEL_RISCO[n].label}
+          </span>
+        ))}
+        <span className="text-ink-muted">· Clique num risco para ver o detalhe.</span>
+      </div>
     </div>
   )
 }
 
-/* Status + tendência + sugestão do risco — sempre uma leitura calculada a
-   partir do histórico entre ciclos (ver nr1AnalisarEvolucao), nunca uma
-   conclusão. O card mostra a sugestão; quem decide o que fazer com ela é o
-   SST/RH. */
-function EvolucaoBadges({ risco }: { risco: Nr1RiscoInventario }) {
-  const st = STATUS_RISCO[risco.status]
+function MatrizLinha({ p, riscos, expandida, onExpandir, onAbrir, onDica }: {
+  p: number
+  riscos: Nr1RiscoInventario[]
+  expandida: string | null
+  onExpandir: (k: string | null) => void
+  onAbrir: (r: Nr1RiscoInventario) => void
+  onDica: (d: Dica | null) => void
+}) {
+  const mostrar = (r: Nr1RiscoInventario, el: HTMLElement) => {
+    const b = el.getBoundingClientRect()
+    onDica({ risco: r, x: b.left + b.width / 2, topo: b.top, base: b.bottom })
+  }
   return (
     <>
-      <Badge tone={st.tone} icon={st.icon}>{st.label}</Badge>
-      {risco.tendencia && <TendenciaTag tendencia={risco.tendencia} variacaoPontos={risco.variacaoPontos} />}
-      {risco.acaoRecomendada && (
-        <span className="text-[11.5px] text-ink-secondary">
-          Sugestão: <span className="font-medium text-ink">{ACAO_RECOMENDADA[risco.acaoRecomendada].label}</span>
-        </span>
-      )}
+      <div className="flex flex-col items-end justify-center pr-1 text-right">
+        <p className="text-[11px] leading-tight text-ink-secondary"><span className="font-mono font-semibold text-ink">{p}</span> · {PROBABILIDADE_ROTULOS[p - 1]}</p>
+      </div>
+      {[1, 2, 3, 4, 5].map((sev) => {
+        const chave = `${p}-${sev}`
+        const produto = p * sev
+        const nivel = nr1NivelPorProduto(produto)
+        const aqui = riscos.filter((r) => r.probabilidade === p && r.severidade === sev).sort((a, b) => a.fator.localeCompare(b.fator))
+        const aberta = expandida === chave
+        const visiveis = aberta ? aqui : aqui.slice(0, POR_CELULA)
+        return (
+          <div
+            key={sev}
+            className={`flex min-h-[64px] flex-col gap-1 rounded-none p-1 ${CELULA_NIVEL[nivel]}`}
+            aria-label={`Probabilidade ${p} × severidade ${sev}: ${aqui.length} ${aqui.length === 1 ? 'risco' : 'riscos'}`}
+          >
+            <span className="self-end font-mono text-[9.5px] font-semibold leading-none text-ink-muted">{produto}</span>
+            {visiveis.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => { onDica(null); onAbrir(r) }}
+                onMouseEnter={(e) => mostrar(r, e.currentTarget)}
+                onMouseLeave={() => onDica(null)}
+                onFocus={(e) => mostrar(r, e.currentTarget)}
+                onBlur={() => onDica(null)}
+                aria-label={`${r.fator}. Departamentos afetados: ${r.grupoExposto}`}
+                className="w-full rounded-md border border-border bg-surface px-2 py-1 text-left shadow-xs transition-colors hover:border-primary/50 hover:bg-surface-hover"
+              >
+                <p className="truncate text-[11px] font-semibold leading-snug text-ink">{r.fator}</p>
+              </button>
+            ))}
+            {aqui.length > POR_CELULA && (
+              <button
+                type="button"
+                onClick={() => onExpandir(aberta ? null : chave)}
+                className="rounded-md px-2 py-0.5 text-[10.5px] font-medium text-primary hover:underline dark:text-primary-300"
+              >
+                {aberta ? 'Mostrar menos' : `+${aqui.length - POR_CELULA} ${aqui.length - POR_CELULA === 1 ? 'risco' : 'riscos'}`}
+              </button>
+            )}
+          </div>
+        )
+      })}
     </>
   )
 }
 
-const TENDENCIA_VISUAL: Record<Nr1Tendencia, { icon: string; cls: string; label: string }> = {
-  melhorando: { icon: 'ph:trend-up-bold', cls: 'text-success-ink', label: 'Melhorando' },
-  estavel: { icon: 'ph:minus-bold', cls: 'text-ink-muted', label: 'Estável' },
-  piorando: { icon: 'ph:trend-down-bold', cls: 'text-danger-ink', label: 'Piorando' },
+/** Risco sob o mouse (ou foco) na matriz, com a posição do card na tela. */
+interface Dica {
+  risco: Nr1RiscoInventario
+  x: number
+  topo: number
+  base: number
 }
 
-function TendenciaTag({ tendencia, variacaoPontos }: { tendencia: Nr1Tendencia; variacaoPontos?: number }) {
-  const v = TENDENCIA_VISUAL[tendencia]
-  return (
-    <span className={`inline-flex items-center gap-1 text-[11.5px] font-medium ${v.cls}`}>
-      <Icon icon={v.icon} width={13} aria-hidden />
-      {v.label}
-      {variacaoPontos !== undefined && ` (${variacaoPontos > 0 ? '+' : ''}${variacaoPontos.toFixed(1)})`}
-    </span>
+/** Tooltip de um card da matriz — nome completo do risco e os departamentos
+   afetados. Em portal com posição fixa: dentro da matriz ele seria cortado
+   pela rolagem horizontal do container. Abre acima do card; perto do topo
+   da tela, abre abaixo. */
+function TooltipRisco({ dica }: { dica: Dica }) {
+  const acima = dica.topo > 160
+  const deps = dica.risco.grupoExposto.split(',').map((x) => x.trim()).filter(Boolean)
+  const largura = 260
+  const left = Math.min(Math.max(dica.x - largura / 2, 8), window.innerWidth - largura - 8)
+  return createPortal(
+    <div
+      role="tooltip"
+      className="pointer-events-none fixed z-[70] rounded-lg border border-border bg-surface p-3 shadow-lg"
+      style={{ left, width: largura, ...(acima ? { bottom: window.innerHeight - dica.topo + 8 } : { top: dica.base + 8 }) }}
+    >
+      <p className="text-[13px] font-semibold leading-snug text-ink">{dica.risco.fator}</p>
+      <p className="mt-0.5 text-[11px] text-ink-muted">{dica.risco.dimensao}</p>
+      <p className="mt-2.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted">
+        {deps.length === 1 ? 'Departamento afetado' : 'Departamentos afetados'}
+      </p>
+      <ul className="mt-1 flex flex-wrap gap-1">
+        {deps.map((d) => (
+          <li key={d} className="inline-flex items-center gap-1 rounded-pill bg-primary-50 px-2 py-0.5 text-[11.5px] font-medium text-primary dark:text-primary-300">
+            <Icon icon="ph:buildings-bold" width={11} aria-hidden />
+            {d}
+          </li>
+        ))}
+      </ul>
+    </div>,
+    document.body,
   )
 }
 
-/* O formulário "Adicionar risco" foi extraído para
-   `components/Nr1AdicionarRiscoForm.tsx` — reaproveitado também pela aba
-   "Riscos sugeridos" (`Nr1RiscosSugeridos.tsx`), com valores pré-preenchidos
-   a partir da leitura da sugestão. */

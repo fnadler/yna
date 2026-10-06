@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { Skeleton } from './Skeleton'
@@ -18,7 +18,7 @@ import type { Nr1Campanha } from '../types'
 /** Rótulo curto de um ciclo para o seletor — o pedaço depois do "·" no nome
    ("Avaliação de riscos psicossociais · 1º semestre 2026" → "1º semestre
    2026"). */
-const cicloLabelCurto = (c: Nr1Campanha) => {
+export const cicloLabelCurto = (c: Nr1Campanha) => {
   const partes = c.nome.split('·')
   return (partes.length > 1 ? partes[partes.length - 1] : c.nome)!.trim()
 }
@@ -33,7 +33,7 @@ const cicloLabelCurto = (c: Nr1Campanha) => {
    `somenteEncerrados`: o Inventário só olha ciclos finalizados (é a base do
    PGR — um ciclo em campo ainda não fechou o retrato); a Visão geral mostra
    todos, incluindo o em campo. */
-export function Nr1PainelRiscoMapa({ titulo, subtitulo, somenteEncerrados = false, analise = false, onRiscosAlterados }: {
+export function Nr1PainelRiscoMapa({ titulo, subtitulo, somenteEncerrados = false, analise = false, onRiscosAlterados, onCicloChange }: {
   titulo: string
   subtitulo: string
   somenteEncerrados?: boolean
@@ -41,6 +41,9 @@ export function Nr1PainelRiscoMapa({ titulo, subtitulo, somenteEncerrados = fals
      (`Nr1AnaliseRiscoModal`) em vez da lista de perguntas. */
   analise?: boolean
   onRiscosAlterados?: () => void
+  /** Avisa quem usa o painel qual ciclo está selecionado (ex.: a lista de
+     perguntas da Matriz de risco acompanha o mesmo ciclo). */
+  onCicloChange?: (campanhaId: string | undefined) => void
 }) {
   const [perguntas, setPerguntas] = useState<Nr1PerguntasEscopo | null>(null)
   const [analiseEscopo, setAnaliseEscopo] = useState<Nr1AnaliseEscopo | null>(null)
@@ -53,6 +56,7 @@ export function Nr1PainelRiscoMapa({ titulo, subtitulo, somenteEncerrados = fals
       .sort((a, b) => b.inicio.localeCompare(a.inicio))
     : []
   const campanhaId = cicloEscolhidoId ?? ciclos[0]?.id
+  useEffect(() => { onCicloChange?.(campanhaId) }, [campanhaId, onCicloChange])
 
   const dimensoes = useService(() => nr1ResultadoService.mediaPorDimensao(campanhaId), [campanhaId])
   const mapa = useService(() => nr1ResultadoService.mapaCalor(campanhaId), [campanhaId])

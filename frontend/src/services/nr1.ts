@@ -3,7 +3,7 @@ import type {
   Nr1RiscoInventario, Nr1Acao, Nr1Relato, Nr1Ciclo, Nr1ResponsavelTecnico,
   Nr1MinhaAvaliacao, Nr1Trilha, Nr1RelatoCategoria, Nr1Comentario,
   Nr1DimensaoId, Nr1RiscoCiclo, Nr1Severidade, Nr1NivelRisco, Nr1RiscoSugeridoLeitura,
-  Nr1RiscoStatus, Nr1FatorRisco, Nr1FonteGeradora, Nr1Dimensao,
+  Nr1RiscoStatus, Nr1FatorRisco, Nr1FonteGeradora, Nr1Dimensao, Nr1AtividadeTipo,
 } from '../types'
 import {
   nr1Modelos, nr1Campanhas, nr1MapaCalor, nr1Inventario, nr1Acoes, nr1Relatos,
@@ -12,9 +12,9 @@ import {
   nr1RiscosCiclos, RISCOS, totalElegiveis, participacaoVazia,
   nr1FatoresRisco, nr1FontesGeradoras,
 } from '../data/nr1Mock'
-import { rhEmpresa } from '../data/rhMock'
+import { rhEmpresa, rhUsuarioAtual } from '../data/rhMock'
 import { NR1_RISCOS_SUGERIDOS } from '../data/nr1RiscosSugeridosMock'
-import { nr1DistribuirPorItem, nr1NivelAtingeGatilho } from '../lib/nr1'
+import { nr1DistribuirPorItem, nr1NivelAtingeGatilho, ACAO_STATUS, fmtData } from '../lib/nr1'
 
 /* Camada de serviços do Módulo de Conformidade NR-1 — mockada, com latência
    simulada. As assinaturas espelham a futura API REST; trocar o corpo por
@@ -671,6 +671,41 @@ export const nr1ResultadoService = {
   },
 }
 
+/* Log de atividade da ação. A data é a "hoje" do protótipo (`NR1_TODAY`)
+   com a hora real do relógio — o suficiente para a sequência fazer sentido
+   numa demonstração. O autor é o usuário logado. */
+const agora = () => {
+  const d = new Date()
+  return `${NR1_TODAY}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function registrarAtividade(a: Nr1Acao, tipo: Nr1AtividadeTipo, descricao: string) {
+  a.atividades = [...(a.atividades ?? []), {
+    id: `atv-${a.id}-${(a.atividades?.length ?? 0) + 1}-${Date.now()}`,
+    em: agora(),
+    autor: rhUsuarioAtual.nome,
+    tipo,
+    descricao,
+  }]
+}
+
+/** Campos do 5W2H comparados numa edição, com o rótulo do formulário. */
+const CAMPOS_ACAO: { campo: keyof Nr1Acao; rotulo: string; fmt?: (v: string) => string }[] = [
+  { campo: 'oQue', rotulo: 'O quê' },
+  { campo: 'porQue', rotulo: 'Por quê' },
+  { campo: 'quem', rotulo: 'Quem (responsável)' },
+  { campo: 'quando', rotulo: 'Quando (prazo)', fmt: fmtData },
+  { campo: 'onde', rotulo: 'Onde' },
+  { campo: 'como', rotulo: 'Como' },
+  { campo: 'quanto', rotulo: 'Quanto' },
+  { campo: 'riscoId', rotulo: 'Risco vinculado' },
+]
+
+/** A ação tem algum registro de execução — um comentário com texto ou um
+   arquivo de evidência. */
+export const nr1AcaoTemRegistro = (a: Nr1Acao) =>
+  a.comentarios.some((c) => !!c.texto?.trim() || (c.arquivos?.length ?? 0) > 0)
+
 export const nr1AcaoService = {
   list: async (): Promise<Nr1Acao[]> => {
     await delay(rand(300, 600))
@@ -680,7 +715,26 @@ export const nr1AcaoService = {
   /** Upsert da ação 5W2H. */
   salvar: async (a: Nr1Acao): Promise<Nr1Acao> => {
     await delay(rand(350, 700))
-    const saved: Nr1Acao = { ...a, id: a.id || `a-${nr1Acoes.length + 1}` }
+    const anterior = nr1Acoes.find((x) => x.id === a.id)
+    const saved: Nr1Acao = { ...a, id: a.id || `a-${nr1Acoes.length + 1}`, atividades: anterior?.atividades ?? a.atividades }
+    if (!anterior) {
+      registrarAtividade(saved, 'criada', 'Criou a ação')
+    } else {
+      const alterados = CAMPOS_ACAO.filter((c) => String(anterior[c.campo] ?? '') !== String(saved[c.campo] ?? ''))
+      if (alterados.length > 0) {
+        const detalhe = alterados.map((c) => {
+          if (c.campo === 'quem' || c.campo === 'quando' || c.campo === 'onde') {
+            const f = c.fmt ?? ((v: string) => v)
+            return `${c.rotulo}: ${f(String(anterior[c.campo] || '—'))} → ${f(String(saved[c.campo] || '—'))}`
+          }
+          return c.rotulo
+        })
+        registrarAtividade(saved, 'editada', `Editou ${detalhe.join('; ')}`)
+      }
+      if (anterior.status !== saved.status) {
+        registrarAtividade(saved, 'status', `Mudou o status de ${ACAO_STATUS[anterior.status].label} para ${ACAO_STATUS[saved.status].label}`)
+      }
+    }
     const i = nr1Acoes.findIndex((x) => x.id === saved.id)
     if (i >= 0) nr1Acoes[i] = saved
     else nr1Acoes.push(saved)
@@ -709,20 +763,42 @@ export const nr1AcaoService = {
     await delay(rand(300, 600))
     const a = nr1Acoes.find((x) => x.id === acaoId)
     if (!a) return { ok: false }
-    const comentario: Nr1Comentario = { id: `com-${acaoId}-${a.comentarios.length + 1}`, em: NR1_TODAY, ...p }
+    const comentario: Nr1Comentario = { id: `com-${acaoId}-${a.comentarios.length + 1}-${Date.now()}`, em: NR1_TODAY, ...p }
     a.comentarios.push(comentario)
+    if (p.arquivos?.length) {
+      registrarAtividade(a, 'evidencia', `Anexou ${p.arquivos.length === 1 ? 'a evidência' : `${p.arquivos.length} evidências`}: ${p.arquivos.join(', ')}`)
+    } else {
+      registrarAtividade(a, 'comentario', 'Comentou o andamento')
+    }
     return { ok: true, comentario }
   },
 
-  concluir: async (acaoId: string): Promise<{ ok: boolean; message?: string }> => {
+  /** Exclui um comentário do diário (e os arquivos dele) — fica registrado
+     no log de atividade, com um trecho do que foi removido. */
+  excluirComentario: async (acaoId: string, comentarioId: string): Promise<{ ok: boolean }> => {
+    await delay(rand(250, 500))
+    const a = nr1Acoes.find((x) => x.id === acaoId)
+    const i = a ? a.comentarios.findIndex((c) => c.id === comentarioId) : -1
+    if (!a || i < 0) return { ok: false }
+    const [c] = a.comentarios.splice(i, 1)
+    const trecho = c!.texto ? `“${c!.texto.length > 60 ? `${c!.texto.slice(0, 60)}…` : c!.texto}”` : ''
+    const anexos = c!.arquivos?.length ? `${c!.arquivos.length === 1 ? '1 anexo' : `${c!.arquivos.length} anexos`}` : ''
+    registrarAtividade(a, 'comentario-excluido', `Excluiu um comentário de ${c!.autor}${trecho || anexos ? `: ${[trecho, anexos].filter(Boolean).join(' · ')}` : ''}`)
+    return { ok: true }
+  },
+
+  /** Conclui a ação. Sem nenhum comentário nem evidência, só conclui com
+     `semRegistro: true` — a pessoa confirmou que quer concluir assim mesmo
+     (a UI pergunta antes); sem a confirmação, devolve `semRegistro` para a
+     UI perguntar. */
+  concluir: async (acaoId: string, opts?: { semRegistro?: boolean }): Promise<{ ok: boolean; semRegistro?: boolean; message?: string }> => {
     await delay(rand(300, 600))
     const a = nr1Acoes.find((x) => x.id === acaoId)
     if (!a) return { ok: false }
-    if (!a.comentarios.some((c) => c.arquivos && c.arquivos.length > 0)) {
-      return { ok: false, message: 'Anexe ao menos um arquivo de evidência (num comentário) antes de concluir a ação.' }
-    }
+    if (!nr1AcaoTemRegistro(a) && !opts?.semRegistro) return { ok: false, semRegistro: true }
     a.status = 'concluida'
     a.concluidaEm = NR1_TODAY
+    registrarAtividade(a, 'concluida', opts?.semRegistro ? 'Concluiu a ação sem comentário nem evidência' : 'Concluiu a ação')
     return { ok: true }
   },
 

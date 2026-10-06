@@ -301,7 +301,7 @@ export interface MngNotificacao {
 export type Nr1DimensaoId = string
 
 /** Escala de resposta: A = frequência · B = concordância (§7 do questionário). */
-export type Nr1EscalaId = 'A' | 'B'
+export type Nr1EscalaId = 'A' | 'B' | 'C' | 'D' | 'E'
 
 /** Direção do item: positivo (concordar = menor risco) ou reverso (invertido
    antes de somar). */
@@ -631,6 +631,19 @@ export interface Nr1Comentario {
   em: string
 }
 
+/** Um registro no log de atividade de uma ação — quem fez o quê e quando. */
+export type Nr1AtividadeTipo =
+  | 'criada' | 'editada' | 'status' | 'comentario' | 'evidencia' | 'comentario-excluido' | 'concluida'
+
+export interface Nr1AcaoAtividade {
+  id: string
+  /** Data e hora, `YYYY-MM-DDTHH:mm`. */
+  em: string
+  autor: string
+  tipo: Nr1AtividadeTipo
+  descricao: string
+}
+
 export interface Nr1Acao {
   id: string
   /** Risco do inventário a que a ação responde. */
@@ -652,6 +665,9 @@ export interface Nr1Acao {
   versaoAnteriorId?: string
   /** Por que esta versão existe — obrigatório a partir da v2. */
   motivoRevisao?: string
+  /** Log de atividade (mais antigo primeiro) — registrado pelo serviço a
+     cada criação, edição, mudança de status, comentário e conclusão. */
+  atividades?: Nr1AcaoAtividade[]
   /** Preenchida no ciclo seguinte, olhando a evolução do risco. Ausente
      enquanto não há ciclo novo para avaliar contra. */
   efetividade?: Nr1Efetividade

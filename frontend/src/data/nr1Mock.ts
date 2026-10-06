@@ -3,7 +3,7 @@ import type {
   Nr1EscalaConfig, Nr1PontuacaoConfig, Nr1NivelRisco, Nr1Campanha, Nr1LinhaMapa,
   Nr1RiscoInventario, Nr1Acao, Nr1Relato, Nr1Ciclo, Nr1ResponsavelTecnico,
   Nr1MinhaAvaliacao, Nr1Severidade, Nr1RiscoCiclo, Nr1RiscoStatus,
-  Nr1FatorRisco, Nr1FonteGeradora,
+  Nr1FatorRisco, Nr1FonteGeradora, Nr1EscalaId,
 } from '../types'
 import { rhDepartamentos, rhEmpresa } from './rhMock'
 import { nr1MontarHistoricoRisco } from '../lib/nr1'
@@ -126,8 +126,11 @@ export const nr1FontesGeradoras: Nr1FonteGeradora[] = construirRegistro('fontes'
 const idsPorNome = (registro: { id: string; nome: string }[], nomes: string[]) =>
   nomes.map((nome) => registro.find((r) => r.nome === nome)!.id)
 
-/** Escalas de 5 pontos (§3 do questionário). A escala A é de frequência e a B
-   de concordância — unificá-las é uma das decisões pendentes da clínica. */
+/** Opções de resposta da matriz COPSOQ parametrizada pela YNA (legenda
+   1–5 da "Matriz COPSOQ YNA — Validação V3"). Sempre da pior para a melhor
+   leitura no sentido da frase; itens de risco (`direcao: 'reverso'`) são
+   invertidos antes da média. As escalas de 4 opções (D, E) usam 1-2-4-5,
+   para manter a mesma régua de 1 a 5 das demais. */
 export const NR1_ESCALAS: Nr1EscalaConfig = {
   A: {
     nome: 'Frequência',
@@ -140,13 +143,41 @@ export const NR1_ESCALAS: Nr1EscalaConfig = {
     ],
   },
   B: {
+    nome: 'Intensidade',
+    opcoes: [
+      { valor: 1, rotulo: 'Muito pouco' },
+      { valor: 2, rotulo: 'Pouco' },
+      { valor: 3, rotulo: 'De certa forma' },
+      { valor: 4, rotulo: 'Em boa parte' },
+      { valor: 5, rotulo: 'Em grande parte' },
+    ],
+  },
+  C: {
+    nome: 'Avaliação de saúde',
+    opcoes: [
+      { valor: 1, rotulo: 'Ruim' },
+      { valor: 2, rotulo: 'Razoável' },
+      { valor: 3, rotulo: 'Boa' },
+      { valor: 4, rotulo: 'Muito boa' },
+      { valor: 5, rotulo: 'Excelente' },
+    ],
+  },
+  D: {
+    nome: 'Satisfação',
+    opcoes: [
+      { valor: 1, rotulo: 'Muito insatisfeito' },
+      { valor: 2, rotulo: 'Insatisfeito' },
+      { valor: 4, rotulo: 'Satisfeito' },
+      { valor: 5, rotulo: 'Muito satisfeito' },
+    ],
+  },
+  E: {
     nome: 'Concordância',
     opcoes: [
-      { valor: 1, rotulo: 'Discordo totalmente' },
-      { valor: 2, rotulo: 'Discordo' },
-      { valor: 3, rotulo: 'Neutro' },
-      { valor: 4, rotulo: 'Concordo' },
-      { valor: 5, rotulo: 'Concordo totalmente' },
+      { valor: 1, rotulo: 'Não, realmente não' },
+      { valor: 2, rotulo: 'Sim, mas muito pouco' },
+      { valor: 4, rotulo: 'Sim, até certo ponto' },
+      { valor: 5, rotulo: 'Sim, com certeza' },
     ],
   },
 }
@@ -172,11 +203,13 @@ export function nr1NivelPorMedia(media: number): Nr1NivelRisco {
 }
 
 /* ------------------------------------------------------------------
-   Itens do Modelo YNA — versão base (§4 do questionário)
-   34 itens · 10 marcados como núcleo obrigatório.
+   Itens do Modelo YNA — matriz COPSOQ II parametrizada pela YNA
+   ("Matriz COPSOQ YNA — Validação V3"): 39 perguntas nos 8 domínios.
+   Negativa (Risco) → `reverso`; Positiva → `positivo`. A escala de cada
+   item segue a legenda de respostas da matriz.
    ------------------------------------------------------------------ */
 
-type ItemSeed = [id: string, texto: string, referencia: string, escala: 'A' | 'B', direcao: 'positivo' | 'reverso', nucleo: boolean, extra?: { condicional?: boolean; sensivel?: boolean }]
+type ItemSeed = [id: string, texto: string, referencia: string, escala: Nr1EscalaId, direcao: 'positivo' | 'reverso', nucleo: boolean, extra?: { condicional?: boolean; sensivel?: boolean }]
 
 const item = ([id, texto, referencia, escala, direcao, nucleo, extra]: ItemSeed): Nr1Item => ({
   id, texto, referencia, escala, direcao,
@@ -185,90 +218,69 @@ const item = ([id, texto, referencia, escala, direcao, nucleo, extra]: ItemSeed)
   ...extra,
 })
 
-/** Antes vivia em "Organização do trabalho" — a revisão de 7 dimensões isola
-   carga/ritmo/prazos (demanda) da autonomia/papel/mudança (organização em
-   si), porque as duas pedem ações de gestão bem diferentes. */
 const DEMANDAS: ItemSeed[] = [
-  ['OT01', 'Preciso trabalhar em um ritmo muito acelerado.', 'HSE · Demandas', 'A', 'reverso', true],
-  ['OT02', 'Tenho prazos que são impossíveis de cumprir.', 'HSE · Demandas', 'A', 'reverso', false],
-  ['OT03', 'Preciso deixar tarefas de lado porque tenho trabalho demais.', 'HSE · Demandas', 'A', 'reverso', false],
-  ['OT04', 'Sinto-me pressionado(a) a trabalhar muitas horas.', 'HSE · Demandas', 'A', 'reverso', false],
-  ['OT05', 'Consigo fazer pausas suficientes durante o expediente.', 'HSE · Demandas', 'A', 'positivo', false],
+  ['COP-01A', 'Você atrasa a entrega do seu trabalho?', 'COPSOQ II · Exigências quantitativas', 'A', 'reverso', true],
+  ['COP-01B', 'O tempo para realizar as suas tarefas no trabalho é suficiente?', 'COPSOQ II · Exigências quantitativas', 'A', 'positivo', false],
+  ['COP-02A', 'É necessário manter um ritmo acelerado no trabalho?', 'COPSOQ II · Ritmo de trabalho', 'A', 'reverso', true],
+  ['COP-02B', 'Você trabalha em ritmo acelerado ao longo de toda jornada?', 'COPSOQ II · Ritmo de trabalho', 'A', 'reverso', false],
+  ['COP-03A', 'Seu trabalho coloca você em situações emocionalmente desgastantes?', 'COPSOQ II · Exigências emocionais', 'A', 'reverso', false],
+  ['COP-03B', 'Você tem que lidar com os problemas pessoais de outras pessoas como parte do seu trabalho?', 'COPSOQ II · Exigências emocionais', 'A', 'reverso', false],
 ]
 
-/** Autonomia, papel e mudança (antigo núcleo de "Organização do trabalho")
-   + recursos e condições de trabalho (antiga dimensão "Ambiente e
-   recursos", absorvida aqui — ver nota em `NR1_DIMENSOES`). */
 const ORGANIZACAO: ItemSeed[] = [
-  ['OT06', 'Tenho autonomia para decidir como realizar o meu trabalho.', 'HSE · Controle', 'A', 'positivo', true],
-  ['OT07', 'Tenho influência sobre o meu próprio ritmo de trabalho.', 'HSE · Controle', 'A', 'positivo', false],
-  ['OT08', 'Posso decidir quando fazer uma pausa.', 'HSE · Controle', 'A', 'positivo', false],
-  ['OT09', 'Meu horário de trabalho pode ser flexível quando eu preciso.', 'HSE · Controle', 'B', 'positivo', false],
-  ['OT10', 'Tenho clareza do que é esperado de mim no trabalho.', 'HSE · Papel', 'A', 'positivo', true],
-  ['OT11', 'Sei quais são as minhas funções e responsabilidades.', 'HSE · Papel', 'A', 'positivo', false],
-  ['OT12', 'Entendo como o meu trabalho se conecta ao objetivo da organização.', 'HSE · Papel', 'A', 'positivo', false],
-  ['OT13', 'Quando há mudanças no trabalho, fica claro como elas vão funcionar na prática.', 'HSE · Mudança', 'B', 'positivo', false],
-  ['OT14', 'Tenho oportunidade de esclarecer dúvidas com a liderança sobre mudanças no trabalho.', 'HSE · Mudança', 'B', 'positivo', false],
-  ['AR01', 'Tenho os recursos e as ferramentas necessários para fazer bem o meu trabalho.', 'COPSOQ · Recursos', 'B', 'positivo', true],
-  ['AR02', 'As condições físicas do ambiente (espaço, ruído, conforto) permitem que eu trabalhe adequadamente.', 'MTE · Ambiente', 'B', 'positivo', true],
-  ['AR03', 'Os sistemas e tecnologias que uso funcionam de forma confiável.', 'MTE · Recursos', 'B', 'positivo', false],
-  ['AR04', 'Tenho as informações de que preciso para realizar bem o meu trabalho.', 'COPSOQ · Previsibilidade', 'B', 'positivo', false],
+  ['COP-04A', 'Você tem um alto grau de influência nas decisões sobre o seu trabalho?', 'COPSOQ II · Influência no trabalho', 'A', 'positivo', true],
+  ['COP-04B', 'Você pode interferir na quantidade de trabalho atribuída a você?', 'COPSOQ II · Influência no trabalho', 'A', 'positivo', false],
+  ['COP-05A', 'Você tem a possibilidade de aprender coisas novas através do seu trabalho?', 'COPSOQ II · Possibilidades de desenvolvimento', 'B', 'positivo', false],
+  ['COP-05B', 'O seu trabalho exige que você tome iniciativas?', 'COPSOQ II · Possibilidades de desenvolvimento', 'B', 'positivo', false],
+  ['COP-06A', 'O seu trabalho é significativo?', 'COPSOQ II · Significado do trabalho', 'B', 'positivo', true],
+  ['COP-06B', 'Você sente que o trabalho que você faz é importante?', 'COPSOQ II · Significado do trabalho', 'B', 'positivo', false],
+  ['COP-07A', 'Você sente que o seu local de trabalho é muito importante para você?', 'COPSOQ II · Compromisso com o local de trabalho', 'B', 'positivo', false],
+  ['COP-07B', 'Você recomendaria a um amigo que se candidatasse a uma vaga no seu local de trabalho?', 'COPSOQ II · Compromisso com o local de trabalho', 'E', 'positivo', false],
 ]
 
-/** Apoio dos pares, respeito e conflito entre colegas — sem os itens de
-   apoio da liderança (agora em LIDERANCA) nem os de assédio/bullying (agora
-   em SEGURANCA), que a revisão de 8 dimensões isola em dimensões próprias. */
 const RELACOES: ItemSeed[] = [
-  ['RL05', 'Quando o trabalho fica difícil, meus colegas me ajudam.', 'HSE · Apoio dos pares', 'A', 'positivo', true],
-  ['RL06', 'Recebo dos colegas o apoio de que preciso.', 'HSE · Apoio dos pares', 'B', 'positivo', false],
-  ['RL07', 'Recebo dos colegas o respeito que mereço.', 'HSE · Relações', 'B', 'positivo', false],
-  ['RL08', 'Há atritos ou raiva entre colegas.', 'HSE · Relações', 'A', 'reverso', true],
-  ['RL09', 'As relações no trabalho são tensas.', 'HSE · Relações', 'B', 'reverso', false],
+  ['COP-08A', 'No seu local de trabalho, você é informado antecipadamente sobre decisões importantes, mudanças ou planos para o futuro?', 'COPSOQ II · Previsibilidade', 'B', 'positivo', false],
+  ['COP-08B', 'Você recebe toda a informação necessária para fazer bem o seu trabalho?', 'COPSOQ II · Previsibilidade', 'B', 'positivo', true],
+  ['COP-09B', 'Você é tratado de forma justa no seu local de trabalho?', 'COPSOQ II · Reconhecimento', 'B', 'positivo', false],
+  ['COP-10A', 'O seu trabalho tem objetivos/metas claros(as)?', 'COPSOQ II · Clareza do papel', 'B', 'positivo', false],
+  ['COP-10B', 'Você sabe exatamente o que se espera de você no trabalho?', 'COPSOQ II · Clareza do papel', 'B', 'positivo', true],
 ]
 
-/** Antes dentro de "Relações e liderança" (RL01-04) — isolada como dimensão
-   própria na revisão de 8, porque o apoio da liderança direta pede uma
-   leitura e uma ação de gestão diferentes do apoio entre pares. */
 const LIDERANCA: ItemSeed[] = [
-  ['RL01', 'Posso contar com a minha liderança para me ajudar em um problema de trabalho.', 'HSE · Apoio da liderança', 'A', 'positivo', true],
-  ['RL02', 'Recebo retorno construtivo sobre o trabalho que faço.', 'HSE · Apoio da liderança', 'A', 'positivo', false],
-  ['RL03', 'Minha liderança me incentiva no trabalho.', 'HSE · Apoio da liderança', 'B', 'positivo', false],
-  ['RL04', 'Sinto-me apoiado(a) quando o trabalho é emocionalmente exigente.', 'HSE · Apoio da liderança', 'B', 'positivo', false],
+  ['COP-09A', 'O seu trabalho é reconhecido e valorizado pelos seus superiores?', 'COPSOQ II · Reconhecimento', 'B', 'positivo', true],
+  ['COP-11A', 'Você diria que o seu superior imediato dá alta prioridade para a satisfação com o trabalho?', 'COPSOQ II · Qualidade da liderança', 'B', 'positivo', false],
+  ['COP-11B', 'Você diria que o seu superior imediato é bom no planejamento do trabalho?', 'COPSOQ II · Qualidade da liderança', 'B', 'positivo', false],
+  ['COP-12A', 'Com que frequência o seu superior imediato está disposto a ouvir os seus problemas no trabalho?', 'COPSOQ II · Suporte social do superior', 'A', 'positivo', false],
+  ['COP-12B', 'Com que frequência você recebe ajuda e suporte do seu superior imediato?', 'COPSOQ II · Suporte social do superior', 'A', 'positivo', true],
 ]
 
-/** Interface trabalho-indivíduo (antigo "Contexto externo", só o nome
-   mudou — id `contexto` mantido, ver nota em `NR1_DIMENSOES`). */
 const CONTEXTO: ItemSeed[] = [
-  ['CE01', 'As exigências do trabalho interferem na minha vida pessoal e familiar.', 'COPSOQ · Trabalho-família', 'A', 'reverso', true],
-  ['CE02', 'Sinto que preciso ficar disponível para o trabalho fora do meu horário.', 'MTE · Hiperconexão', 'A', 'reverso', true],
-  ['CE03', 'Consigo me desconectar do trabalho no meu tempo de descanso.', 'MTE · Hiperconexão', 'A', 'positivo', false],
-  ['CE04', 'No trabalho remoto ou híbrido, sinto-me isolado(a) da equipe.', 'MTE · Isolamento', 'A', 'reverso', false, { condicional: true }],
-  ['CE05', 'No contato com público ou clientes, lido com situações de agressividade ou tensão.', 'MTE · Contexto', 'A', 'reverso', false, { condicional: true }],
+  ['COP-13', 'Qual o seu nível de satisfação com o seu trabalho como um todo, considerando todos os aspectos?', 'COPSOQ II · Satisfação no trabalho', 'D', 'positivo', false],
+  ['COP-14A', 'Você sente que o seu trabalho consome tanto sua energia que ele tem um efeito negativo na sua vida particular?', 'COPSOQ II · Conflito trabalho-família', 'E', 'reverso', true],
+  ['COP-14B', 'Você sente que o seu trabalho ocupa tanto tempo que ele tem um efeito negativo na sua vida particular?', 'COPSOQ II · Conflito trabalho-família', 'E', 'reverso', false],
 ]
 
-/** Dimensão nova na revisão de 7 — ainda sem itens próprios no instrumento
-   v0.3, adaptados aqui do recorte COPSOQ de referência (ver PARTE 7 de
-   LISTA_RISCOS_PSICOSSOCIAIS_REFERENCIA.md), pendentes da mesma validação
-   clínica do restante do questionário. */
 const VALORES: ItemSeed[] = [
-  ['VL01', 'Sinto que os meus valores pessoais são respeitados no ambiente de trabalho.', 'COPSOQ · Valores', 'B', 'positivo', true],
-  ['VL02', 'Há clareza sobre os objetivos e os valores da organização.', 'COPSOQ · Valores', 'B', 'positivo', false],
+  ['COP-15A', 'Você pode confiar nas informações que vêm dos seus superiores?', 'COPSOQ II · Confiança na gestão', 'B', 'positivo', false],
+  ['COP-15B', 'Os seus superiores confiam que os funcionários farão bem seu trabalho?', 'COPSOQ II · Confiança na gestão', 'B', 'positivo', false],
+  ['COP-16A', 'Os conflitos são resolvidos de forma justa?', 'COPSOQ II · Justiça', 'B', 'positivo', true],
+  ['COP-16B', 'O trabalho é distribuído de forma justa?', 'COPSOQ II · Justiça', 'B', 'positivo', false],
 ]
 
-/** Idem — adaptada do recorte COPSOQ "Saúde Geral" de referência. */
 const SAUDE: ItemSeed[] = [
-  ['SB01', 'De modo geral, considero a minha saúde boa.', 'COPSOQ · Saúde geral', 'B', 'positivo', true],
-  ['SB02', 'Consigo me recuperar adequadamente do desgaste do trabalho.', 'COPSOQ · Saúde geral', 'B', 'positivo', false],
-  ['SB03', 'Meu sono tem sido prejudicado por questões do trabalho.', 'COPSOQ · Saúde geral', 'A', 'reverso', false],
+  ['COP-17', 'Em geral, você diria que a sua saúde é:', 'COPSOQ II · Saúde geral', 'C', 'positivo', false],
+  ['COP-18A', 'Com que frequência você tem se sentido fisicamente esgotado?', 'COPSOQ II · Sintomas de burnout', 'A', 'reverso', false],
+  ['COP-18B', 'Com que frequência você tem se sentido emocionalmente esgotado?', 'COPSOQ II · Sintomas de burnout', 'A', 'reverso', true],
+  ['COP-19A', 'Com que frequência você tem se sentido estressado?', 'COPSOQ II · Sintomas de estresse', 'A', 'reverso', false],
+  ['COP-19B', 'Com que frequência você tem se sentido irritado?', 'COPSOQ II · Sintomas de estresse', 'A', 'reverso', false],
 ]
 
-/** Assédio moral e bullying — antes dentro de "Relações e liderança"
-   (RL10/RL11), isolados aqui na revisão de 8 dimensões como "Segurança
-   psicossocial", porque pedem apuração e resposta diferentes de um atrito
-   comum entre colegas. */
+/* Itens de segurança psicossocial são afirmações (não perguntas) — sem
+   escala específica na legenda da matriz; usam a de intensidade. */
 const SEGURANCA: ItemSeed[] = [
-  ['RL10', 'Sou alvo de palavras ou comportamentos hostis no trabalho (assédio moral).', 'HSE · Relações', 'A', 'reverso', true, { sensivel: true }],
-  ['RL11', 'Sou alvo de intimidação ou bullying no trabalho.', 'HSE · Relações', 'A', 'reverso', false, { sensivel: true }],
+  ['COP-20', 'O ambiente de trabalho é seguro e raramente sou exposto(a) a eventos violentos ou traumáticos.', 'YNA · Segurança psicossocial', 'B', 'positivo', false, { sensivel: true }],
+  ['COP-21', 'Este é um lugar psicológica e emocionalmente saudável para trabalhar.', 'YNA · Segurança psicossocial', 'B', 'positivo', true],
+  ['COP-22', 'Este é um lugar fisicamente seguro para trabalhar.', 'YNA · Segurança psicossocial', 'B', 'positivo', false],
 ]
 
 function dimensao(id: Nr1DimensaoId, seeds: ItemSeed[]): Nr1Dimensao {
@@ -311,21 +323,14 @@ const versaoYna = (versao: string, status: Nr1QuestionarioVersao['status'], cria
   abertas: [...ABERTAS_BASE],
 })
 
-/** Versão 1.0 — recorte inicial só com o núcleo (usada no piloto). */
-function versaoNucleoApenas(): Nr1QuestionarioVersao {
-  const v = versaoYna('1.0', 'arquivada', '2026-02-10', '2026-02-17', 'Primeira publicação, só com o núcleo obrigatório (11 itens), usada no piloto.')
-  v.dimensoes = v.dimensoes.map((d) => ({ ...d, itens: d.itens.filter((i) => i.obrigatorioNucleo) }))
-  return v
-}
-
 /** Itens específicos do modelo derivado da BCP Securities (acrescentados —
    o núcleo permanece intacto). */
 const ITENS_BCP: Record<string, Nr1Item[]> = {
-  organizacao: [
-    { id: 'BCP-OT01', texto: 'Consigo conciliar as demandas da mesa com os prazos regulatórios.', referencia: 'BCP Securities · específico', escala: 'A', direcao: 'positivo', tipoCampo: 'select', obrigatorioNucleo: false, origemCliente: true },
+  demandas: [
+    { id: 'BCP-01', texto: 'Consigo conciliar as demandas da mesa com os prazos regulatórios.', referencia: 'BCP Securities · específico', escala: 'A', direcao: 'positivo', tipoCampo: 'select', obrigatorioNucleo: false, origemCliente: true },
   ],
   contexto: [
-    { id: 'BCP-CE01', texto: 'A volatilidade do mercado afeta o meu descanso fora do expediente.', referencia: 'BCP Securities · específico', escala: 'A', direcao: 'reverso', tipoCampo: 'select', obrigatorioNucleo: false, origemCliente: true },
+    { id: 'BCP-02', texto: 'A volatilidade do mercado afeta o meu descanso fora do expediente.', referencia: 'BCP Securities · específico', escala: 'A', direcao: 'reverso', tipoCampo: 'select', obrigatorioNucleo: false, origemCliente: true },
   ],
 }
 
@@ -342,9 +347,9 @@ export const nr1Modelos: Nr1QuestionarioModelo[] = [
     escopo: 'yna',
     descricao: 'Instrumento base da plataforma, mantido e revisado pela YNA. Cobre os 4 domínios do Guia do MTE a partir do HSE Indicator Tool e do COPSOQ.',
     versoes: [
-      versaoYna('2.1', 'rascunho', '2026-06-18', undefined, 'Em elaboração: revisão de redação dos itens de Mudança (OT13/OT14) após retorno da curadoria clínica.'),
-      versaoYna('2.0', 'publicada', '2026-04-02', '2026-04-15', 'Instrumento completo (34 itens). Inclui itens de Ambiente e recursos e os condicionais de contexto externo (CE04/CE05).'),
-      versaoNucleoApenas(),
+      versaoYna('2.1', 'rascunho', '2026-06-18', undefined, 'Em elaboração: revisão de redação dos itens de Segurança psicossocial (COP-20 a COP-22) após retorno da curadoria clínica.'),
+      versaoYna('2.0', 'publicada', '2026-04-02', '2026-04-15', 'Matriz COPSOQ II parametrizada pela YNA (Validação V3): 39 perguntas nos 8 domínios.'),
+      versaoYna('1.0', 'arquivada', '2025-10-06', '2025-10-20', 'Primeira publicação da matriz COPSOQ II parametrizada pela YNA, usada no ciclo do 2º semestre de 2025.'),
     ],
   },
   {
@@ -752,6 +757,40 @@ export const nr1Acoes: Nr1Acao[] = [
     comentarios: [],
   },
 ]
+
+/* Log de atividade inicial das ações — criação, comentários/evidências e
+   conclusão, montados a partir dos próprios dados semeados acima (datas de
+   criação estimadas, só para o histórico ter começo). */
+const CRIACAO_ACOES: Record<string, [em: string, autor: string]> = {
+  'a-01': ['2026-05-04T09:12', 'Camila Risi'],
+  'a-01-v2': ['2026-06-22T16:40', 'Camila Risi'],
+  'a-02': ['2026-05-04T09:31', 'Camila Risi'],
+  'a-03': ['2026-05-06T11:05', 'Camila Risi'],
+  'a-04': ['2026-05-11T14:20', 'Camila Risi'],
+  'a-05': ['2026-05-12T10:02', 'Camila Risi'],
+  'a-06': ['2026-05-15T15:47', 'Camila Risi'],
+}
+for (const a of nr1Acoes) {
+  const [em, autor] = CRIACAO_ACOES[a.id] ?? [`${NR1_TODAY}T09:00`, 'Camila Risi']
+  const log: NonNullable<Nr1Acao['atividades']> = [{
+    id: `atv-${a.id}-0`, em, autor, tipo: 'criada',
+    descricao: a.versaoAnteriorId ? `Criou a versão ${a.versao} da ação (revisão do plano)` : 'Criou a ação',
+  }]
+  if (a.status === 'em-andamento' || a.status === 'concluida') {
+    log.push({ id: `atv-${a.id}-st`, em: em.replace(/T.*/, 'T17:30'), autor: a.quem.split(' · ')[0]!, tipo: 'status', descricao: 'Mudou o status de Planejada para Em andamento' })
+  }
+  a.comentarios.forEach((c, i) => {
+    log.push({
+      id: `atv-${a.id}-c${i}`, em: `${c.em}T${String(10 + i).padStart(2, '0')}:15`, autor: c.autor,
+      tipo: c.arquivos?.length ? 'evidencia' : 'comentario',
+      descricao: c.arquivos?.length ? `Anexou a evidência: ${c.arquivos.join(', ')}` : 'Comentou o andamento',
+    })
+  })
+  if (a.status === 'concluida' && a.concluidaEm) {
+    log.push({ id: `atv-${a.id}-fim`, em: `${a.concluidaEm}T18:05`, autor: a.quem.split(' · ')[0]!, tipo: 'concluida', descricao: 'Concluiu a ação' })
+  }
+  a.atividades = log.sort((x, y) => x.em.localeCompare(y.em))
+}
 
 /* ------------------------------------------------------------------
    Canal de escuta confidencial (RF-H01/H02)

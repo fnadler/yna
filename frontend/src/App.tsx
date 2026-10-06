@@ -33,6 +33,7 @@ import { RH16Conta } from './screens/rh/RH16Conta'
 import { RH17Mais } from './screens/rh/RH17Mais'
 import { NR1RhCockpit } from './screens/rh/NR1RhCockpit'
 import { NR1RhInventario } from './screens/rh/NR1RhInventario'
+import { NR1RhMatrizRisco } from './screens/rh/NR1RhMatrizRisco'
 import { NR1RhPlanoAcao } from './screens/rh/NR1RhPlanoAcao'
 import { NR1RhRelatorio } from './screens/rh/NR1RhRelatorio'
 import { NR1RhCiclos } from './screens/rh/NR1RhCiclos'
@@ -188,6 +189,7 @@ export function App() {
                 <Route path="/rh/nr1" element={<NR1RhCockpit />} />
                 <Route path="/rh/nr1/ciclos" element={<NR1RhCiclos />} />
                 <Route path="/rh/nr1/ciclos/:campanhaId" element={<NR1RhCiclos />} />
+                <Route path="/rh/nr1/matriz" element={<NR1RhMatrizRisco />} />
                 <Route path="/rh/nr1/inventario" element={<NR1RhInventario />} />
                 <Route path="/rh/nr1/plano-acao" element={<NR1RhPlanoAcao />} />
                 <Route path="/rh/nr1/relatorio" element={<NR1RhRelatorio />} />
