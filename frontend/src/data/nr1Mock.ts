@@ -2,11 +2,12 @@ import type {
   Nr1QuestionarioModelo, Nr1QuestionarioVersao, Nr1Dimensao, Nr1Item, Nr1DimensaoId,
   Nr1EscalaConfig, Nr1PontuacaoConfig, Nr1NivelRisco, Nr1Campanha, Nr1LinhaMapa,
   Nr1RiscoInventario, Nr1Acao, Nr1Relato, Nr1Ciclo, Nr1ResponsavelTecnico,
-  Nr1MinhaAvaliacao, Nr1Severidade, Nr1RiscoCiclo, Nr1RiscoStatus,
-  Nr1FatorRisco, Nr1FonteGeradora, Nr1EscalaId,
+  Nr1MinhaAvaliacao, Nr1Severidade, Nr1RiscoStatus,
+  Nr1FatorRisco, Nr1FonteGeradora, Nr1EscalaId, Nr1Cid,
+  Nr1FatorAvaliado, Nr1FatorSituacao, Nr1FatorEvolucao, Nr1AcaoRecomendada,
 } from '../types'
 import { rhDepartamentos, rhEmpresa } from './rhMock'
-import { nr1MontarHistoricoRisco } from '../lib/nr1'
+import { nr1DistribuirPorItem, LIMIAR_TENDENCIA } from '../lib/nr1'
 
 /* Dados mockados do Módulo de Conformidade NR-1.
 
@@ -116,15 +117,203 @@ function construirRegistro<T extends { id: string; nome: string }>(campo: 'fator
   return [...porNome.values()]
 }
 
-/** Registro global de fatores de risco — mutável: `criar()` em
-   `nr1FatorRiscoService` acrescenta aqui os fatores cadastrados na hora,
-   direto do formulário de dimensão. */
-export const nr1FatoresRisco: Nr1FatorRisco[] = construirRegistro('fatores', 'fator')
-/** Idem, para fontes geradoras. */
+/** Registro global de fontes geradoras. */
 export const nr1FontesGeradoras: Nr1FonteGeradora[] = construirRegistro('fontes', 'fonte')
 
 const idsPorNome = (registro: { id: string; nome: string }[], nomes: string[]) =>
   nomes.map((nome) => registro.find((r) => r.nome === nome)!.id)
+
+/* ------------------------------------------------------------------
+   Lesões e agravos à saúde (CID-10) — tabela própria, ligada aos fatores
+   de risco por id (um CID serve a vários fatores). PRIMEIRA VERSÃO para o
+   protótipo, pendente de validação da curadoria clínica da YNA.
+   ------------------------------------------------------------------ */
+
+export const nr1Cids: Nr1Cid[] = [
+  { id: 'cid-z73-0', codigo: 'Z73.0', nome: 'Esgotamento (síndrome de burnout)' },
+  { id: 'cid-f41', codigo: 'F41', nome: 'Transtornos de ansiedade' },
+  { id: 'cid-f32', codigo: 'F32', nome: 'Episódios depressivos' },
+  { id: 'cid-f43-0', codigo: 'F43.0', nome: 'Reação aguda ao estresse' },
+  { id: 'cid-f43-1', codigo: 'F43.1', nome: 'Transtorno de estresse pós-traumático' },
+  { id: 'cid-f43-2', codigo: 'F43.2', nome: 'Transtornos de adaptação' },
+  { id: 'cid-f48-0', codigo: 'F48.0', nome: 'Neurastenia (síndrome de fadiga)' },
+  { id: 'cid-f51-0', codigo: 'F51.0', nome: 'Insônia não orgânica' },
+  { id: 'cid-f10', codigo: 'F10', nome: 'Transtornos mentais pelo uso de álcool' },
+  { id: 'cid-i10', codigo: 'I10', nome: 'Hipertensão essencial' },
+]
+
+/* ------------------------------------------------------------------
+   Catálogo de fatores de risco (Manager YNA). Cada fator: domínio,
+   explicação simples, severidade fixa, até 3 CIDs, perguntas COPSOQ que o
+   indicam, fontes típicas e ações sugeridas. Severidades, CIDs e vínculos
+   são PRIMEIRA VERSÃO para o protótipo, pendentes de validação de SST.
+   As perguntas de saúde (COP-17 a COP-19B) medem desfecho, não fator, e
+   ficam fora dos vínculos.
+   ------------------------------------------------------------------ */
+
+type FatorSeed = {
+  nome: string; dimensaoId: Nr1DimensaoId; descricao: string; severidade: Nr1Severidade
+  cids: string[]; itens: string[]; fontes: string[]; acoes: [oQue: string, porQue: string, como: string][]
+}
+
+const FATOR_SEEDS: FatorSeed[] = [
+  {
+    nome: 'Excesso de demandas no trabalho (Sobrecarga)', dimensaoId: 'demandas', severidade: 4,
+    descricao: 'Mais trabalho do que dá para fazer no tempo disponível: ritmo acelerado o dia todo, prazos apertados e tarefas que invadem a vida pessoal.',
+    cids: ['cid-z73-0', 'cid-f41', 'cid-i10'],
+    itens: ['COP-01A', 'COP-01B', 'COP-02A', 'COP-02B', 'COP-14A', 'COP-14B'],
+    fontes: ['Metas irrealistas', 'Equipe insuficiente', 'Jornadas prolongadas', 'Acúmulo de funções'],
+    acoes: [
+      ['Revisar o dimensionamento da equipe nos horários de pico', 'A carga concentrada excede a capacidade da equipe atual.', 'Levantar a carga por faixa horária e propor redistribuição ou reforço da equipe.'],
+      ['Instituir pausas programadas durante a jornada', 'Reduzir o ritmo acelerado contínuo, principal sinal de sobrecarga.', 'Escala de pausas curtas em revezamento, com cobertura entre colegas.'],
+      ['Revisar metas e prazos com a liderança da área', 'Metas fora da capacidade real mantêm a sobrecarga.', 'Reunião de revisão de metas com base no histórico de entregas da equipe.'],
+    ],
+  },
+  {
+    nome: 'Baixa demanda no trabalho (Subcarga)', dimensaoId: 'demandas', severidade: 2,
+    descricao: 'Pouco desafio ou tarefas abaixo da capacidade das pessoas: sensação de ociosidade e de não aprender nada novo.',
+    cids: ['cid-f32', 'cid-f43-2', 'cid-f48-0'],
+    itens: ['COP-05A', 'COP-05B', 'COP-06B'],
+    fontes: ['Subutilização de competências', 'Ociosidade', 'Funções pouco desafiadoras', 'Má distribuição de tarefas'],
+    acoes: [
+      ['Criar plano de desenvolvimento individual', 'Dar perspectiva de aprendizado e uso das competências.', 'Conversa de carreira com cada pessoa e definição de 1 a 2 metas de desenvolvimento.'],
+      ['Redistribuir tarefas entre a equipe', 'Equilibrar quem está ocioso e quem está sobrecarregado.', 'Mapear as atividades da área e redistribuir conforme capacidade e interesse.'],
+      ['Abrir projetos de melhoria para a equipe', 'Oferecer desafios novos a quem está subutilizado.', 'Selecionar melhorias da área e convidar voluntários para conduzi-las.'],
+    ],
+  },
+  {
+    nome: 'Baixo controle no trabalho / Falta de autonomia', dimensaoId: 'demandas', severidade: 3,
+    descricao: 'As pessoas não conseguem influenciar como, quando ou quanto trabalham — as decisões vêm prontas.',
+    cids: ['cid-f43-2', 'cid-f41', 'cid-z73-0'],
+    itens: ['COP-04A', 'COP-04B'],
+    fontes: ['Microgestão', 'Centralização de decisões', 'Excesso de burocracia', 'Baixa confiança na equipe'],
+    acoes: [
+      ['Definir alçadas de decisão da equipe', 'Dar autonomia real sobre o próprio trabalho.', 'Listar as decisões do dia a dia e combinar o que a equipe decide sem aprovação.'],
+      ['Incluir a equipe no planejamento das entregas', 'Permitir que as pessoas influenciem a distribuição do trabalho.', 'Planejamento quinzenal participativo, com a equipe estimando e priorizando.'],
+      ['Simplificar aprovações e controles da área', 'Reduzir a burocracia que tira o controle das pessoas.', 'Revisar os fluxos de aprovação e eliminar as etapas sem valor.'],
+    ],
+  },
+  {
+    nome: 'Baixa clareza de papel/função', dimensaoId: 'organizacao', severidade: 3,
+    descricao: 'As pessoas não sabem exatamente o que se espera delas, recebem informações incompletas ou ordens que se contradizem.',
+    cids: ['cid-f43-2', 'cid-f41', 'cid-f48-0'],
+    itens: ['COP-10A', 'COP-10B', 'COP-08B'],
+    fontes: ['Falta de definição de responsabilidades', 'Ordens contraditórias', 'Comunicação confusa', 'Atribuições mal definidas'],
+    acoes: [
+      ['Publicar o desenho de papéis e responsabilidades da área', 'Deixar claro o que cabe a cada pessoa.', 'Matriz de responsabilidades revisada com a equipe e publicada em local acessível.'],
+      ['Definir metas individuais claras', 'Cada pessoa precisa saber o que se espera dela.', 'Metas por pessoa combinadas no 1:1 e revisadas a cada trimestre.'],
+      ['Realizar alinhamento periódico de prioridades', 'Evitar ordens contraditórias e retrabalho.', 'Reunião curta semanal de prioridades com toda a equipe.'],
+    ],
+  },
+  {
+    nome: 'Maus relacionamentos no local de trabalho', dimensaoId: 'relacoes', severidade: 4,
+    descricao: 'Conflitos frequentes, tratamento injusto ou desrespeitoso entre colegas, e conflitos que não são resolvidos.',
+    cids: ['cid-f43-2', 'cid-f32', 'cid-f41'],
+    itens: ['COP-09B', 'COP-16A', 'COP-21'],
+    fontes: ['Comunicação agressiva', 'Rivalidade interna', 'Conflitos mal geridos', 'Liderança despreparada'],
+    acoes: [
+      ['Capacitar a liderança em mediação de conflitos', 'Conflitos mal geridos sustentam o mau clima.', 'Trilha de encontros com facilitação externa sobre mediação e comunicação não violenta.'],
+      ['Divulgar o canal de escuta confidencial', 'Dar caminho seguro para relatar situações de desrespeito.', 'Comunicação do canal a toda a área, com reforço da garantia de sigilo.'],
+      ['Combinar acordos de convivência com a equipe', 'Tornar explícito o comportamento esperado entre colegas.', 'Oficina com a equipe para definir e publicar os acordos.'],
+    ],
+  },
+  {
+    nome: 'Falta de suporte/apoio no trabalho', dimensaoId: 'lideranca', severidade: 3,
+    descricao: 'A liderança não está disponível para ouvir, ajudar ou orientar quando as pessoas precisam.',
+    cids: ['cid-z73-0', 'cid-f32', 'cid-f43-2'],
+    itens: ['COP-12A', 'COP-12B', 'COP-11A'],
+    fontes: ['Liderança ausente', 'Falta de escuta', 'Cobrança sem acompanhamento', 'Favoritismo'],
+    acoes: [
+      ['Formalizar rotina de 1:1 com a liderança', 'Garantir espaço regular de escuta e apoio.', 'Agenda recorrente quinzenal com pauta mínima e registro dos combinados.'],
+      ['Capacitar líderes em escuta e feedback', 'Líderes precisam de preparo para apoiar a equipe.', 'Programa de desenvolvimento de liderança com foco em escuta ativa.'],
+      ['Definir canal de suporte rápido para a equipe', 'Reduzir o tempo de espera por ajuda no dia a dia.', 'Canal de dúvidas com responsável e tempo de resposta combinados.'],
+    ],
+  },
+  {
+    nome: 'Trabalho em condições de difícil comunicação', dimensaoId: 'contexto', severidade: 3,
+    descricao: 'A informação não chega a tempo ou não chega a todos: turnos desencontrados, distância física ou canais que falham.',
+    cids: ['cid-f43-2', 'cid-f41', 'cid-f48-0'],
+    itens: ['COP-08A', 'COP-08B', 'COP-15A'],
+    fontes: ['Turnos desalinhados', 'Distância física', 'Falha nos meios de comunicação', 'Fluxo de informação inadequado'],
+    acoes: [
+      ['Estabelecer ritual semanal de comunicação da equipe', 'Garantir que a informação chegue a todos ao mesmo tempo.', 'Encontro semanal síncrono, com resumo escrito para quem não puder participar.'],
+      ['Definir canais oficiais de comunicação', 'Evitar informação dispersa ou perdida.', 'Publicar qual canal se usa para cada tipo de assunto.'],
+      ['Criar passagem de turno estruturada', 'Reduzir perda de informação entre turnos.', 'Checklist de passagem de turno com registro compartilhado.'],
+    ],
+  },
+  {
+    nome: 'Má gestão de mudanças organizacionais', dimensaoId: 'contexto', severidade: 3,
+    descricao: 'Mudanças importantes chegam sem aviso, sem explicação ou sem planejamento, gerando insegurança.',
+    cids: ['cid-f43-2', 'cid-f41', 'cid-f51-0'],
+    itens: ['COP-08A', 'COP-11B', 'COP-15A'],
+    fontes: ['Comunicação inadequada', 'Mudanças abruptas', 'Falta de planejamento', 'Insegurança quanto à estabilidade'],
+    acoes: [
+      ['Comunicar mudanças com antecedência e motivo', 'Reduzir a insegurança gerada por mudanças inesperadas.', 'Roteiro de comunicação de mudanças: o quê, por quê, quando e o que muda para cada um.'],
+      ['Envolver as equipes no planejamento das mudanças', 'Mudanças construídas com a equipe geram menos resistência.', 'Grupo de representantes das áreas afetadas participa do planejamento.'],
+      ['Acompanhar as equipes após cada mudança', 'Identificar cedo os impactos na saúde e no trabalho.', 'Rodada de conversas 30 dias após a mudança para ajustes.'],
+    ],
+  },
+  {
+    nome: 'Baixa justiça organizacional', dimensaoId: 'valores', severidade: 3,
+    descricao: 'Percepção de que as decisões, a distribuição do trabalho e a solução de conflitos não são justas nem transparentes.',
+    cids: ['cid-f32', 'cid-f43-2', 'cid-i10'],
+    itens: ['COP-16A', 'COP-16B', 'COP-09B', 'COP-15B'],
+    fontes: ['Critérios pouco transparentes', 'Favorecimento', 'Desigualdade de tratamento', 'Decisões pouco claras'],
+    acoes: [
+      ['Publicar os critérios de distribuição de trabalho', 'Tornar transparente como o trabalho é dividido.', 'Critérios definidos com a liderança e comunicados à equipe.'],
+      ['Explicar as decisões que afetam a equipe', 'Decisões explicadas são percebidas como mais justas.', 'Toda decisão relevante comunicada com o motivo e os critérios usados.'],
+      ['Revisar a política de promoções e reconhecimento', 'Reduzir a percepção de favorecimento.', 'Comitê revisa os critérios e os publica para toda a empresa.'],
+    ],
+  },
+  {
+    nome: 'Baixas recompensas e reconhecimento', dimensaoId: 'valores', severidade: 3,
+    descricao: 'O esforço das pessoas não é reconhecido nem valorizado, e falta perspectiva de crescimento.',
+    cids: ['cid-z73-0', 'cid-f32', 'cid-f48-0'],
+    itens: ['COP-09A', 'COP-07A', 'COP-13'],
+    fontes: ['Ausência de feedback', 'Foco exclusivo em metas', 'Reconhecimento desigual', 'Falta de plano de crescimento'],
+    acoes: [
+      ['Implantar rotina de feedback e reconhecimento', 'Dar retorno regular sobre o trabalho bem feito.', 'Feedback mensal estruturado e reconhecimento público das entregas.'],
+      ['Estruturar plano de carreira da área', 'Dar perspectiva de crescimento às pessoas.', 'Trilha de carreira com critérios claros de evolução.'],
+      ['Revisar os critérios de reconhecimento', 'Evitar que o reconhecimento seja desigual.', 'Critérios combinados e aplicados igualmente a toda a equipe.'],
+    ],
+  },
+  {
+    nome: 'Eventos violentos ou traumáticos', dimensaoId: 'saude', severidade: 5,
+    descricao: 'Exposição a situações de violência, ameaça ou eventos traumáticos no trabalho, ou sensação de falta de segurança física.',
+    cids: ['cid-f43-0', 'cid-f43-1', 'cid-f32'],
+    itens: ['COP-20', 'COP-22'],
+    fontes: ['Falta de protocolos de segurança', 'Exposição a risco', 'Ausência de treinamento', 'Falta de suporte pós-evento'],
+    acoes: [
+      ['Criar protocolo de resposta a eventos críticos', 'Saber como agir e proteger as pessoas quando algo acontece.', 'Protocolo com papéis, contatos e etapas, treinado com as equipes.'],
+      ['Oferecer suporte psicológico após eventos', 'Reduzir o risco de adoecimento depois de um evento traumático.', 'Acolhimento psicológico disponível em até 48 horas após o evento.'],
+      ['Treinar as equipes em segurança', 'Diminuir a exposição a situações de risco.', 'Treinamento periódico com simulações práticas.'],
+    ],
+  },
+  {
+    nome: 'Assédio de qualquer natureza no trabalho', dimensaoId: 'seguranca', severidade: 5,
+    descricao: 'Situações de assédio moral ou sexual, humilhação ou desrespeito, e um ambiente que não é psicologicamente seguro.',
+    cids: ['cid-f43-1', 'cid-f32', 'cid-f41'],
+    itens: ['COP-21', 'COP-09B', 'COP-16A'],
+    fontes: ['Cultura permissiva a desrespeito', 'Ausência de canal de denúncia', 'Liderança despreparada', 'Comunicação violenta'],
+    acoes: [
+      ['Implantar canal de denúncia com sigilo', 'Dar caminho seguro para relatar assédio.', 'Canal independente, com sigilo garantido e fluxo de apuração definido.'],
+      ['Publicar política de prevenção ao assédio', 'Deixar claro o que não é tolerado e as consequências.', 'Política aprovada, divulgada a todos e incluída na integração de novos colaboradores.'],
+      ['Treinar lideranças e equipes sobre assédio', 'Prevenir e saber reconhecer situações de assédio.', 'Treinamento obrigatório anual para lideranças e equipes.'],
+    ],
+  },
+]
+
+/** Registro global de fatores de risco — mutável: o Manager edita e
+   acrescenta fatores aqui. Os ids seguem o nome (`fator-<slug>`). */
+export const nr1FatoresRisco: Nr1FatorRisco[] = FATOR_SEEDS.map((f) => {
+  const id = `fator-${slugificar(f.nome)}`
+  return {
+    id, nome: f.nome, dimensaoId: f.dimensaoId, descricao: f.descricao, severidade: f.severidade,
+    cidIds: f.cids, itemIds: f.itens,
+    fontesGeradorasIds: idsPorNome(nr1FontesGeradoras, f.fontes),
+    acoesSugeridas: f.acoes.map(([oQue, porQue, como], i) => ({ id: `${id}-acao-${i + 1}`, oQue, porQue, como })),
+  }
+})
 
 /** Opções de resposta da matriz COPSOQ parametrizada pela YNA (legenda
    1–5 da "Matriz COPSOQ YNA — Validação V3"). Sempre da pior para a melhor
@@ -189,17 +378,17 @@ export const NR1_PONTUACAO: Nr1PontuacaoConfig = {
   faixas: [
     { min: 4.0, max: 5.0, nivel: 'baixo', label: 'Baixo', acao: 'Monitorar' },
     { min: 3.0, max: 3.9, nivel: 'atencao', label: 'Atenção', acao: 'Ação preventiva' },
-    { min: 2.0, max: 2.9, nivel: 'risco', label: 'Risco', acao: 'Ação corretiva prioritária' },
-    { min: 1.0, max: 1.9, nivel: 'critico', label: 'Crítico', acao: 'Ação imediata' },
+    { min: 1.0, max: 2.9, nivel: 'risco', label: 'Risco', acao: 'Ação corretiva prioritária' },
   ],
 }
 
 /** Traduz a média da dimensão (1–5) para o nível de risco. */
+/** Nível da nota média (1–5) — só três: Baixo, Atenção e Risco. "Crítico"
+   é exclusivo do nível do fator de risco (P × S, `nr1NivelPorProduto`). */
 export function nr1NivelPorMedia(media: number): Nr1NivelRisco {
   if (media >= 4) return 'baixo'
   if (media >= 3) return 'atencao'
-  if (media >= 2) return 'risco'
-  return 'critico'
+  return 'risco'
 }
 
 /* ------------------------------------------------------------------
@@ -288,7 +477,8 @@ function dimensao(id: Nr1DimensaoId, seeds: ItemSeed[]): Nr1Dimensao {
   const seedRiscos = FATORES_E_FONTES_POR_DIMENSAO[id]
   return {
     id, nome: meta.nome, descricao: meta.descricao, itens: seeds.map(item),
-    fatoresRiscoIds: seedRiscos ? idsPorNome(nr1FatoresRisco, seedRiscos.fatores) : [],
+    /* Espelho do catálogo: o fator é que aponta o domínio (`dimensaoId`). */
+    fatoresRiscoIds: nr1FatoresRisco.filter((f) => f.dimensaoId === id).map((f) => f.id),
     fontesGeradorasIds: seedRiscos ? idsPorNome(nr1FontesGeradoras, seedRiscos.fontes) : [],
   }
 }
@@ -377,6 +567,7 @@ const PARTICIPACAO: { id: string; respostas: number }[] = [
   { id: 'd-compliance', respostas: 15 },
   { id: 'd-rh', respostas: 7 },
   { id: 'd-diretoria', respostas: 2 },
+  { id: 'd-juridico', respostas: 3 },
 ]
 
 const participacaoAreas = () =>
@@ -432,6 +623,54 @@ export const nr1Campanhas: Nr1Campanha[] = [
     criadaEm: '2025-10-27',
     encerradaEm: '2025-12-05',
   },
+  {
+    id: 'camp-2024-1s',
+    nome: 'Avaliação de riscos psicossociais · 1º semestre 2024',
+    protocolo: 'NR1-BCP-2024-001',
+    status: 'encerrada',
+    modeloId: 'mod-yna',
+    modeloNome: 'Modelo YNA de Riscos Psicossociais',
+    versao: '1.0',
+    inicio: '2024-05-06',
+    fim: '2024-05-31',
+    elegiveis: 150,
+    respostas: 81,
+    participacao: participacaoAreas().map((p) => ({ ...p, respostas: Math.round(p.respostas * 0.62) })),
+    criadaEm: '2024-04-29',
+    encerradaEm: '2024-06-07',
+  },
+  {
+    id: 'camp-2024-2s',
+    nome: 'Avaliação de riscos psicossociais · 2º semestre 2024',
+    protocolo: 'NR1-BCP-2024-002',
+    status: 'encerrada',
+    modeloId: 'mod-yna',
+    modeloNome: 'Modelo YNA de Riscos Psicossociais',
+    versao: '1.0',
+    inicio: '2024-11-04',
+    fim: '2024-11-29',
+    elegiveis: 156,
+    respostas: 87,
+    participacao: participacaoAreas().map((p) => ({ ...p, respostas: Math.round(p.respostas * 0.66) })),
+    criadaEm: '2024-10-28',
+    encerradaEm: '2024-12-06',
+  },
+  {
+    id: 'camp-2025-1s',
+    nome: 'Avaliação de riscos psicossociais · 1º semestre 2025',
+    protocolo: 'NR1-BCP-2025-001',
+    status: 'encerrada',
+    modeloId: 'mod-yna',
+    modeloNome: 'Modelo YNA de Riscos Psicossociais',
+    versao: '1.0',
+    inicio: '2025-05-05',
+    fim: '2025-05-30',
+    elegiveis: 162,
+    respostas: 92,
+    participacao: participacaoAreas().map((p) => ({ ...p, respostas: Math.round(p.respostas * 0.7) })),
+    criadaEm: '2025-04-28',
+    encerradaEm: '2025-06-06',
+  },
 ]
 
 /* ------------------------------------------------------------------
@@ -446,25 +685,72 @@ export const nr1Campanhas: Nr1Campanha[] = [
 /** Uma coluna por dimensão, na ordem de `NR1_DIMENSOES`: demandas,
    organização, relações, liderança, interface (contexto), valores, saúde,
    segurança (psicossocial). */
-const MEDIAS_2026_1S: Record<string, number[]> = {
-  'd-trading': [1.9, 2.5, 2.6, 2.5, 2.4, 2.9, 2.1, 2.7],
-  'd-tech': [2.7, 3.1, 3.4, 3.3, 2.5, 3.2, 2.9, 3.8],
-  'd-ops': [2.6, 2.6, 2.7, 2.8, 3.3, 3.0, 2.8, 3.4],
-  'd-compliance': [3.3, 3.7, 3.9, 3.8, 3.6, 3.8, 3.5, 4.2],
-  'd-rh': [3.7, 4.0, 4.2, 4.1, 3.9, 4.1, 3.9, 4.5],
-  'd-diretoria': [0, 0, 0, 0, 0, 0, 0, 0],
+/* Três ciclos que contam uma história coerente para a reavaliação dos
+   planos: no 1º semestre de 2025 Trading (demandas, interface) e Operações
+   (organização) aparecem mal; os planos daquele ciclo melhoram parte disso
+   no 2º semestre, enquanto Operações piora em organização; 2026 (em campo)
+   segue melhorando. A Diretoria tem nota real — fica oculta por
+   k-anonimato, mas entra na nota da empresa. */
+/* Histórico de 2024 — a empresa vinha piorando em demandas e interface
+   (Trading) até o 1º semestre de 2025, quando os primeiros planos entram. */
+const MEDIAS_2024_1S: Record<string, number[]> = {
+  'd-trading': [2.8, 3.9, 3.8, 3.3, 3.2, 3.9, 3.5, 4.0],
+  'd-tech': [3.8, 4.0, 4.1, 3.9, 3.4, 4.0, 3.9, 4.3],
+  'd-ops': [3.9, 3.4, 3.4, 3.8, 4.0, 3.9, 3.8, 4.2],
+  'd-compliance': [4.0, 4.1, 4.2, 4.1, 4.0, 4.0, 4.0, 4.4],
+  'd-rh': [4.1, 4.2, 4.4, 4.3, 4.2, 4.2, 4.1, 4.6],
+  'd-diretoria': [3.8, 4.1, 4.2, 4.1, 3.9, 4.0, 3.7, 4.5],
+  'd-juridico': [3.7, 4.0, 4.0, 3.8, 3.7, 3.9, 3.6, 4.3],
+}
+
+const MEDIAS_2024_2S: Record<string, number[]> = {
+  'd-trading': [2.5, 3.8, 3.7, 3.1, 2.9, 3.8, 3.3, 3.9],
+  'd-tech': [3.8, 4.0, 4.1, 3.9, 3.2, 4.0, 3.8, 4.3],
+  'd-ops': [3.8, 3.1, 3.2, 3.8, 4.0, 3.9, 3.7, 4.1],
+  'd-compliance': [4.0, 4.1, 4.2, 4.1, 4.0, 4.0, 3.9, 4.4],
+  'd-rh': [4.1, 4.2, 4.4, 4.3, 4.2, 4.2, 4.1, 4.6],
+  'd-diretoria': [3.7, 4.1, 4.2, 4.1, 3.8, 4.0, 3.6, 4.5],
+  'd-juridico': [3.5, 3.9, 3.9, 3.7, 3.6, 3.8, 3.4, 4.2],
+}
+
+const MEDIAS_2025_1S: Record<string, number[]> = {
+  'd-trading': [2.3, 3.8, 3.7, 3.0, 2.7, 3.8, 3.2, 3.9],
+  'd-tech': [3.9, 4.0, 4.1, 3.9, 3.0, 4.0, 3.8, 4.3],
+  'd-ops': [3.8, 2.9, 3.1, 3.8, 4.0, 3.9, 3.7, 4.1],
+  'd-compliance': [4.0, 4.1, 4.2, 4.1, 4.0, 4.0, 3.9, 4.4],
+  'd-rh': [4.1, 4.2, 4.4, 4.3, 4.2, 4.2, 4.1, 4.6],
+  'd-diretoria': [3.7, 4.1, 4.2, 4.1, 3.8, 4.0, 3.6, 4.5],
+  'd-juridico': [3.4, 3.8, 3.9, 3.6, 3.5, 3.7, 3.3, 4.2],
 }
 
 const MEDIAS_2025_2S: Record<string, number[]> = {
-  'd-trading': [1.6, 2.1, 2.2, 2.1, 2.1, 2.5, 1.8, 2.3],
-  'd-tech': [2.3, 2.6, 2.9, 2.8, 2.1, 2.7, 2.4, 3.3],
-  'd-ops': [2.1, 2.3, 2.2, 2.4, 2.9, 2.5, 2.3, 2.9],
-  'd-compliance': [2.7, 3.1, 3.3, 3.2, 3.1, 3.2, 2.9, 3.6],
-  'd-rh': [3.1, 3.4, 3.6, 3.5, 3.3, 3.5, 3.3, 3.9],
-  'd-diretoria': [0, 0, 0, 0, 0, 0, 0, 0],
+  'd-trading': [2.7, 3.9, 3.8, 3.1, 3.3, 3.8, 3.4, 4.0],
+  'd-tech': [4.0, 4.1, 4.2, 4.0, 3.8, 4.1, 3.9, 4.3],
+  'd-ops': [3.8, 2.6, 3.0, 3.8, 4.0, 3.9, 3.6, 4.1],
+  'd-compliance': [4.0, 4.1, 4.2, 4.1, 4.0, 4.1, 4.0, 4.4],
+  'd-rh': [4.2, 4.3, 4.4, 4.3, 4.2, 4.3, 4.2, 4.6],
+  'd-diretoria': [3.8, 4.1, 4.2, 4.1, 3.9, 4.1, 3.7, 4.5],
+  'd-juridico': [3.5, 3.9, 4.0, 3.7, 3.6, 3.8, 3.4, 4.3],
+}
+
+/* 1º semestre 2026 (o ciclo em campo) — mais variado, para a demonstração
+   de encerrar o ciclo: Trading volta a piorar (demandas e saúde críticas),
+   Operações fica crítica em organização, Tecnologia em risco na interface
+   trabalho-indivíduo e Compliance/Pessoas seguem bem. */
+const MEDIAS_2026_1S: Record<string, number[]> = {
+  'd-trading': [1.7, 3.4, 2.6, 2.3, 2.1, 3.2, 1.8, 3.6],
+  'd-tech': [3.4, 4.1, 3.9, 3.0, 2.4, 3.7, 3.1, 4.3],
+  'd-ops': [2.8, 1.9, 2.7, 3.3, 3.6, 2.9, 2.5, 3.8],
+  'd-compliance': [4.2, 4.0, 4.4, 4.1, 3.8, 4.3, 4.0, 4.6],
+  'd-rh': [4.4, 4.6, 4.7, 4.5, 4.3, 4.6, 4.4, 4.8],
+  'd-diretoria': [3.2, 4.0, 4.2, 3.9, 2.9, 4.1, 3.0, 4.5],
+  'd-juridico': [3.0, 3.8, 3.6, 3.4, 3.1, 3.7, 3.2, 4.2],
 }
 
 const MEDIAS_POR_CAMPANHA: Record<string, Record<string, number[]>> = {
+  'camp-2024-1s': MEDIAS_2024_1S,
+  'camp-2024-2s': MEDIAS_2024_2S,
+  'camp-2025-1s': MEDIAS_2025_1S,
   'camp-2026-1s': MEDIAS_2026_1S,
   'camp-2025-2s': MEDIAS_2025_2S,
 }
@@ -496,155 +782,310 @@ export const nr1MapaCalor = (campanhaId?: string): Nr1LinhaMapa[] => {
 }
 
 /* ------------------------------------------------------------------
+   Motor de cálculo dos fatores de risco
+   Probabilidade = nota média das perguntas vinculadas ao fator (a mesma
+   régua de 1 a 5 do mapa de calor, opção A); nível = P × S, com a
+   severidade fixa do fator. A partir de `NR1_GATILHO_PLANO` o fator
+   "requer plano de ação"; de 4 a 8, "monitorar".
+   ------------------------------------------------------------------ */
+
+/** Nível (P × S) a partir do qual o fator requer plano de ação. */
+export const NR1_GATILHO_PLANO = 9
+
+/** Nota média (1–5, 5 = desejável) → probabilidade (1–5). Cortes
+   alinhados às faixas do mapa de calor — pendentes de validação de SST. */
+export function nr1ProbabilidadePorMedia(media: number): number {
+  if (media >= 4.0) return 1
+  if (media >= 3.5) return 2
+  if (media >= 3.0) return 3
+  if (media >= 2.5) return 4
+  return 5
+}
+
+export function nr1SituacaoPorNivel(nivelNum: number): Nr1FatorSituacao {
+  if (nivelNum >= NR1_GATILHO_PLANO) return 'requer-plano'
+  if (nivelNum >= 4) return 'monitorar'
+  return 'controlado'
+}
+
+const respostasDe = (campanhaId: string, departamentoId: string) =>
+  nr1Campanhas.find((c) => c.id === campanhaId)?.participacao.find((p) => p.departamentoId === departamentoId)?.respostas ?? 0
+
+/** Nota da empresa num domínio: média das áreas ponderada pelos
+   respondentes, incluindo as que ficam ocultas por k-anonimato (elas não
+   aparecem separadas, mas entram aqui). */
+export function nr1MediaDimensaoEmpresa(campanhaId: string, dimIdx: number): number {
+  const tabela = MEDIAS_POR_CAMPANHA[campanhaId] ?? MEDIAS_2026_1S
+  let soma = 0
+  let peso = 0
+  for (const d of rhDepartamentos) {
+    const media = tabela[d.id]?.[dimIdx] ?? 0
+    const n = respostasDe(campanhaId, d.id)
+    if (media > 0 && n > 0) { soma += media * n; peso += n }
+  }
+  return peso ? Number((soma / peso).toFixed(1)) : 0
+}
+
+/* ------------------------------------------------------------------
+   Recortes do resultado: empresa, cada área com respondentes suficientes e
+   "Outros departamentos" — as áreas abaixo do k-anonimato agregadas numa
+   só linha (que também fica oculta se, somadas, não chegarem ao k).
+   ------------------------------------------------------------------ */
+
+export const NR1_RECORTE_OUTROS = 'outros'
+
+export function nr1RecortesDoCiclo(campanhaId: string) {
+  const deps = rhDepartamentos.map((d) => ({ id: d.id, nome: d.nome, respondentes: respostasDe(campanhaId, d.id) }))
+  const pequenos = deps.filter((d) => d.respondentes < NR1_PONTUACAO.kAnonimato)
+  const somaPequenos = pequenos.reduce((s, d) => s + d.respondentes, 0)
+  return {
+    visiveis: deps.filter((d) => d.respondentes >= NR1_PONTUACAO.kAnonimato),
+    outros: pequenos.length > 0
+      ? { nomes: pequenos.map((d) => d.nome), ids: pequenos.map((d) => d.id), respondentes: somaPequenos, protegido: somaPequenos < NR1_PONTUACAO.kAnonimato }
+      : null,
+  }
+}
+
+/** Nota de cada domínio (na ordem de `NR1_DIMENSOES`) num recorte:
+   `null` = empresa (ponderada, com todas as áreas); `'outros'` = as áreas
+   pequenas agregadas, ponderadas pelos respondentes; senão, a área. `null`
+   no resultado quando o recorte não tem dado (k-anonimato). */
+export function nr1MediasDoRecorte(campanhaId: string, recorte: string | null): (number | null)[] {
+  const tabela = MEDIAS_POR_CAMPANHA[campanhaId] ?? MEDIAS_2026_1S
+  if (recorte === null) return NR1_DIMENSOES.map((_, i) => nr1MediaDimensaoEmpresa(campanhaId, i) || null)
+  const { visiveis, outros } = nr1RecortesDoCiclo(campanhaId)
+  if (recorte === NR1_RECORTE_OUTROS) {
+    if (!outros || outros.protegido) return NR1_DIMENSOES.map(() => null)
+    return NR1_DIMENSOES.map((_, i) => {
+      let soma = 0
+      let peso = 0
+      for (const id of outros.ids) {
+        const n = respostasDe(campanhaId, id)
+        const m = tabela[id]?.[i] ?? 0
+        if (m > 0 && n > 0) { soma += m * n; peso += n }
+      }
+      return peso ? Number((soma / peso).toFixed(1)) : null
+    })
+  }
+  if (!visiveis.some((d) => d.id === recorte)) return NR1_DIMENSOES.map(() => null)
+  return NR1_DIMENSOES.map((_, i) => tabela[recorte]?.[i] || null)
+}
+
+/** Ciclo imediatamente anterior na cronologia (qualquer ciclo). */
+export const nr1CicloAnteriorDe = (campanhaId: string) => nr1CampanhaAnterior(campanhaId)
+
+/** Dimensões (com itens) da versão aplicada no ciclo. */
+function dimensoesDaCampanha(campanhaId: string): Nr1Dimensao[] {
+  const c = nr1Campanhas.find((x) => x.id === campanhaId)
+  const m = c && nr1Modelos.find((x) => x.id === c.modeloId)
+  return m?.versoes.find((v) => v.versao === c!.versao)?.dimensoes ?? []
+}
+
+/** Nota de cada pergunta num recorte — o mesmo espalhamento determinístico
+   que a pontuação por pergunta das telas usa (`nr1DistribuirPorItem`, com
+   a mesma semente), para os números nunca discordarem. `null` = empresa. */
+export function nr1MediasPorItem(campanhaId: string, departamentoId: string | null): Map<string, { texto: string; media: number }> {
+  const tabela = MEDIAS_POR_CAMPANHA[campanhaId] ?? MEDIAS_2026_1S
+  const mapa = new Map<string, { texto: string; media: number }>()
+  for (const dim of dimensoesDaCampanha(campanhaId)) {
+    const idx = NR1_DIMENSOES.findIndex((d) => d.id === dim.id)
+    const media = departamentoId ? (tabela[departamentoId]?.[idx] ?? 0) : nr1MediaDimensaoEmpresa(campanhaId, idx)
+    if (!media) continue
+    const distrib = nr1DistribuirPorItem(dim.itens.map((i) => i.id), media, `${campanhaId}-${dim.id}-${departamentoId ?? 'empresa'}`)
+    for (const it of dim.itens) mapa.set(it.id, { texto: it.texto, media: distrib.find((x) => x.itemId === it.id)!.media })
+  }
+  return mapa
+}
+
+/** Avalia todos os fatores do catálogo num ciclo: um registro por fator ×
+   departamento visível (k-anonimato) e um por fator na empresa inteira
+   (`departamentoId: null`). Fator sem nenhuma pergunta aplicada no ciclo
+   fica de fora. */
+export function nr1AvaliarFatores(campanhaId: string): Nr1FatorAvaliado[] {
+  const recortes: { id: string | null; respondentes: number }[] = [
+    ...rhDepartamentos
+      .map((d) => ({ id: d.id as string | null, respondentes: respostasDe(campanhaId, d.id) }))
+      .filter((r) => r.respondentes >= NR1_PONTUACAO.kAnonimato),
+    { id: null, respondentes: rhDepartamentos.reduce((s, d) => s + respostasDe(campanhaId, d.id), 0) },
+  ]
+  const out: Nr1FatorAvaliado[] = []
+  for (const r of recortes) {
+    const itens = nr1MediasPorItem(campanhaId, r.id)
+    for (const f of nr1FatoresRisco) {
+      const perguntas = f.itemIds
+        .filter((id) => itens.has(id))
+        .map((id) => ({ itemId: id, texto: itens.get(id)!.texto, media: itens.get(id)!.media, nivel: nr1NivelPorMedia(itens.get(id)!.media) }))
+        .sort((a, b) => a.media - b.media)
+      if (perguntas.length === 0) continue
+      const media = Number((perguntas.reduce((s, p) => s + p.media, 0) / perguntas.length).toFixed(1))
+      const probabilidade = nr1ProbabilidadePorMedia(media)
+      const nivelNum = probabilidade * f.severidade
+      out.push({
+        fatorId: f.id, campanhaId, departamentoId: r.id, respondentes: r.respondentes,
+        media, probabilidade, severidade: f.severidade, nivelNum,
+        nivel: nr1NivelPorProduto(nivelNum), situacao: nr1SituacaoPorNivel(nivelNum), perguntas,
+      })
+    }
+  }
+  return out
+}
+
+/** Leitura de um fator (mesmo recorte) entre o ciclo anterior e o atual.
+   Dentro do gatilho, o nível (P × S) muda em degraus — a nota média é que
+   mostra a direção: variação acima de `LIMIAR_TENDENCIA` (o mesmo da
+   tendência dos riscos) conta como melhora ou piora. */
+export function nr1EvolucaoFator(anterior: Nr1FatorAvaliado | undefined, atual: Nr1FatorAvaliado): Nr1FatorEvolucao {
+  if (!anterior || anterior.situacao !== 'requer-plano') return atual.situacao === 'requer-plano' ? 'novo' : 'sem-mudanca'
+  if (atual.situacao !== 'requer-plano') return 'saiu-do-gatilho'
+  const delta = atual.media - anterior.media
+  if (atual.nivelNum < anterior.nivelNum || delta > LIMIAR_TENDENCIA) return 'melhorou'
+  if (atual.nivelNum > anterior.nivelNum || delta < -LIMIAR_TENDENCIA) return 'piorou'
+  return 'sem-mudanca'
+}
+
+/** Ciclo encerrado imediatamente anterior a outro (para a reavaliação). */
+export function nr1CampanhaAnterior(campanhaId: string): string | undefined {
+  const i = CAMPANHAS_CRONOLOGICAS.indexOf(campanhaId)
+  return i > 0 ? CAMPANHAS_CRONOLOGICAS[i - 1] : undefined
+}
+
+/* ------------------------------------------------------------------
    Inventário de riscos para o PGR (RF-D01)
    ------------------------------------------------------------------ */
 
-export type RiscoSeed = {
-  id: string; dimensaoId: Nr1DimensaoId; departamentoIds: string[]
-  fator: string; danos: string; probabilidade: number; severidade: Nr1Severidade
-  controles: string[]
-  fatorRiscoId?: string
-  fontesGeradorasIds?: string[]
-  /** Ciclo analisado quando o risco foi registrado — ausente nos riscos-semente. */
-  campanhaId?: string
-  /** Presente quando o risco nasceu da aba "Riscos sugeridos" (ver
-     `nr1RiscosSugeridosMock.ts`) — repassado a `Nr1RiscoInventario` via o
-     spread `...r` abaixo, sem lógica adicional aqui. */
-  origemSugestaoId?: string
-  /** Override manual do status (RH/SST, à mão) — a ÚNICA exceção à regra de
-     que `Nr1RiscoStatus` nunca é digitado manualmente (ver o tipo em
-     `types/index.ts`). Definido pelo campo "Status" em "Editar risco" ou
-     pelo botão "Concluir risco" (que grava `'eliminado'`); enquanto
-     presente, vence o que a evolução entre ciclos calcularia em
-     `nr1Inventario()` — porque o RH decidiu essa leitura, não porque o
-     produto inferiu sozinho. */
-  statusManual?: Nr1RiscoStatus
+/* ------------------------------------------------------------------
+   Riscos gerados (nova estrutura). Cada risco do inventário é um fator do
+   catálogo num recorte (departamento ou empresa) de um ciclo encerrado,
+   gerado pelo motor (`nr1AvaliarFatores`) — o RH não cadastra P × S. O que
+   o RH decide fica registrado à parte: dispensar um fator apontado (com
+   justificativa) ou incluir um fator que o questionário não apontou.
+   ------------------------------------------------------------------ */
+
+/** Ordem cronológica das campanhas — a mesma base do heatmap por campanha. */
+const CAMPANHAS_CRONOLOGICAS = ['camp-2024-1s', 'camp-2024-2s', 'camp-2025-1s', 'camp-2025-2s', 'camp-2026-1s']
+
+/** Decisão do RH sobre um fator num recorte de um ciclo. Mutável. */
+export interface Nr1DecisaoFator {
+  riscoId: string
+  campanhaId: string
+  fatorId: string
+  departamentoId: string | null
+  tipo: 'dispensado' | 'incluido'
+  justificativa: string
+  autor: string
+  em: string
 }
 
-/** Mutável de propósito: `nr1ResultadoService.adicionarRisco` empurra riscos
-   novos aqui, e `nr1Inventario()` já os inclui na próxima chamada (não há
-   cache — cada chamada remapeia `RISCOS` do zero). */
-export const RISCOS: RiscoSeed[] = [
-  {
-    id: 'r-01', dimensaoId: 'demandas', departamentoIds: ['d-trading'],
-    fatorRiscoId: 'fator-excesso-de-demandas-no-trabalho-sobrecarga', fontesGeradorasIds: ['fonte-metas-irrealistas', 'fonte-jornadas-prolongadas', 'fonte-equipe-insuficiente'],
-    fator: 'Excesso de demandas no trabalho (Sobrecarga)',
-    danos: 'Fadiga crônica, esgotamento profissional (burnout), transtornos de ansiedade, erros operacionais por sobrecarga cognitiva.',
-    probabilidade: 4, severidade: 4,
-    controles: [
-      'Revisar o dimensionamento da equipe de mesa nos horários de pico.',
-      'Instituir janela de pausa obrigatória escalonada durante o pregão.',
-      'Revisar metas e prazos com a liderança da área.',
-    ],
-  },
-  {
-    id: 'r-02', dimensaoId: 'contexto', departamentoIds: ['d-trading'],
-    fatorRiscoId: 'fator-trabalho-em-condicoes-de-dificil-comunicacao', fontesGeradorasIds: ['fonte-turnos-desalinhados', 'fonte-fluxo-de-informacao-inadequado'],
-    fator: 'Trabalho em condições de difícil comunicação',
-    danos: 'Privação de sono, dificuldade de recuperação, conflito trabalho-família, adoecimento mental.',
-    probabilidade: 4, severidade: 3,
-    controles: [
-      'Publicar política de desconexão com regras claras por área.',
-      'Definir escala formal de sobreaviso, com compensação.',
-      'Silenciar canais corporativos fora da janela acordada.',
-    ],
-  },
-  {
-    id: 'r-03', dimensaoId: 'relacoes', departamentoIds: ['d-trading', 'd-ops'],
-    fatorRiscoId: 'fator-maus-relacionamentos-no-local-de-trabalho', fontesGeradorasIds: ['fonte-conflitos-mal-geridos', 'fonte-rivalidade-interna'],
-    fator: 'Maus relacionamentos no local de trabalho',
-    danos: 'Sofrimento psíquico, isolamento, absenteísmo, agravamento de quadros de ansiedade.',
-    probabilidade: 3, severidade: 4,
-    controles: [
-      'Capacitar a liderança em mediação de conflito e comunicação não violenta.',
-      'Divulgar o canal de escuta confidencial a toda a área.',
-      'Acompanhar o indicador de relações no próximo ciclo.',
-    ],
-  },
-  {
-    id: 'r-04', dimensaoId: 'contexto', departamentoIds: ['d-tech'],
-    fatorRiscoId: 'fator-trabalho-em-condicoes-de-dificil-comunicacao', fontesGeradorasIds: ['fonte-distancia-fisica', 'fonte-falha-nos-meios-de-comunicacao'],
-    fator: 'Trabalho em condições de difícil comunicação',
-    danos: 'Solidão, queda de engajamento, sintomas depressivos.',
-    probabilidade: 3, severidade: 3,
-    controles: [
-      'Estabelecer ritual semanal presencial ou síncrono por squad.',
-      'Formalizar rotina de 1:1 quinzenal com a liderança.',
-    ],
-  },
-  {
-    id: 'r-05', dimensaoId: 'demandas', departamentoIds: ['d-ops'],
-    fatorRiscoId: 'fator-excesso-de-demandas-no-trabalho-sobrecarga', fontesGeradorasIds: ['fonte-equipe-insuficiente', 'fonte-acumulo-de-funcoes'],
-    fator: 'Excesso de demandas no trabalho (Sobrecarga)',
-    danos: 'Frustração, estresse ocupacional, retrabalho e prolongamento de jornada.',
-    probabilidade: 3, severidade: 2,
-    controles: [
-      'Priorizar no roadmap de TI as falhas apontadas pela operação.',
-      'Criar canal rápido de reporte de indisponibilidade.',
-    ],
-  },
-  {
-    id: 'r-06', dimensaoId: 'organizacao', departamentoIds: ['d-ops'],
-    fatorRiscoId: 'fator-baixa-clareza-de-papel-funcao', fontesGeradorasIds: ['fonte-falta-de-definicao-de-responsabilidades', 'fonte-atribuicoes-mal-definidas'],
-    fator: 'Baixa clareza de papel/função',
-    danos: 'Insegurança, conflito de demandas, sobrecarga percebida.',
-    probabilidade: 3, severidade: 2,
-    controles: [
-      'Republicar o desenho de papéis e responsabilidades da área.',
-      'Realizar sessão de alinhamento com todas as células.',
-    ],
-  },
-]
+export const nr1DecisoesFator: Nr1DecisaoFator[] = []
 
-/** Ordem cronológica das campanhas — a mesma base do heatmap por campanha
-   (`MEDIAS_POR_CAMPANHA`), para o histórico de um risco nunca contar uma
-   história diferente da do mapa de calor daquela campanha. */
-const CAMPANHAS_CRONOLOGICAS = ['camp-2025-2s', 'camp-2026-1s']
+/** Reavaliação de um plano do ciclo anterior, feita quando um ciclo novo
+   encerra: a decisão do RH sobre o fator (a efetividade de cada ação fica
+   na própria ação). */
+export interface Nr1Reavaliacao {
+  /** Ciclo em que a reavaliação foi feita (o novo). */
+  campanhaId: string
+  riscoAnteriorId: string
+  decisao: 'encerrar' | 'manter' | 'revisar'
+  autor: string
+  em: string
+}
 
-/** Histórico de cada risco do inventário, ciclo a ciclo — a média/nível vêm
-   da MESMA célula do mapa de calor (departamento × dimensão) da campanha em
-   questão, e a tendência/sugestão vêm de `nr1AnalisarEvolucao`. Nada aqui é
-   um número novo: é o dado que já existe, só lido na perspectiva do risco.
+export const nr1Reavaliacoes: Nr1Reavaliacao[] = []
 
-   Quando o risco atravessa mais de um departamento (`departamentoIds` com
-   mais de um item), o ponto de cada ciclo é a média simples das células
-   daqueles departamentos naquela dimensão — mesmo espírito de
-   `mediaPorDimensao` (média das áreas, não um número à parte), só que
-   restrita aos departamentos do próprio risco em vez de todos. */
-export const nr1RiscosCiclos: Nr1RiscoCiclo[] = RISCOS.flatMap((r) => {
-  const dimIdx = NR1_DIMENSOES.findIndex((d) => d.id === r.dimensaoId)
-  const pontos = CAMPANHAS_CRONOLOGICAS.map((campanhaId) => {
-    const tabela = MEDIAS_POR_CAMPANHA[campanhaId] ?? MEDIAS_2026_1S
-    const vals = r.departamentoIds.map((depId) => tabela[depId]?.[dimIdx] ?? 0)
-    const media = vals.reduce((s, v) => s + v, 0) / vals.length
-    return { campanhaId, media, nivel: nr1NivelPorMedia(media) }
-  })
-  return nr1MontarHistoricoRisco(r.id, pontos)
-})
+/** Conclusão manual ("Concluir risco") — vence o status calculado. */
+export const nr1StatusManual = new Map<string, Nr1RiscoStatus>()
 
-export const nr1Inventario = (): Nr1RiscoInventario[] =>
-  RISCOS.map((r) => {
-    const deps = r.departamentoIds.map((id) => rhDepartamentos.find((d) => d.id === id))
-    const nivelNum = r.probabilidade * r.severidade
-    const historico = nr1RiscosCiclos.filter((c) => c.riscoId === r.id)
-    const ultimo = historico[historico.length - 1]
-    return {
-      ...r,
-      /* Risco classificado num fator do catálogo mostra o nome do catálogo —
-         renomear o fator no Manager reflete aqui também. */
-      fator: (r.fatorRiscoId && nr1FatoresRisco.find((f) => f.id === r.fatorRiscoId)?.nome) || r.fator,
-      dimensao: nr1DimensaoNome(r.dimensaoId),
-      grupoExposto: deps.map((d, i) => d?.nome ?? r.departamentoIds[i]).join(', '),
-      respondentes: r.departamentoIds.reduce((soma, id) => soma + (PARTICIPACAO.find((p) => p.id === id)?.respostas ?? 0), 0),
-      nivelNum,
-      nivel: nr1NivelPorProduto(nivelNum),
-      campanhaId: r.campanhaId ?? 'camp-2026-1s',
-      status: r.statusManual ?? (ultimo?.status ?? 'identificado'),
-      tendencia: ultimo?.tendencia,
-      variacaoPontos: ultimo?.variacaoPontos,
-      acaoRecomendada: ultimo?.acaoRecomendada,
-    }
-  })
+/** Id estável do risco gerado: ciclo + fator + recorte. */
+export const nr1RiscoIdGerado = (campanhaId: string, fatorId: string, departamentoId: string | null) =>
+  `rg-${campanhaId}-${fatorId}-${departamentoId ?? 'empresa'}`
+
+/** Ciclos encerrados, do mais antigo para o mais recente. */
+export const nr1CampanhasEncerradas = () =>
+  CAMPANHAS_CRONOLOGICAS.filter((id) => nr1Campanhas.find((c) => c.id === id)?.status === 'encerrada')
+
+/** Ciclo que alimenta o inventário atual — o último encerrado. */
+export const nr1CampanhaVigente = () => nr1CampanhasEncerradas().slice(-1)[0]
+
+const STATUS_POR_EVOLUCAO: Record<Nr1FatorEvolucao, Nr1RiscoStatus> = {
+  novo: 'identificado',
+  melhorou: 'monitorando',
+  'sem-mudanca': 'monitorando',
+  piorou: 'regredido',
+  'saiu-do-gatilho': 'controlado',
+}
+
+const RECOMENDACAO_POR_EVOLUCAO: Partial<Record<Nr1FatorEvolucao, Nr1AcaoRecomendada>> = {
+  melhorou: 'manter-com-monitoramento',
+  'sem-mudanca': 'revisar-plano',
+  piorou: 'revisar-plano',
+}
+
+/** Monta o risco do inventário a partir de um fator avaliado. */
+function riscoDeAvaliacao(av: Nr1FatorAvaliado, anterior: Nr1FatorAvaliado | undefined, origem: 'questionario' | 'manual'): Nr1RiscoInventario {
+  const f = nr1FatoresRisco.find((x) => x.id === av.fatorId)!
+  const id = nr1RiscoIdGerado(av.campanhaId, av.fatorId, av.departamentoId)
+  const dep = av.departamentoId ? rhDepartamentos.find((d) => d.id === av.departamentoId) : undefined
+  const evolucao = nr1EvolucaoFator(anterior, av)
+  const variacao = anterior ? Number((av.media - anterior.media).toFixed(1)) : undefined
+  const decisao = nr1DecisoesFator.find((d) => d.riscoId === id && d.tipo === 'incluido')
+  /* Status e sugestão só falam de plano quando houve plano no ciclo
+     anterior — fator que segue apontado sem nunca ter tido ação é, para
+     todos os efeitos, um risco identificado que ainda espera o primeiro. */
+  const tinhaPlano = !!anterior && nr1Acoes.some((a) => a.riscoId === nr1RiscoIdGerado(anterior.campanhaId, anterior.fatorId, anterior.departamentoId))
+  const leitura: Nr1FatorEvolucao = origem === 'manual' ? 'novo' : !tinhaPlano && evolucao !== 'piorou' ? 'novo' : evolucao
+  return {
+    id,
+    dimensaoId: f.dimensaoId,
+    dimensao: nr1DimensaoNome(f.dimensaoId),
+    fator: f.nome,
+    fatorRiscoId: f.id,
+    fontesGeradorasIds: f.fontesGeradorasIds,
+    danos: f.cidIds.map((c) => nr1Cids.find((x) => x.id === c)).filter(Boolean).map((c) => `${c!.nome} (${c!.codigo})`).join('; '),
+    grupoExposto: dep?.nome ?? 'Toda a empresa',
+    departamentoIds: dep ? [dep.id] : [],
+    respondentes: av.respondentes,
+    probabilidade: av.probabilidade,
+    severidade: av.severidade,
+    nivelNum: av.nivelNum,
+    nivel: av.nivel,
+    /* Ações vigentes do risco (versão já substituída por outra não conta). */
+    controles: nr1Acoes.filter((a) => a.riscoId === id && !nr1Acoes.some((b) => b.versaoAnteriorId === a.id)).map((a) => a.oQue),
+    campanhaId: av.campanhaId,
+    status: nr1StatusManual.get(id) ?? STATUS_POR_EVOLUCAO[leitura],
+    tendencia: variacao === undefined ? undefined : variacao > LIMIAR_TENDENCIA ? 'melhorando' : variacao < -LIMIAR_TENDENCIA ? 'piorando' : 'estavel',
+    variacaoPontos: variacao,
+    /* Piorou sem nunca ter tido plano: não há plano a revisar — escalar. */
+    acaoRecomendada: leitura === 'piorou' && !tinhaPlano ? 'escalar' : RECOMENDACAO_POR_EVOLUCAO[leitura],
+    avaliacao: av,
+    origem,
+    justificativaInclusao: decisao?.justificativa,
+  }
+}
+
+/** Riscos de um ciclo: fatores que requerem plano (menos os dispensados)
+   mais os incluídos manualmente pelo RH. */
+export function nr1RiscosGerados(campanhaId: string): Nr1RiscoInventario[] {
+  const atuais = nr1AvaliarFatores(campanhaId)
+  const idAnterior = nr1CampanhaAnterior(campanhaId)
+  const anteriores = idAnterior ? nr1AvaliarFatores(idAnterior) : []
+  const ant = (av: Nr1FatorAvaliado) => anteriores.find((x) => x.fatorId === av.fatorId && x.departamentoId === av.departamentoId)
+  const decisao = (av: Nr1FatorAvaliado, tipo: Nr1DecisaoFator['tipo']) =>
+    nr1DecisoesFator.some((d) => d.tipo === tipo && d.riscoId === nr1RiscoIdGerado(av.campanhaId, av.fatorId, av.departamentoId))
+  return atuais
+    .filter((av) => (av.situacao === 'requer-plano' && !decisao(av, 'dispensado')) || decisao(av, 'incluido'))
+    .map((av) => riscoDeAvaliacao(av, ant(av), av.situacao === 'requer-plano' ? 'questionario' : 'manual'))
+}
+
+/** Inventário atual — os riscos do último ciclo encerrado. */
+export const nr1Inventario = (): Nr1RiscoInventario[] => {
+  const vigente = nr1CampanhaVigente()
+  return vigente ? nr1RiscosGerados(vigente) : []
+}
+
+/** Riscos de todos os ciclos encerrados — para resolver o risco de origem
+   de qualquer ação, inclusive as de ciclos anteriores. */
+export const nr1RiscosTodos = (): Nr1RiscoInventario[] => nr1CampanhasEncerradas().flatMap(nr1RiscosGerados)
+
 
 /** Classificação do risco pelo produto probabilidade × severidade (1–25),
    coerente com a lógica do GRO. Cálculo simples e transparente — pendente de
@@ -660,18 +1101,34 @@ export function nr1NivelPorProduto(n: number): Nr1NivelRisco {
    Plano de ação 5W2H (RF-E01/E02)
    ------------------------------------------------------------------ */
 
+/* As ações de exemplo contam a história dos ciclos: no 1º semestre de 2025
+   a sobrecarga de Trading e a da empresa ganharam plano; a da empresa saiu
+   do gatilho, a de Trading melhorou só em parte e virou a v2. No 2º
+   semestre de 2025, Trading e Operações têm planos em andamento — e ainda
+   há fatores apontados sem plano (recompensas e eventos em Trading, assédio
+   em Operações), que é o trabalho do RH no Inventário de riscos. */
+const FATOR_SOBRECARGA = 'fator-excesso-de-demandas-no-trabalho-sobrecarga'
+const RG_TRADING_SOBRECARGA_25_1 = nr1RiscoIdGerado('camp-2025-1s', FATOR_SOBRECARGA, 'd-trading')
+const RG_EMPRESA_SOBRECARGA_25_1 = nr1RiscoIdGerado('camp-2025-1s', FATOR_SOBRECARGA, null)
+const RG_TRADING_SOBRECARGA_25_2 = nr1RiscoIdGerado('camp-2025-2s', FATOR_SOBRECARGA, 'd-trading')
+const RG_TRADING_SUPORTE_25_2 = nr1RiscoIdGerado('camp-2025-2s', 'fator-falta-de-suporte-apoio-no-trabalho', 'd-trading')
+const RG_OPS_AUTONOMIA_25_2 = nr1RiscoIdGerado('camp-2025-2s', 'fator-baixo-controle-no-trabalho-falta-de-autonomia', 'd-ops')
+const RG_OPS_CLAREZA_25_2 = nr1RiscoIdGerado('camp-2025-2s', 'fator-baixa-clareza-de-papel-funcao', 'd-ops')
+const RG_TRADING_SUPORTE_25_1 = nr1RiscoIdGerado('camp-2025-1s', 'fator-falta-de-suporte-apoio-no-trabalho', 'd-trading')
+
 export const nr1Acoes: Nr1Acao[] = [
   {
-    id: 'a-01', riscoId: 'r-01',
+    id: 'a-01', riscoId: RG_TRADING_SOBRECARGA_25_1,
     oQue: 'Instituir janela de pausa obrigatória escalonada durante o pregão',
     porQue: 'Reduzir a exposição ao ritmo acelerado sem pausa, principal fator de risco da mesa.',
-    quem: 'Ricardo Alencar · Head de Trading',
-    quando: '2026-07-31', onde: 'Trading & Mercados',
+    quem: 'Ricardo Alencar · Trading & Mercados',
+    quando: '2025-09-30', onde: 'Trading & Mercados',
     como: 'Escala de revezamento em dois blocos de 20 minutos, com cobertura cruzada entre duplas.',
     quanto: 'Sem custo direto, só reorganização de escala',
-    status: 'em-andamento',
+    status: 'concluida',
+    concluidaEm: '2025-09-26',
     comentarios: [
-      { id: 'com-01', autor: 'Ricardo Alencar', texto: 'Escala publicada e já rodando desde a semana passada.', arquivos: ['escala-revezamento-pregao-jul26.pdf'], em: '2026-06-19' },
+      { id: 'com-01', autor: 'Ricardo Alencar', texto: 'Escala publicada e já rodando desde a semana passada.', arquivos: ['escala-revezamento-pregao-ago25.pdf'], em: '2025-08-14' },
     ],
     versao: 1,
     /* O risco saiu de crítico para risco entre os dois ciclos — melhorou,
@@ -679,10 +1136,10 @@ export const nr1Acoes: Nr1Acao[] = [
     efetividade: 'parcialmente-efetiva',
   },
   {
-    id: 'a-01-v2', riscoId: 'r-01',
+    id: 'a-01-v2', riscoId: RG_TRADING_SOBRECARGA_25_2,
     oQue: 'Instituir pausa obrigatória escalonada + limitar concorrência de posições por trader',
     porQue: 'A escala de pausas ajudou (crítico → risco no último ciclo), mas o risco ainda está na faixa grave — o ritmo em si segue alto.',
-    quem: 'Ricardo Alencar · Head de Trading',
+    quem: 'Ricardo Alencar · Trading & Mercados',
     quando: '2026-12-15', onde: 'Trading & Mercados',
     como: 'Mantém a escala de revezamento da v1 e acrescenta um teto de posições simultâneas por trader nos horários de pico.',
     quanto: 'Sem custo direto, só reorganização de escala e limites operacionais',
@@ -693,10 +1150,10 @@ export const nr1Acoes: Nr1Acao[] = [
     motivoRevisao: 'Risco seguiu na faixa grave no ciclo mais recente (recomendação: revisar plano) — a v1 reduziu a intensidade, mas não o suficiente sozinha.',
   },
   {
-    id: 'a-02', riscoId: 'r-01',
+    id: 'a-02', riscoId: RG_TRADING_SOBRECARGA_25_2,
     oQue: 'Revisar o dimensionamento da equipe nos horários de pico',
     porQue: 'A carga concentrada excede a capacidade da equipe atual.',
-    quem: 'Camila Risi · DHO',
+    quem: 'Camila Risi · Pessoas & DHO',
     quando: '2026-08-15', onde: 'Trading & Mercados',
     como: 'Estudo de carga por faixa horária e proposta de duas contratações.',
     quanto: 'R$ 28.000/mês (estimativa)',
@@ -705,35 +1162,38 @@ export const nr1Acoes: Nr1Acao[] = [
     versao: 1,
   },
   {
-    id: 'a-03', riscoId: 'r-02',
+    id: 'a-03', riscoId: RG_EMPRESA_SOBRECARGA_25_1,
     oQue: 'Publicar política de desconexão com regras por área',
     porQue: 'Formalizar o limite de disponibilidade fora do horário e reduzir a hiperconexão.',
-    quem: 'Camila Risi · DHO',
-    quando: '2026-06-20', onde: 'Toda a empresa',
+    quem: 'Camila Risi · Pessoas & DHO',
+    quando: '2025-08-29', onde: 'Toda a empresa',
     como: 'Política aprovada pelo jurídico, comunicada por e-mail e treinamento de liderança.',
     quanto: 'Sem custo direto',
-    status: 'atrasada',
-    comentarios: [],
+    status: 'concluida',
+    concluidaEm: '2025-08-27',
+    comentarios: [
+      { id: 'com-04', autor: 'Camila Risi', texto: 'Política publicada na intranet e apresentada às lideranças.', arquivos: ['politica-desconexao-v1.pdf'], em: '2025-08-27' },
+    ],
     versao: 1,
   },
   {
-    id: 'a-04', riscoId: 'r-03',
-    oQue: 'Capacitar a liderança em mediação de conflito',
-    porQue: 'Atritos recorrentes entre pares exigem preparo da liderança direta.',
-    quem: 'Paula Mendes · Desenvolvimento',
-    quando: '2026-09-30', onde: 'Trading & Mercados',
-    como: 'Trilha de 3 encontros com facilitação externa.',
-    quanto: 'R$ 18.500',
+    id: 'a-04', riscoId: RG_OPS_AUTONOMIA_25_2,
+    oQue: 'Definir alçadas de decisão da equipe de Operações',
+    porQue: 'Dar autonomia real sobre o próprio trabalho — o controle caiu de um ciclo para o outro.',
+    quem: 'Paula Mendes · Pessoas & DHO',
+    quando: '2026-09-30', onde: 'Operações',
+    como: 'Listar as decisões do dia a dia e combinar com a equipe o que ela decide sem aprovação.',
+    quanto: 'Sem custo direto',
     status: 'planejada',
     comentarios: [],
     versao: 1,
   },
   {
-    id: 'a-05', riscoId: 'r-04',
+    id: 'a-05', riscoId: RG_TRADING_SUPORTE_25_2,
     oQue: 'Formalizar rotina de 1:1 quinzenal com a liderança',
-    porQue: 'Reduzir o isolamento percebido no trabalho remoto.',
-    quem: 'Marcos Tavares · Head de Tecnologia',
-    quando: '2026-06-15', onde: 'Tecnologia',
+    porQue: 'Garantir espaço regular de escuta e apoio da liderança.',
+    quem: 'Marcos Tavares · Tecnologia',
+    quando: '2026-06-15', onde: 'Trading & Mercados',
     como: 'Agenda recorrente com pauta mínima e registro de acordos.',
     quanto: 'Sem custo direto',
     status: 'concluida',
@@ -745,16 +1205,31 @@ export const nr1Acoes: Nr1Acao[] = [
     versao: 1,
   },
   {
-    id: 'a-06', riscoId: 'r-05',
-    oQue: 'Priorizar no roadmap de TI as falhas apontadas pela operação',
-    porQue: 'A instabilidade dos sistemas prolonga a jornada e gera retrabalho.',
-    quem: 'Marcos Tavares · Head de Tecnologia',
-    quando: '2026-07-15', onde: 'Operações',
-    como: 'Bloco fixo de capacidade por sprint para estabilidade.',
-    quanto: 'Realocação de 15% da capacidade do time',
-    status: 'em-andamento',
+    id: 'a-06', riscoId: RG_OPS_CLAREZA_25_2,
+    oQue: 'Publicar o desenho de papéis e responsabilidades de Operações',
+    porQue: 'As pessoas da área não sabem exatamente o que se espera delas.',
+    quem: 'Marcos Tavares · Tecnologia',
+    quando: '2026-06-20', onde: 'Operações',
+    como: 'Matriz de responsabilidades revisada com a equipe e publicada em local acessível.',
+    quanto: 'Sem custo direto',
+    status: 'atrasada',
     versao: 1,
     comentarios: [],
+  },
+  {
+    id: 'a-07', riscoId: RG_TRADING_SUPORTE_25_1,
+    oQue: 'Capacitar líderes da mesa em escuta e feedback',
+    porQue: 'Líderes precisam de preparo para apoiar a equipe no dia a dia do pregão.',
+    quem: 'Paula Mendes · Pessoas & DHO',
+    quando: '2025-10-31', onde: 'Trading & Mercados',
+    como: 'Dois encontros práticos com os coordenadores da mesa, com roteiro de 1:1.',
+    quanto: 'R$ 9.800',
+    status: 'concluida',
+    concluidaEm: '2025-10-24',
+    comentarios: [
+      { id: 'com-05', autor: 'Paula Mendes', texto: 'Encontros realizados com os 6 coordenadores. Lista de presença anexa.', arquivos: ['presenca-escuta-feedback-out25.pdf'], em: '2025-10-24' },
+    ],
+    versao: 1,
   },
 ]
 
@@ -762,13 +1237,14 @@ export const nr1Acoes: Nr1Acao[] = [
    conclusão, montados a partir dos próprios dados semeados acima (datas de
    criação estimadas, só para o histórico ter começo). */
 const CRIACAO_ACOES: Record<string, [em: string, autor: string]> = {
-  'a-01': ['2026-05-04T09:12', 'Camila Risi'],
+  'a-01': ['2025-06-16T09:12', 'Camila Risi'],
   'a-01-v2': ['2026-06-22T16:40', 'Camila Risi'],
   'a-02': ['2026-05-04T09:31', 'Camila Risi'],
-  'a-03': ['2026-05-06T11:05', 'Camila Risi'],
+  'a-03': ['2025-06-18T11:05', 'Camila Risi'],
   'a-04': ['2026-05-11T14:20', 'Camila Risi'],
   'a-05': ['2026-05-12T10:02', 'Camila Risi'],
   'a-06': ['2026-05-15T15:47', 'Camila Risi'],
+  'a-07': ['2025-06-20T10:40', 'Camila Risi'],
 }
 for (const a of nr1Acoes) {
   const [em, autor] = CRIACAO_ACOES[a.id] ?? [`${NR1_TODAY}T09:00`, 'Camila Risi']
@@ -804,7 +1280,7 @@ export const nr1Relatos: Nr1Relato[] = [
     abertoEm: '2026-06-18', prazoEm: '2026-07-02', status: 'em-apuracao',
     andamentos: [
       { id: 'an-01', em: '2026-06-18', texto: 'Relato recebido pelo canal confidencial. Protocolo gerado e triagem inicial realizada.', autor: 'Canal de escuta' },
-      { id: 'an-02', em: '2026-06-20', texto: 'Apuração iniciada com apoio do comitê de ética. Sigilo da autoria preservado.', autor: 'Camila Risi · DHO' },
+      { id: 'an-02', em: '2026-06-20', texto: 'Apuração iniciada com apoio do comitê de ética. Sigilo da autoria preservado.', autor: 'Camila Risi · Pessoas & DHO' },
     ],
   },
   {
@@ -823,8 +1299,8 @@ export const nr1Relatos: Nr1Relato[] = [
     abertoEm: '2026-05-22', prazoEm: '2026-06-05', status: 'concluido',
     andamentos: [
       { id: 'an-04', em: '2026-05-22', texto: 'Relato recebido pelo canal confidencial.', autor: 'Canal de escuta' },
-      { id: 'an-05', em: '2026-05-29', texto: 'Mediação conduzida com as lideranças envolvidas.', autor: 'Paula Mendes · Desenvolvimento' },
-      { id: 'an-06', em: '2026-06-04', texto: 'Acordo de convivência registrado. Caso encerrado com acompanhamento no próximo ciclo.', autor: 'Camila Risi · DHO' },
+      { id: 'an-05', em: '2026-05-29', texto: 'Mediação conduzida com as lideranças envolvidas.', autor: 'Paula Mendes · Pessoas & DHO' },
+      { id: 'an-06', em: '2026-06-04', texto: 'Acordo de convivência registrado. Caso encerrado com acompanhamento no próximo ciclo.', autor: 'Camila Risi · Pessoas & DHO' },
     ],
   },
   {
@@ -841,44 +1317,21 @@ export const nr1Relatos: Nr1Relato[] = [
    Ciclos, responsável técnico e jornada do colaborador
    ------------------------------------------------------------------ */
 
-export const nr1Ciclos: Nr1Ciclo[] = [
-  {
-    campanhaId: 'camp-2025-2s',
-    nome: '2º semestre 2025',
-    encerradaEm: '2025-12-05',
-    modeloNome: 'Modelo YNA de Riscos Psicossociais',
-    versao: '1.0',
-    participacaoPct: 62,
-    mediaPorDimensao: [
-      { dimensaoId: 'demandas', media: 2.4 },
-      { dimensaoId: 'organizacao', media: 2.7 },
-      { dimensaoId: 'relacoes', media: 2.8 },
-      { dimensaoId: 'lideranca', media: 2.7 },
-      { dimensaoId: 'contexto', media: 2.7 },
-      { dimensaoId: 'valores', media: 2.9 },
-      { dimensaoId: 'saude', media: 2.5 },
-      { dimensaoId: 'seguranca', media: 3.2 },
-    ],
-  },
-  {
-    campanhaId: 'camp-2026-1s',
-    nome: '1º semestre 2026',
-    /* Sem `encerradaEm`: esta campanha ainda está em campo. */
-    modeloNome: 'Modelo BCP Securities de Riscos Psicossociais',
-    versao: '1.0',
-    participacaoPct: Math.round((totalRespostas / totalElegiveis) * 100),
-    mediaPorDimensao: [
-      { dimensaoId: 'demandas', media: 2.8 },
-      { dimensaoId: 'organizacao', media: 3.2 },
-      { dimensaoId: 'relacoes', media: 3.4 },
-      { dimensaoId: 'lideranca', media: 3.3 },
-      { dimensaoId: 'contexto', media: 3.1 },
-      { dimensaoId: 'valores', media: 3.4 },
-      { dimensaoId: 'saude', media: 3.0 },
-      { dimensaoId: 'seguranca', media: 3.7 },
-    ],
-  },
-]
+/** Histórico de ciclos — derivado das campanhas e da mesma nota da empresa
+   do motor de cálculo (`nr1MediaDimensaoEmpresa`), do mais antigo ao mais
+   recente. */
+export const nr1Ciclos: Nr1Ciclo[] = CAMPANHAS_CRONOLOGICAS.map((id) => {
+  const c = nr1Campanhas.find((x) => x.id === id)!
+  return {
+    campanhaId: c.id,
+    nome: (c.nome.split('·').pop() ?? c.nome).trim(),
+    encerradaEm: c.encerradaEm,
+    modeloNome: c.modeloNome,
+    versao: c.versao,
+    participacaoPct: Math.round((c.participacao.reduce((s, p) => s + p.respostas, 0) / c.elegiveis) * 100),
+    mediaPorDimensao: NR1_DIMENSOES.map((d, i) => ({ dimensaoId: d.id, media: nr1MediaDimensaoEmpresa(c.id, i) })),
+  }
+})
 
 export const nr1ResponsavelTecnico: Nr1ResponsavelTecnico = {
   nome: 'Dra. Helena Barros',

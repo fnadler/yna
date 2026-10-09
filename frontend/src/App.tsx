@@ -19,6 +19,7 @@ import { NR1MngModelos } from './screens/mng/NR1MngModelos'
 import { NR1MngModeloEditor } from './screens/mng/NR1MngModeloEditor'
 import { NR1MngVersoes } from './screens/mng/NR1MngVersoes'
 import { NR1MngNucleo } from './screens/mng/NR1MngNucleo'
+import { NR1MngFatores } from './screens/mng/NR1MngFatores'
 import { RH00BemVindo } from './screens/rh/RH00BemVindo'
 import { RH00Apresentacao } from './screens/rh/RH00Apresentacao'
 import { RH01Convite } from './screens/rh/RH01Convite'
@@ -33,9 +34,9 @@ import { RH16Conta } from './screens/rh/RH16Conta'
 import { RH17Mais } from './screens/rh/RH17Mais'
 import { NR1RhCockpit } from './screens/rh/NR1RhCockpit'
 import { NR1RhInventario } from './screens/rh/NR1RhInventario'
-import { NR1RhMatrizRisco } from './screens/rh/NR1RhMatrizRisco'
+import { NR1RhVisaoGeral } from './screens/rh/NR1RhVisaoGeral'
 import { NR1RhPlanoAcao } from './screens/rh/NR1RhPlanoAcao'
-import { NR1RhRelatorio } from './screens/rh/NR1RhRelatorio'
+import { NR1RhResumoPgr } from './screens/rh/NR1RhResumoPgr'
 import { NR1RhCiclos } from './screens/rh/NR1RhCiclos'
 import { NR1RhCanal } from './screens/rh/NR1RhCanal'
 import { Ben00BemVindo } from './screens/Ben00BemVindo'
@@ -187,12 +188,12 @@ export function App() {
                 {/* Cockpit de conformidade NR-1. O RH seleciona e aplica um
                     modelo/versão na campanha — nunca edita o questionário. */}
                 <Route path="/rh/nr1" element={<NR1RhCockpit />} />
+                <Route path="/rh/nr1/visao-geral" element={<NR1RhVisaoGeral />} />
                 <Route path="/rh/nr1/ciclos" element={<NR1RhCiclos />} />
                 <Route path="/rh/nr1/ciclos/:campanhaId" element={<NR1RhCiclos />} />
-                <Route path="/rh/nr1/matriz" element={<NR1RhMatrizRisco />} />
                 <Route path="/rh/nr1/inventario" element={<NR1RhInventario />} />
                 <Route path="/rh/nr1/plano-acao" element={<NR1RhPlanoAcao />} />
-                <Route path="/rh/nr1/relatorio" element={<NR1RhRelatorio />} />
+                <Route path="/rh/nr1/resumo-pgr" element={<NR1RhResumoPgr />} />
                 <Route path="/rh/nr1/canal" element={<NR1RhCanal />} />
 
                 <Route path="/rh/equipe" element={<RH15Equipe />} />
@@ -227,6 +228,7 @@ export function App() {
                 <Route path="/mng/nr1/modelos/:id" element={<NR1MngModeloEditor />} />
                 <Route path="/mng/nr1/modelos/:id/versoes" element={<NR1MngVersoes />} />
                 <Route path="/mng/nr1/nucleo" element={<NR1MngNucleo />} />
+                <Route path="/mng/nr1/fatores" element={<NR1MngFatores />} />
 
                 <Route path="/mng/suporte" element={<Mng17Suporte />} />
                 <Route path="/mng/gestores" element={<Mng18Gestores />} />

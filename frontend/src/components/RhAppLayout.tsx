@@ -52,10 +52,11 @@ import type { NavItem } from './BottomNav'
 const rhSidebarItems: RhNavItem[] = [
   { icon: 'ph:squares-four-bold', label: 'Visão geral', to: '/rh/nr1' },
 
+  { icon: 'ph:chart-polar-bold', label: 'Visão geral', to: '/rh/nr1/visao-geral', section: 'Conformidade NR-1' },
   { icon: 'ph:calendar-check-bold', label: 'Ciclos de avaliação', to: '/rh/nr1/ciclos', section: 'Conformidade NR-1' },
   { icon: 'ph:clipboard-text-bold', label: 'Inventário de riscos', to: '/rh/nr1/inventario', section: 'Conformidade NR-1' },
   { icon: 'ph:list-checks-bold', label: 'Planos de ação', to: '/rh/nr1/plano-acao', section: 'Conformidade NR-1' },
-  { icon: 'ph:file-text-bold', label: 'Relatório e rastreabilidade', to: '/rh/nr1/relatorio', section: 'Conformidade NR-1' },
+  { icon: 'ph:file-text-bold', label: 'Resumo para o PGR', to: '/rh/nr1/resumo-pgr', section: 'Conformidade NR-1' },
 
   { icon: 'ph:users-three-bold', label: 'Colaboradores', to: '/rh/colaboradores', section: 'Empresa' },
   { icon: 'ph:paper-plane-tilt-bold', label: 'Convites', to: '/rh/convites', section: 'Empresa' },

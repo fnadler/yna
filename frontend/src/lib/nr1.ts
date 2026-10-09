@@ -1,6 +1,6 @@
 import type {
   Nr1NivelRisco, Nr1AcaoStatus, Nr1VersaoStatus, Nr1RelatoStatus, Nr1RelatoCategoria,
-  Nr1RiscoStatus, Nr1AcaoRecomendada, Nr1Efetividade, Nr1Tendencia, Nr1RiscoCiclo,
+  Nr1RiscoStatus, Nr1AcaoRecomendada, Nr1Efetividade,
 } from '../types'
 
 /* Vocabulário visual do módulo NR-1, num só lugar para que mapa de calor,
@@ -25,7 +25,7 @@ export const NIVEL_RISCO: Record<Nr1NivelRisco, NivelStyle> = {
   baixo: { label: 'Baixo', acao: 'Monitorar', cls: 'bg-success/20 text-success-ink', dot: 'bg-success' },
   atencao: { label: 'Atenção', acao: 'Ação preventiva', cls: 'bg-warning/25 text-warning-ink', dot: 'bg-warning' },
   risco: { label: 'Risco', acao: 'Ação corretiva prioritária', cls: 'bg-danger/20 text-danger-ink', dot: 'bg-danger' },
-  critico: { label: 'Crítico', acao: 'Ação imediata', cls: 'bg-danger text-white', dot: 'bg-danger' },
+  critico: { label: 'Crítico', acao: 'Ação imediata', cls: 'bg-critico text-white', dot: 'bg-critico' },
 }
 
 /** Recorte ocultado por k-anonimato — nunca uma cor de risco. */
@@ -87,116 +87,24 @@ export const EFETIVIDADE: Record<Nr1Efetividade, { label: string; tone: 'neutral
   'nao-avaliada': { label: 'Ainda não avaliada', tone: 'neutral' },
 }
 
-/** Ordem de gravidade dos níveis, para comparar "pelo menos tão grave quanto"
-   sem repetir a lista em cada lugar que precisa disso (riscos sugeridos). */
-const NIVEL_RANK: Record<Nr1NivelRisco, number> = { baixo: 0, atencao: 1, risco: 2, critico: 3 }
-
-/** Nível atual é pelo menos tão grave quanto o gatilho? Usado pelos riscos
-   sugeridos para decidir se uma leitura "pode se aplicar" — nunca decide
-   sozinho que o risco existe, só que o padrão está no radar. */
-export function nr1NivelAtingeGatilho(nivel: Nr1NivelRisco, gatilho: Nr1NivelRisco): boolean {
-  return NIVEL_RANK[nivel] >= NIVEL_RANK[gatilho]
-}
-
 /* Limiar de variação (em pontos de média, escala 1–5) abaixo do qual duas
    leituras são tratadas como "estável" — ruído de amostragem, não uma
    direção real. Mesmo espírito do k-anonimato: nem todo número que muda é
    um sinal. */
-const LIMIAR_TENDENCIA = 0.2
+export const LIMIAR_TENDENCIA = 0.2
 
-/** Níveis que contam como "grave" para fins de decisão — risco e crítico
-   (não confundir com o mesmo tipo Nr1NivelRisco usado no mapa de calor). */
-const NIVEIS_GRAVES: Nr1NivelRisco[] = ['risco', 'critico']
+/** Rótulos da escala de probabilidade e de severidade (1–5) — os mesmos na
+   matriz do Inventário, no catálogo de fatores e no detalhe do risco. */
+export const NR1_PROBABILIDADE_ROTULOS = ['Rara', 'Improvável', 'Possível', 'Provável', 'Quase certa']
+export const NR1_SEVERIDADE_ROTULOS = ['Leve', 'Menor', 'Moderada', 'Grave', 'Extrema']
 
-/** Compara o ciclo mais recente de um risco com o anterior e devolve
-   tendência + sugestão de próxima ação — a lógica de decisão do módulo de
-   evolução de riscos, isolada da UI para poder ser testada e reaproveitada
-   (Visão geral, Inventário, Plano de ação).
-
-   Importante: isto é uma SUGESTÃO calculada a partir de nível + tendência,
-   nunca uma conclusão. "Este risco está sob controle" é leitura do SST; a
-   plataforma só aponta "o nível é X, a direção é Y, considere Z". */
-export function nr1AnalisarEvolucao(
-  atual: { media: number; nivel: Nr1NivelRisco },
-  anterior?: { media: number; nivel: Nr1NivelRisco },
-): { tendencia?: Nr1Tendencia; variacaoPontos?: number; variacaoPercentual?: number; acaoRecomendada: Nr1AcaoRecomendada; status: Nr1RiscoStatus } {
-  if (!anterior) {
-    return { acaoRecomendada: 'manter-com-monitoramento', status: 'identificado' }
-  }
-
-  const variacaoPontos = Number((atual.media - anterior.media).toFixed(2))
-  const variacaoPercentual = anterior.media !== 0 ? Number(((variacaoPontos / anterior.media) * 100).toFixed(1)) : 0
-
-  /* No mapa de calor, média MAIOR é MELHOR (5 = situação desejável) — o
-     oposto do produto probabilidade × severidade do GRO. Subir = melhorar. */
-  let tendencia: Nr1Tendencia = 'estavel'
-  if (variacaoPontos > LIMIAR_TENDENCIA) tendencia = 'melhorando'
-  else if (variacaoPontos < -LIMIAR_TENDENCIA) tendencia = 'piorando'
-
-  const atualGrave = NIVEIS_GRAVES.includes(atual.nivel)
-  const anteriorGrave = NIVEIS_GRAVES.includes(anterior.nivel)
-
-  let acaoRecomendada: Nr1AcaoRecomendada
-  let status: Nr1RiscoStatus
-
-  if (atualGrave) {
-    if (!anteriorGrave) {
-      // Piorou de atenção/baixo para risco/crítico — regressão franca.
-      acaoRecomendada = 'escalar'
-      status = 'regredido'
-    } else if (tendencia === 'piorando') {
-      acaoRecomendada = 'escalar'
-      status = 'regredido'
-    } else if (tendencia === 'estavel') {
-      // Continua grave apesar do plano em curso — não é progresso.
-      acaoRecomendada = 'revisar-plano'
-      status = 'regredido'
-    } else {
-      // Melhorou, mas ainda não saiu da faixa grave.
-      acaoRecomendada = 'revisar-plano'
-      status = 'monitorando'
-    }
-  } else if (atual.nivel === 'atencao') {
-    if (anteriorGrave && tendencia !== 'piorando') {
-      acaoRecomendada = 'manter-com-monitoramento'
-      status = 'controlado'
-    } else if (tendencia === 'piorando') {
-      acaoRecomendada = 'investigar'
-      status = 'monitorando'
-    } else {
-      acaoRecomendada = 'manter'
-      status = 'controlado'
-    }
-  } else {
-    // baixo
-    if (tendencia === 'piorando') {
-      acaoRecomendada = 'investigar'
-      status = 'monitorando'
-    } else if (anteriorGrave) {
-      // Só chega a "eliminado" quando a melhora veio de uma faixa grave.
-      acaoRecomendada = 'encerrar'
-      status = 'eliminado'
-    } else {
-      acaoRecomendada = 'manter-com-monitoramento'
-      status = 'controlado'
-    }
-  }
-
-  return { tendencia, variacaoPontos, variacaoPercentual, acaoRecomendada, status }
-}
-
-/** Monta a lista de `Nr1RiscoCiclo` de um risco a partir das suas médias em
-   cada campanha (na ordem em que ocorreram), aplicando `nr1AnalisarEvolucao`
-   entre cada par consecutivo. */
-export function nr1MontarHistoricoRisco(
-  riscoId: string,
-  pontosPorCampanha: { campanhaId: string; media: number; nivel: Nr1NivelRisco }[],
-): Nr1RiscoCiclo[] {
-  return pontosPorCampanha.map((ponto, i) => {
-    const anterior = pontosPorCampanha[i - 1]
-    const analise = nr1AnalisarEvolucao(ponto, anterior)
-    return { riscoId, campanhaId: ponto.campanhaId, media: ponto.media, nivel: ponto.nivel, ...analise }
-  })
+/** Cor da severidade (1–5) — a mesma progressão do nível de risco. */
+export const NR1_SEVERIDADE_CLS: Record<number, string> = {
+  1: 'bg-success/20 text-success-ink',
+  2: 'bg-success/20 text-success-ink',
+  3: 'bg-warning/25 text-warning-ink',
+  4: 'bg-danger/20 text-danger-ink',
+  5: 'bg-critico text-white',
 }
 
 /** Hash determinístico [0, 1) — mesma string sempre gera o mesmo número.

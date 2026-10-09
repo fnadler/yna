@@ -39,7 +39,8 @@ export function SearchSelect({
   useEffect(() => {
     if (!open) return
     const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    /* `stopPropagation` — sem isso o Escape também fecharia o painel/modal em volta. */
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) } }
     document.addEventListener('mousedown', onDoc)
     document.addEventListener('keydown', onKey)
     const t = setTimeout(() => searchRef.current?.focus(), 0)

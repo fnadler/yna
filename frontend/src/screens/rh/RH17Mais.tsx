@@ -41,7 +41,7 @@ export function RH17Mais() {
         { icon: 'ph:calendar-check-bold', label: 'Ciclos de avaliação', to: '/rh/nr1/ciclos' },
         { icon: 'ph:clipboard-text-bold', label: 'Inventário de riscos', to: '/rh/nr1/inventario' },
         { icon: 'ph:list-checks-bold', label: 'Planos de ação', to: '/rh/nr1/plano-acao' },
-        { icon: 'ph:file-text-bold', label: 'Relatório e rastreabilidade', to: '/rh/nr1/relatorio' },
+        { icon: 'ph:file-text-bold', label: 'Resumo para o PGR', to: '/rh/nr1/resumo-pgr' },
       ],
     },
     {

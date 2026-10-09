@@ -332,10 +332,91 @@ export interface Nr1Item {
 /** Fator de risco — cadastro à parte (RF-A05), reutilizável entre dimensões
    de qualquer modelo. Não tem vínculo com fontes geradoras: as duas listas
    só se relacionam através da dimensão que as referencia. */
+/** Lesão ou agravo à saúde, pela CID-10 — tabela própria, ligada aos
+   fatores de risco (um mesmo CID pode servir a vários fatores). */
+export interface Nr1Cid {
+  id: string
+  /** Código CID-10, ex.: "F41". */
+  codigo: string
+  nome: string
+}
+
+/** Modelo de ação 5W2H já redigido para um fator — o RH escolhe e só
+   completa quem, quando e onde. */
+export interface Nr1AcaoSugerida {
+  id: string
+  oQue: string
+  porQue: string
+  como: string
+}
+
+/** Fator de risco do catálogo da YNA (mantido no Manager). O questionário
+   aponta o fator pelas perguntas vinculadas; a severidade e os agravos são
+   fixos do fator — o RH não julga nada disso. */
 export interface Nr1FatorRisco {
   id: string
   nome: string
+  /** Domínio a que o fator pertence. */
+  dimensaoId: Nr1DimensaoId
+  /** O que é e por que importa, em linguagem simples para o RH. */
+  descricao: string
+  /** Impacto se o fator ocorrer (1 leve – 5 extrema). */
+  severidade: Nr1Severidade
+  /** Até 3 lesões/agravos à saúde (`Nr1Cid`). */
+  cidIds: string[]
+  /** Perguntas (`Nr1Item.id`) cujo resultado indica o fator — uma pergunta
+     pode indicar mais de um fator. */
+  itemIds: string[]
+  /** Fontes geradoras típicas (`Nr1FonteGeradora`). */
+  fontesGeradorasIds: string[]
+  acoesSugeridas: Nr1AcaoSugerida[]
 }
+
+/** Situação de um fator num recorte (departamento ou empresa) de um ciclo. */
+export type Nr1FatorSituacao = 'requer-plano' | 'monitorar' | 'controlado'
+
+/** Um fator avaliado pelo motor de cálculo num recorte de um ciclo:
+   probabilidade pela nota média das perguntas vinculadas, nível = P × S. */
+export interface Nr1FatorAvaliado {
+  fatorId: string
+  campanhaId: string
+  /** `null` = empresa inteira (inclui as áreas abaixo do k-anonimato). */
+  departamentoId: string | null
+  respondentes: number
+  /** Nota média (1–5, 5 = desejável) das perguntas vinculadas. */
+  media: number
+  probabilidade: number
+  severidade: Nr1Severidade
+  nivelNum: number
+  nivel: Nr1NivelRisco
+  situacao: Nr1FatorSituacao
+  /** As perguntas que sustentam o resultado, da pior para a melhor. */
+  perguntas: { itemId: string; texto: string; media: number; nivel: Nr1NivelRisco }[]
+}
+
+/** Decisão do RH ao reavaliar um plano do ciclo anterior. */
+export type Nr1DecisaoReavaliacao = 'encerrar' | 'manter' | 'revisar'
+
+/** Um plano do ciclo anterior a reavaliar no ciclo atual: o mesmo fator, no
+   mesmo recorte, antes e depois — com a leitura e as sugestões do sistema. */
+export interface Nr1ItemReavaliacao {
+  riscoAnterior: Nr1RiscoInventario
+  /** Ações vigentes do plano anterior. */
+  acoes: Nr1Acao[]
+  anterior: Nr1FatorAvaliado
+  /** Ausente quando o recorte ficou sem dado (ex.: abaixo do k-anonimato). */
+  atual?: Nr1FatorAvaliado
+  evolucao: Nr1FatorEvolucao
+  /** Risco do ciclo atual (quando o fator segue no inventário). */
+  riscoAtualId?: string
+  efetividadeSugerida: Nr1Efetividade
+  decisaoSugerida: Nr1DecisaoReavaliacao
+  /** Presente quando o RH já reavaliou. */
+  reavaliacao?: { decisao: Nr1DecisaoReavaliacao; autor: string; em: string }
+}
+
+/** Leitura de um fator entre dois ciclos — base da reavaliação dos planos. */
+export type Nr1FatorEvolucao = 'novo' | 'saiu-do-gatilho' | 'melhorou' | 'sem-mudanca' | 'piorou'
 
 /** Fonte geradora de risco — mesmo formato/uso de `Nr1FatorRisco`, cadastro
    independente. */
@@ -470,7 +551,7 @@ export type Nr1Severidade = 1 | 2 | 3 | 4 | 5
    `nivel`/`nivelNum`, ponto no tempo), é a leitura de evolução: apareceu,
    está sob controle, piorou apesar do plano, foi eliminado, ou está só
    sendo observado sem ação formal ainda. Calculada por
-   `nr1AnalisarEvolucao`, nunca digitada à mão. */
+   a evolução do fator entre ciclos (`nr1EvolucaoFator`), nunca digitada à mão. */
 export type Nr1RiscoStatus = 'identificado' | 'controlado' | 'regredido' | 'eliminado' | 'monitorando'
 
 /** Direção do risco entre dois ciclos consecutivos, pela média da
@@ -478,7 +559,7 @@ export type Nr1RiscoStatus = 'identificado' | 'controlado' | 'regredido' | 'elim
    uma nova escala. */
 export type Nr1Tendencia = 'melhorando' | 'estavel' | 'piorando'
 
-/** Sugestão calculada a partir de nível + tendência (ver `nr1AnalisarEvolucao`).
+/** Sugestão calculada a partir de nível + tendência (ver `nr1EvolucaoFator`).
    É só isso: uma sugestão. Quem decide se o risco "é" isso ou aquilo, e se
    a ação sugerida faz sentido para o caso, é o SST — a plataforma nunca
    aprova nem fecha um risco sozinha. */
@@ -514,8 +595,8 @@ export interface Nr1RiscoInventario {
   controles: string[]
   /** Campanha que originou o risco — elo da rastreabilidade (RF-F01). */
   campanhaId: string
-  /** Situação calculada a partir do histórico em `Nr1RiscoCiclo` (a partir
-     do 2º ciclo em que este risco aparece — antes disso, sempre 'identificado'). */
+  /** Situação calculada pela evolução do fator em relação ao ciclo anterior
+     (sem plano anterior, sempre 'identificado'); "Concluir risco" sobrepõe. */
   status: Nr1RiscoStatus
   /** Delta e sugestão do ciclo mais recente vs o anterior — atalho para não
      recalcular no card da lista; o histórico completo vem de
@@ -523,90 +604,15 @@ export interface Nr1RiscoInventario {
   tendencia?: Nr1Tendencia
   variacaoPontos?: number
   acaoRecomendada?: Nr1AcaoRecomendada
-  /** Presente quando o risco nasceu da aba "Riscos sugeridos" — rastreia que
-     veio de uma leitura assistida do questionário, não de auditoria/
-     observação direta do SESMT (mesma disciplina de rastreabilidade do
-     RF-F01). */
-  origemSugestaoId?: string
+  /** Avaliação do motor que gerou o risco (nova estrutura): nota média, P,
+     S e as perguntas que sustentam o resultado. */
+  avaliacao?: Nr1FatorAvaliado
+  /** `questionario`: apontado pelo resultado; `manual`: incluído pelo RH. */
+  origem?: 'questionario' | 'manual'
+  /** Por que o RH incluiu um fator que o questionário não apontou. */
+  justificativaInclusao?: string
 }
 
-/** Um ponto no histórico de um risco: sua média/nível na área+dimensão de
-   origem, numa campanha específica — o mesmo valor que aparece na célula
-   correspondente do mapa de calor daquela campanha, nunca um número à parte. */
-export interface Nr1RiscoCiclo {
-  riscoId: string
-  campanhaId: string
-  media: number
-  nivel: Nr1NivelRisco
-  /** Ausentes no primeiro ciclo em que o risco aparece (não há "antes"). */
-  tendencia?: Nr1Tendencia
-  variacaoPontos?: number
-  variacaoPercentual?: number
-  acaoRecomendada?: Nr1AcaoRecomendada
-  status: Nr1RiscoStatus
-}
-
-/* --- Riscos sugeridos (triagem assistida, NUNCA diagnóstica — RF-D01 ampliado) ---
-
-   ⚠️ Isto é um mecanismo de SUGESTÃO, não de diagnóstico automático. Cada
-   `Nr1RiscoSugerido` é um padrão de literatura (COPSOQ II-Br + possível
-   associação CID-11), oferecido como ponto de partida para o SST/RH
-   investigar — nunca uma conclusão que o produto "decide" sozinho.
-   Validação profissional é obrigatória antes de qualquer ação; a
-   responsabilidade pela decisão é da empresa contratante. */
-
-/** As 7 leituras de padrão psicossocial oferecidas — não são as únicas
-   possíveis, são as que o produto atualmente sabe sugerir. */
-export type Nr1RiscoSugeridoCategoria =
-  | 'pressao-sobrecarga' | 'falta-autonomia' | 'isolamento-social'
-  | 'conflito-trabalho-vida' | 'desalinhamento-valores' | 'burnout' | 'desengajamento'
-
-/** Força da associação entre o padrão de respostas e o código CID — não é a
-   probabilidade do GRO (`Nr1Severidade`), é o quanto a literatura associa
-   aquele padrão ao código. Nunca é uma probabilidade de diagnóstico real. */
-export type Nr1CidProbabilidade = 'alta' | 'media' | 'baixa'
-
-export interface Nr1CidSugerido {
-  codigo: string
-  descricao: string
-  probabilidade: Nr1CidProbabilidade
-}
-
-/** Conteúdo fixo de uma sugestão — o que muda ciclo a ciclo é só a leitura
-   (`Nr1RiscoSugeridoLeitura`), calculada a partir do mapa de calor real. */
-export interface Nr1RiscoSugerido {
-  id: string
-  categoria: Nr1RiscoSugeridoCategoria
-  nome: string
-  nomeCurto: string
-  descricao: string
-  dimensaoId: Nr1DimensaoId
-  /** Itens do Modelo YNA mais próximos do padrão descrito — referência para
-     quem for investigar, não uma subescala calculada à parte. */
-  itensRelacionados: string[]
-  /** Nível mínimo da dimensão (mesma escala de `nr1NivelPorMedia`) a partir
-     do qual a sugestão passa a ser oferecida como "pode se aplicar". */
-  nivelGatilho: Nr1NivelRisco
-  acoesRecomendadas: string[]
-  monitoramento: string
-  cids: Nr1CidSugerido[]
-  disclaimerCid: string
-}
-
-/** Leitura de uma sugestão num ciclo específico — `mediaEmpresa`/`nivelEmpresa`
-   vêm da MESMA média que já aparece no "Risco por dimensão" daquele ciclo, e
-   `departamentosEnvolvidos` filtra as mesmas células do mapa de calor (já
-   sem os recortes protegidos por k-anonimato) que atingem o gatilho. Nunca
-   um número novo. */
-export interface Nr1RiscoSugeridoLeitura {
-  sugestao: Nr1RiscoSugerido
-  mediaEmpresa: number
-  nivelEmpresa: Nr1NivelRisco
-  disparado: boolean
-  departamentosEnvolvidos: { departamentoId: string; departamento: string; media: number; nivel: Nr1NivelRisco }[]
-  jaNoInventario: boolean
-  riscoInventarioId?: string
-}
 
 /* --- Plano de ação 5W2H (RF-E01/E02) --- */
 

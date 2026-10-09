@@ -85,6 +85,7 @@ export const rhDepartamentos: RhDepartamento[] = [
   { id: 'd-compliance', nome: 'Compliance & Risco', colaboradores: 22 },
   { id: 'd-rh', nome: 'Pessoas & DHO', colaboradores: 9 },
   { id: 'd-diretoria', nome: 'Diretoria', colaboradores: 3 }, // < 4 → anonimizado
+  { id: 'd-juridico', nome: 'Jurídico', colaboradores: 4 }, // poucos respondentes → agregado em "Outros departamentos"
 ]
 
 const PALETTES: RhColaborador['palette'][] = ['lavender', 'pink', 'yellow']

@@ -22,6 +22,8 @@ export default {
         success: { DEFAULT: '#4EA88B', bg: 'var(--success-bg)', ink: 'var(--success-ink)' },
         warning: { DEFAULT: '#E8A640', bg: 'var(--warning-bg)', ink: 'var(--warning-ink)' },
         danger: { DEFAULT: '#D75A6E', bg: 'var(--danger-bg)', ink: 'var(--danger-ink)' },
+        /* Nível crítico de risco — roxo, para não se confundir com o "Risco" (danger). */
+        critico: { DEFAULT: '#7E3FA6' },
         info: { DEFAULT: '#4749A8', bg: 'var(--info-bg)' },
         page: 'var(--page-bg)',
         surface: {

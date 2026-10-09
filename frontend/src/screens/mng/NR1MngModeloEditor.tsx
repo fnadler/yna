@@ -10,16 +10,15 @@ import { Modal } from '../../components/Modal'
 import { Select } from '../../components/Select'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
-import { TagPicker } from '../../components/TagPicker'
 import { Toast } from '../../components/Toast'
 import { PAGE_MAX_W } from '../../lib/layout'
 import { VERSAO_STATUS, fmtData } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
-import { nr1ModeloService, nr1FatorRiscoService, nr1FonteGeradoraService } from '../../services/nr1'
+import { nr1ModeloService, nr1FatorService } from '../../services/nr1'
 import { NR1_DIMENSOES, NR1_ESCALAS } from '../../data/nr1Mock'
 import type {
   Nr1QuestionarioModelo, Nr1QuestionarioVersao, Nr1Item, Nr1Dimensao,
-  Nr1EscalaId, Nr1Direcao, CampoTipo, Nr1FatorRisco, Nr1FonteGeradora,
+  Nr1EscalaId, Nr1Direcao, CampoTipo, Nr1FatorRisco,
 } from '../../types'
 
 /* NR1-MNG-02 — Editor do modelo: dimensões e itens (RF-YN-NR1-01/05).
@@ -122,31 +121,14 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso, onF
   const [escalaOpen, setEscalaOpen] = useState(false)
   const [dimensaoForm, setDimensaoForm] = useState<{ dimensao?: Nr1Dimensao } | null>(null)
   const [removerDim, setRemoverDim] = useState<Nr1Dimensao | null>(null)
-  const [gerenciarTags, setGerenciarTags] = useState<'fator' | 'fonte' | null>(null)
 
-  /* Catálogos de fatores de risco e fontes geradoras (RF-A05) — cadastros à
-     parte, carregados uma vez aqui e atualizados localmente a cada criação,
-     renomeação ou exclusão, sem precisar recarregar a versão inteira pra
-     refletir a mudança no seletor. */
+  /* Catálogo de fatores de risco — só leitura aqui: cada fator aponta o
+     domínio e as perguntas que o indicam, e é editado em "Fatores de risco"
+     (`NR1MngFatores`). */
   const [fatores, setFatores] = useState<Nr1FatorRisco[]>([])
-  const [fontes, setFontes] = useState<Nr1FonteGeradora[]>([])
-  useEffect(() => {
-    void nr1FatorRiscoService.list().then(setFatores)
-    void nr1FonteGeradoraService.list().then(setFontes)
-  }, [])
-  const criarFator = async (nome: string) => {
-    const tag = await nr1FatorRiscoService.criar(nome)
-    setFatores((f) => (f.some((x) => x.id === tag.id) ? f : [...f, tag]))
-    onFeedback(`Fator de risco "${tag.nome}" adicionado.`)
-    return tag
-  }
-  const criarFonte = async (nome: string) => {
-    const tag = await nr1FonteGeradoraService.criar(nome)
-    setFontes((f) => (f.some((x) => x.id === tag.id) ? f : [...f, tag]))
-    onFeedback(`Fonte geradora "${tag.nome}" adicionada.`)
-    return tag
-  }
-
+  useEffect(() => { void nr1FatorService.catalogo().then((f) => setFatores([...f])) }, [])
+  const fatoresDoDominio = (id: string) => fatores.filter((f) => f.dimensaoId === id)
+  const fatoresDaPergunta = (id: string) => fatores.filter((f) => f.itemIds.includes(id))
 
   const totalItens = versao.dimensoes.reduce((s, d) => s + d.itens.length, 0)
   const totalNucleo = versao.dimensoes.reduce((s, d) => s + d.itens.filter((i) => i.obrigatorioNucleo).length, 0)
@@ -319,15 +301,10 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso, onF
                   <div className="min-w-0">
                     <h2 className="font-heading text-[15px] font-semibold text-ink">{d.nome}</h2>
                     <p className="mt-0.5 text-[12.5px] text-ink-secondary">{d.descricao}</p>
-                    {(d.fatoresRiscoIds.length > 0 || d.fontesGeradorasIds.length > 0) && (
-                      <div className="mt-2 flex flex-col gap-1 text-[11.5px] leading-relaxed text-ink-secondary">
-                        {d.fatoresRiscoIds.length > 0 && (
-                          <p><strong className="font-semibold text-ink">Fatores de risco:</strong> {d.fatoresRiscoIds.map((id) => fatores.find((f) => f.id === id)?.nome ?? id).join(', ')}</p>
-                        )}
-                        {d.fontesGeradorasIds.length > 0 && (
-                          <p><strong className="font-semibold text-ink">Fontes geradoras:</strong> {d.fontesGeradorasIds.map((id) => fontes.find((f) => f.id === id)?.nome ?? id).join(', ')}</p>
-                        )}
-                      </div>
+                    {fatoresDoDominio(d.id).length > 0 && (
+                      <p className="mt-2 text-[11.5px] leading-relaxed text-ink-secondary">
+                        <strong className="font-semibold text-ink">Fatores de risco:</strong> {fatoresDoDominio(d.id).map((f) => f.nome).join(', ')}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -391,6 +368,12 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso, onF
                               Escala {i.escala} · {i.direcao === 'reverso' ? 'reverso' : 'positivo'} · {i.referencia}
                             </span>
                           </div>
+                          {fatoresDaPergunta(i.id).length > 0 && (
+                            <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-ink-secondary">
+                              <Icon icon="ph:warning-diamond-bold" width={11} className="text-ink-muted" aria-hidden />
+                              Indica: {fatoresDaPergunta(i.id).map((f) => f.nome).join(' · ')}
+                            </p>
+                          )}
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
                           <button
@@ -476,35 +459,9 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso, onF
         {dimensaoForm && (
           <DimensaoForm
             inicial={dimensaoForm.dimensao}
-            fatores={fatores}
-            fontes={fontes}
-            onCriarFator={criarFator}
-            onCriarFonte={criarFonte}
-            onGerenciarFatores={() => setGerenciarTags('fator')}
-            onGerenciarFontes={() => setGerenciarTags('fonte')}
+            fatores={dimensaoForm.dimensao ? fatoresDoDominio(dimensaoForm.dimensao.id) : []}
             onClose={() => setDimensaoForm(null)}
             onSave={salvarDimensao}
-          />
-        )}
-      </Sheet>
-
-      {/* Gerenciar cadastros de fatores/fontes — renomear e excluir. Aberto
-         de dentro do editor de dimensão, mas é uma tela à parte porque afeta
-         o catálogo inteiro, não só a dimensão em edição. */}
-      <Sheet
-        open={gerenciarTags !== null}
-        onClose={() => setGerenciarTags(null)}
-        title={gerenciarTags === 'fator' ? 'Gerenciar fatores de risco' : 'Gerenciar fontes geradoras de risco'}
-        icon="ph:tag-bold"
-        size="md"
-      >
-        {gerenciarTags && (
-          <GerenciarTagsView
-            tipo={gerenciarTags}
-            tags={gerenciarTags === 'fator' ? fatores : fontes}
-            service={gerenciarTags === 'fator' ? nr1FatorRiscoService : nr1FonteGeradoraService}
-            onChange={gerenciarTags === 'fator' ? setFatores : setFontes}
-            onFeedback={onFeedback}
           />
         )}
       </Sheet>
@@ -661,40 +618,29 @@ function ItemForm({ inicial, dimensaoId, escopo, onClose, onSave }: {
   )
 }
 
-/* Formulário da dimensão (RF-A05) — nome, descrição e as duas listas de
-   risco. Fatores de risco e fontes geradoras são cadastros à parte: não
-   têm vínculo entre si, só com a dimensão que os referencia; o processo de
-   cadastro acontece direto aqui, como tags (ver `TagPicker`). */
-function DimensaoForm({ inicial, fatores, fontes, onCriarFator, onCriarFonte, onGerenciarFatores, onGerenciarFontes, onClose, onSave }: {
+/* Formulário do domínio — nome e descrição. Os fatores de risco apontam o
+   domínio a que pertencem e são mantidos no catálogo ("Fatores de risco"),
+   então aqui só aparecem para consulta. */
+function DimensaoForm({ inicial, fatores, onClose, onSave }: {
   inicial?: Nr1Dimensao
   fatores: Nr1FatorRisco[]
-  fontes: Nr1FonteGeradora[]
-  onCriarFator: (nome: string) => Promise<Nr1FatorRisco>
-  onCriarFonte: (nome: string) => Promise<Nr1FonteGeradora>
-  onGerenciarFatores: () => void
-  onGerenciarFontes: () => void
   onClose: () => void
   onSave: (dados: { id?: string; nome: string; descricao: string; fatoresRiscoIds: string[]; fontesGeradorasIds: string[] }, novo: boolean) => void
 }) {
   const novo = !inicial
   const [nome, setNome] = useState(inicial?.nome ?? '')
   const [descricao, setDescricao] = useState(inicial?.descricao ?? '')
-  const [fatorIds, setFatorIds] = useState<string[]>(inicial?.fatoresRiscoIds ?? [])
-  const [fonteIds, setFonteIds] = useState<string[]>(inicial?.fontesGeradorasIds ?? [])
   const [salvando, setSalvando] = useState(false)
-
-  /* Se um fator/fonte selecionado aqui for excluído do catálogo (pela tela
-     de "Gerenciar", aberta em cima deste formulário), tira ele da seleção —
-     sem isso, salvar recriaria a referência que acabou de ser removida. */
-  useEffect(() => { setFatorIds((ids) => ids.filter((id) => fatores.some((f) => f.id === id))) }, [fatores])
-  useEffect(() => { setFonteIds((ids) => ids.filter((id) => fontes.some((f) => f.id === id))) }, [fontes])
 
   const valido = nome.trim().length >= 3 && descricao.trim().length >= 10
 
   const salvar = () => {
     if (!valido) return
     setSalvando(true)
-    onSave({ id: inicial?.id, nome: nome.trim(), descricao: descricao.trim(), fatoresRiscoIds: fatorIds, fontesGeradorasIds: fonteIds }, novo)
+    onSave({
+      id: inicial?.id, nome: nome.trim(), descricao: descricao.trim(),
+      fatoresRiscoIds: inicial?.fatoresRiscoIds ?? [], fontesGeradorasIds: inicial?.fontesGeradorasIds ?? [],
+    }, novo)
   }
 
   return (
@@ -709,29 +655,19 @@ function DimensaoForm({ inicial, fatores, fontes, onCriarFator, onCriarFonte, on
         <textarea className={inputCls} rows={3} value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: Avalia a carga, o ritmo e as exigências físicas, cognitivas e emocionais do trabalho." />
       </label>
 
-      <div>
-        <div className="mb-1.5 flex items-center justify-between gap-2">
-          <span className="text-[13px] font-semibold text-ink">Fatores de risco</span>
-          <button type="button" onClick={onGerenciarFatores} className="inline-flex items-center gap-1 text-[12px] font-medium text-primary transition-colors hover:underline dark:text-primary-300">
-            <Icon icon="ph:gear-six-bold" width={13} aria-hidden />
-            Gerenciar
-          </button>
-        </div>
-        <TagPicker catalogo={fatores} selecionados={fatorIds} onChange={setFatorIds} onCriar={onCriarFator} placeholder="Buscar ou criar um fator de risco…" />
-      </div>
-
-      <div>
-        <div className="mb-1.5 flex items-center justify-between gap-2">
-          <span className="text-[13px] font-semibold text-ink">Fontes geradoras de risco</span>
-          <button type="button" onClick={onGerenciarFontes} className="inline-flex items-center gap-1 text-[12px] font-medium text-primary transition-colors hover:underline dark:text-primary-300">
-            <Icon icon="ph:gear-six-bold" width={13} aria-hidden />
-            Gerenciar
-          </button>
-        </div>
-        <TagPicker catalogo={fontes} selecionados={fonteIds} onChange={setFonteIds} onCriar={onCriarFonte} placeholder="Buscar ou criar uma fonte geradora…" />
-        <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-muted">
-          Fatores e fontes são cadastros independentes — não têm vínculo entre si, só com o domínio.
-        </p>
+      <div className="rounded-lg border border-border bg-surface-2 p-3.5">
+        <p className="text-[13px] font-semibold text-ink">Fatores de risco deste domínio</p>
+        {fatores.length > 0 ? (
+          <ul className="mt-1.5 flex flex-col gap-0.5">
+            {fatores.map((f) => <li key={f.id} className="text-[12.5px] text-ink-secondary">{f.nome}</li>)}
+          </ul>
+        ) : (
+          <p className="mt-1 text-[12.5px] text-ink-muted">{novo ? 'Crie o domínio e depois vincule fatores a ele no catálogo.' : 'Nenhum fator vinculado a este domínio.'}</p>
+        )}
+        <Link to="/mng/nr1/fatores" className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline dark:text-primary-300">
+          Gerenciar no catálogo de fatores de risco
+          <Icon icon="ph:arrow-right-bold" width={11} aria-hidden />
+        </Link>
       </div>
 
       <div className="mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -740,172 +676,6 @@ function DimensaoForm({ inicial, fatores, fontes, onCriarFator, onCriarFonte, on
           {salvando ? 'Salvando…' : novo ? 'Acrescentar domínio' : 'Salvar domínio'}
         </Button>
       </div>
-    </div>
-  )
-}
-
-/* Gerenciamento do catálogo de fatores/fontes (RF-A05) — renomear e
-   excluir. Excluir é sempre permitido, mesmo vinculado a dimensões: quem
-   decide é quem gerencia, não a UI — só mostra um alerta com a lista de
-   dimensões afetadas antes de remover o vínculo junto com o cadastro.
-
-   O alerta é uma sub-view aqui dentro (não um `Modal` à parte): este
-   componente já vive dentro de um `Sheet` portalado pro fim do `<body>`, e
-   um `Modal` (que não é portal) renderizado como filho dele ficaria preso
-   atrás — visível no DOM, mas coberto visualmente. Trocar de view dentro do
-   mesmo Sheet evita o problema de raiz. */
-function GerenciarTagsView<T extends { id: string; nome: string }>({ tipo, tags, service, onChange, onFeedback }: {
-  tipo: 'fator' | 'fonte'
-  tags: T[]
-  service: {
-    usoPorId: () => Promise<Record<string, number>>
-    usos: (id: string) => Promise<{ modelo: string; versao: string; dimensao: string }[]>
-    renomear: (id: string, nome: string) => Promise<T | undefined>
-    remover: (id: string) => Promise<{ ok: boolean }>
-  }
-  onChange: (tags: T[]) => void
-  onFeedback: (mensagem: string) => void
-}) {
-  const [usos, setUsos] = useState<Record<string, number>>({})
-  const [editando, setEditando] = useState<string | null>(null)
-  const [nomeEdit, setNomeEdit] = useState('')
-  const [confirmando, setConfirmando] = useState<{ tag: T; usos: { modelo: string; versao: string; dimensao: string }[] } | null>(null)
-  const [excluindo, setExcluindo] = useState(false)
-
-  const rotulo = tipo === 'fator' ? 'Fator de risco' : 'Fonte geradora'
-  const sufixo = tipo === 'fator' ? 'o' : 'a'
-
-  useEffect(() => { void service.usoPorId().then(setUsos) }, [service, tags.length])
-
-  const iniciarEdicao = (t: T) => { setEditando(t.id); setNomeEdit(t.nome) }
-
-  const salvarEdicao = async () => {
-    if (!editando || nomeEdit.trim().length < 2) return
-    const atualizado = await service.renomear(editando, nomeEdit.trim())
-    if (atualizado) onChange(tags.map((t) => (t.id === editando ? atualizado : t)))
-    setEditando(null)
-    onFeedback(`${rotulo} renomead${sufixo}.`)
-  }
-
-  const pedirExclusao = async (t: T) => {
-    const detalhes = await service.usos(t.id)
-    setConfirmando({ tag: t, usos: detalhes })
-  }
-
-  const confirmarExclusao = async () => {
-    if (!confirmando) return
-    setExcluindo(true)
-    await service.remover(confirmando.tag.id)
-    onChange(tags.filter((t) => t.id !== confirmando.tag.id))
-    setExcluindo(false)
-    setConfirmando(null)
-    onFeedback(`${rotulo} excluíd${sufixo}.`)
-  }
-
-  if (confirmando) {
-    return (
-      <div className="flex flex-col gap-4 px-5 py-6 lg:px-6">
-        <p className="text-[13.5px] leading-relaxed text-ink-secondary">
-          Excluir <span className="font-semibold text-ink">{confirmando.tag.nome}</span>?
-        </p>
-
-        {confirmando.usos.length > 0 && (
-          <div className="rounded-lg border border-warning/30 bg-warning-bg p-3.5">
-            <p className="mb-2 flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
-              <Icon icon="ph:link-bold" width={14} className="shrink-0 text-warning-ink" aria-hidden />
-              Vinculado a {confirmando.usos.length} {confirmando.usos.length === 1 ? 'domínio' : 'domínios'}
-            </p>
-            <ul className="flex flex-col gap-1">
-              {confirmando.usos.map((u, i) => (
-                <li key={i} className="text-[12.5px] leading-snug text-ink-secondary">
-                  {u.dimensao} <span className="text-ink-muted">· {u.modelo} · v{u.versao}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-[12px] leading-relaxed text-ink-secondary">
-              O vínculo é removido desses domínios junto com a exclusão.
-            </p>
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          <Button variant="ghost" onClick={() => setConfirmando(null)}>Cancelar</Button>
-          <Button fullWidth variant="secondary" iconLeft="ph:trash-bold" disabled={excluindo} onClick={confirmarExclusao}>
-            {excluindo ? 'Excluindo…' : 'Excluir'}
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex flex-col gap-3 px-5 py-6 lg:px-6">
-      <p className="text-[12.5px] leading-relaxed text-ink-secondary">
-        Excluir um {tipo === 'fator' ? 'fator' : 'fonte'} vinculado a algum domínio remove o vínculo junto — a
-        confirmação mostra onde ele está vinculado antes de você decidir.
-      </p>
-
-      <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
-        {tags.map((t) => {
-          const numUsos = usos[t.id] ?? 0
-          return (
-            <li key={t.id} className="flex items-center gap-2 px-3.5 py-2.5">
-              {editando === t.id ? (
-                <>
-                  <input
-                    className={`${inputCls} py-1.5`}
-                    value={nomeEdit}
-                    onChange={(e) => setNomeEdit(e.target.value)}
-                    autoFocus
-                    onKeyDown={(e) => { if (e.key === 'Enter') void salvarEdicao(); if (e.key === 'Escape') setEditando(null) }}
-                  />
-                  <button
-                    onClick={salvarEdicao}
-                    disabled={nomeEdit.trim().length < 2}
-                    aria-label="Salvar nome"
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-primary transition-colors hover:bg-primary-50 disabled:opacity-40 dark:text-primary-300"
-                  >
-                    <Icon icon="ph:check-bold" width={16} aria-hidden />
-                  </button>
-                  <button
-                    onClick={() => setEditando(null)}
-                    aria-label="Cancelar edição"
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink"
-                  >
-                    <Icon icon="ph:x-bold" width={16} aria-hidden />
-                  </button>
-                </>
-              ) : (
-                <>
-                  <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">{t.nome}</span>
-                  {numUsos > 0 && (
-                    <span className="shrink-0 text-[11px] text-ink-muted">
-                      {numUsos} {numUsos === 1 ? 'domínio' : 'domínios'}
-                    </span>
-                  )}
-                  <button
-                    onClick={() => iniciarEdicao(t)}
-                    aria-label={`Editar ${t.nome}`}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink"
-                  >
-                    <Icon icon="ph:pencil-simple-bold" width={15} aria-hidden />
-                  </button>
-                  <button
-                    onClick={() => pedirExclusao(t)}
-                    aria-label={`Excluir ${t.nome}`}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:text-danger-ink"
-                  >
-                    <Icon icon="ph:trash-bold" width={15} aria-hidden />
-                  </button>
-                </>
-              )}
-            </li>
-          )
-        })}
-        {tags.length === 0 && (
-          <li className="px-3.5 py-8 text-center text-[13px] text-ink-secondary">Nenhum cadastro ainda.</li>
-        )}
-      </ul>
     </div>
   )
 }

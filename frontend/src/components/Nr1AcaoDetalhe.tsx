@@ -14,7 +14,7 @@ import { useRh } from '../contexts/RhContext'
 import { NIVEL_RISCO, ACAO_STATUS, EFETIVIDADE, fmtData, nr1DiasEntre, nr1UrgenciaPrazo } from '../lib/nr1'
 import { NR1_TODAY, NR1_DIMENSOES } from '../data/nr1Mock'
 import { useService } from '../hooks/useService'
-import { nr1AcaoService, nr1FonteGeradoraService, nr1ResultadoService } from '../services/nr1'
+import { nr1AcaoService, nr1FatorService, nr1ResultadoService } from '../services/nr1'
 import type { Nr1Acao, Nr1AcaoAtividade, Nr1AtividadeTipo, Nr1Comentario, Nr1RiscoInventario } from '../types'
 
 /** Iniciais para o avatar do responsável (`acao.quem`, formato "Nome
@@ -41,29 +41,32 @@ type AbaDiario = 'comentarios' | 'atividade'
    É autossuficiente: editar, excluir e concluir (com a pergunta de concluir
    sem registro) acontecem aqui dentro; quem abre só recebe `onAlterado`
    para recarregar a própria lista. */
-export function Nr1AcaoDetalheModal({ acao, riscos, onClose, onAlterado }: {
+export function Nr1AcaoDetalheModal({ acao, riscos, onClose, onAlterado, editar = false }: {
   acao: Nr1Acao | null
   /** Inventário carregado — para o risco de origem e o seletor na edição. */
   riscos: Nr1RiscoInventario[]
   onClose: () => void
   onAlterado?: () => void
+  /** Abre já com o formulário de edição (botão "Editar" de uma lista). */
+  editar?: boolean
 }) {
   if (!acao) return null
   return createPortal(
-    <DetalheAcao key={acao.id} inicial={acao} riscos={riscos} onClose={onClose} onAlterado={onAlterado} />,
+    <DetalheAcao key={acao.id} inicial={acao} riscos={riscos} onClose={onClose} onAlterado={onAlterado} editar={editar && acao.status !== 'concluida'} />,
     document.body,
   )
 }
 
-function DetalheAcao({ inicial, riscos, onClose, onAlterado }: {
+function DetalheAcao({ inicial, riscos, onClose, onAlterado, editar }: {
   inicial: Nr1Acao
   riscos: Nr1RiscoInventario[]
   onClose: () => void
   onAlterado?: () => void
+  editar: boolean
 }) {
   const { usuario } = useRh()
   const [acao, setAcao] = useState(inicial)
-  const [editando, setEditando] = useState(false)
+  const [editando, setEditando] = useState(editar)
   const [sujo, setSujo] = useState(false)
   const marcarSujo = useCallback((v: boolean) => setSujo(v), [])
   const [aba, setAba] = useState<AbaDiario>('comentarios')
@@ -528,7 +531,7 @@ function Texto({ valor }: { valor: string }) {
    domínio no ciclo em que o risco foi registrado) e os possíveis danos. */
 function RiscoOrigem({ risco }: { risco: Nr1RiscoInventario }) {
   const [aberto, setAberto] = useState(false)
-  const fontes = useService(() => nr1FonteGeradoraService.list(), [])
+  const fontes = useService(() => nr1FatorService.fontes(), [])
   const mapa = useService(() => nr1ResultadoService.mapaCalor(risco.campanhaId), [risco.campanhaId])
   const meta = NR1_DIMENSOES.find((d) => d.id === risco.dimensaoId)
   const st = NIVEL_RISCO[risco.nivel]

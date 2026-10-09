@@ -55,7 +55,8 @@ function useResponsavelField(quemAtual?: string) {
 
 /** Rótulo de um risco em seletores e listas: domínio · fator — o mesmo par
    que a análise de risco usa para registrar. */
-export const nr1RotuloRisco = (r: Nr1RiscoInventario) => `${r.dimensao} · ${r.fator}`
+/** Rótulo de um risco: o fator e onde ele foi apontado (área ou empresa). */
+export const nr1RotuloRisco = (r: Nr1RiscoInventario) => `${r.fator} · ${r.grupoExposto}`
 
 /** Formulário 5W2H — o único da plataforma: usado na análise de risco
    (`Nr1AnaliseRisco`, `layout="inline"`, risco fixo), no Plano de ação e em
@@ -64,7 +65,7 @@ export const nr1RotuloRisco = (r: Nr1RiscoInventario) => `${r.dimensao} · ${r.f
    que fazem sentido preencher. "Onde" é a lista de áreas da empresa,
    gravada como texto (`Nr1Acao.onde`, nomes separados por vírgula). */
 export function AcaoForm({
-  inicial, riscoId, riscos, ondePadrao, porQuePadrao, layout = 'sheet', onSujo, onClose, onSaved,
+  inicial, riscoId, riscos, ondePadrao, porQuePadrao, sugestao, layout = 'sheet', onSujo, onClose, onSaved,
 }: {
   inicial?: Nr1Acao
   riscoId: string
@@ -73,14 +74,16 @@ export function AcaoForm({
   /** Áreas já marcadas em "Onde" numa ação nova. Sem isso, as do risco. */
   ondePadrao?: string[]
   porQuePadrao?: string
+  /** Ação sugerida do catálogo — preenche o quê, por quê e como de uma ação nova. */
+  sugestao?: { oQue: string; porQue: string; como: string }
   layout?: 'sheet' | 'inline'
   onSujo?: (sujo: boolean) => void
   onClose: () => void
   onSaved: (salvo: Nr1Acao, nova: boolean) => void
 }) {
   const [risco, setRisco] = useState(inicial?.riscoId ?? riscoId)
-  const [oQue, setOQue] = useState(inicial?.oQue ?? '')
-  const [porQue, setPorQue] = useState(inicial?.porQue ?? porQuePadrao ?? '')
+  const [oQue, setOQue] = useState(inicial?.oQue ?? sugestao?.oQue ?? '')
+  const [porQue, setPorQue] = useState(inicial?.porQue ?? sugestao?.porQue ?? porQuePadrao ?? '')
   const responsavel = useResponsavelField(inicial?.quem)
   const [quando, setQuando] = useState(inicial?.quando ?? '')
   const ondeInicial = inicial ? inicial.onde.split(',').map((x) => x.trim()).filter(Boolean) : (ondePadrao ?? [])
@@ -90,7 +93,7 @@ export function AcaoForm({
   const [todaEmpresa, setTodaEmpresa] = useState(ondeInicial.includes(TODA_EMPRESA))
   const [onde, setOnde] = useState<string[]>(ondeInicial.filter((x) => x !== TODA_EMPRESA))
   const [ondeTocado, setOndeTocado] = useState(false)
-  const [como, setComo] = useState(inicial?.como ?? '')
+  const [como, setComo] = useState(inicial?.como ?? sugestao?.como ?? '')
   const [quanto, setQuanto] = useState(inicial?.quanto ?? '')
   const [status, setStatus] = useState<Nr1AcaoStatus>(inicial?.status ?? 'planejada')
   const [salvando, setSalvando] = useState(false)

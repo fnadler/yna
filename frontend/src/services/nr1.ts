@@ -2,19 +2,22 @@ import type {
   Nr1QuestionarioModelo, Nr1QuestionarioVersao, Nr1Campanha, Nr1LinhaMapa,
   Nr1RiscoInventario, Nr1Acao, Nr1Relato, Nr1Ciclo, Nr1ResponsavelTecnico,
   Nr1MinhaAvaliacao, Nr1Trilha, Nr1RelatoCategoria, Nr1Comentario,
-  Nr1DimensaoId, Nr1RiscoCiclo, Nr1Severidade, Nr1NivelRisco, Nr1RiscoSugeridoLeitura,
+  Nr1DimensaoId, Nr1NivelRisco,
   Nr1RiscoStatus, Nr1FatorRisco, Nr1FonteGeradora, Nr1Dimensao, Nr1AtividadeTipo,
+  Nr1Cid, Nr1FatorAvaliado, Nr1FatorEvolucao, Nr1ItemReavaliacao, Nr1Efetividade, Nr1DecisaoReavaliacao,
 } from '../types'
 import {
-  nr1Modelos, nr1Campanhas, nr1MapaCalor, nr1Inventario, nr1Acoes, nr1Relatos,
+  nr1Modelos, nr1Campanhas, nr1MapaCalor, nr1Acoes, nr1Relatos,
   nr1Ciclos, nr1ResponsavelTecnico, nr1MinhasAvaliacoes, nr1DimensaoNome,
   nr1DimensoesBase, NR1_ESCALAS, NR1_PONTUACAO, NR1_TODAY, nr1NivelPorMedia,
-  nr1RiscosCiclos, RISCOS, totalElegiveis, participacaoVazia,
-  nr1FatoresRisco, nr1FontesGeradoras,
+  totalElegiveis, participacaoVazia, nr1RiscosGerados, nr1RiscosTodos,
+  nr1DecisoesFator, nr1StatusManual, nr1RiscoIdGerado, nr1CampanhaVigente, nr1CampanhasEncerradas, type Nr1DecisaoFator,
+  nr1FatoresRisco, nr1FontesGeradoras, nr1Cids, NR1_DIMENSOES, nr1MediaDimensaoEmpresa,
+  nr1AvaliarFatores, nr1EvolucaoFator, nr1CampanhaAnterior, nr1Reavaliacoes,
+  nr1RecortesDoCiclo, nr1MediasDoRecorte, NR1_RECORTE_OUTROS,
 } from '../data/nr1Mock'
 import { rhEmpresa, rhUsuarioAtual } from '../data/rhMock'
-import { NR1_RISCOS_SUGERIDOS } from '../data/nr1RiscosSugeridosMock'
-import { nr1DistribuirPorItem, nr1NivelAtingeGatilho, ACAO_STATUS, fmtData } from '../lib/nr1'
+import { nr1DistribuirPorItem, ACAO_STATUS, EFETIVIDADE, fmtData } from '../lib/nr1'
 
 /* Camada de serviços do Módulo de Conformidade NR-1 — mockada, com latência
    simulada. As assinaturas espelham a futura API REST; trocar o corpo por
@@ -180,96 +183,209 @@ export const nr1ModeloService = {
   },
 }
 
-/** Fábrica dos dois serviços de cadastro à parte (RF-A05) — fatores de risco
-   e fontes geradoras são o mesmo formato ({id, nome}) com a mesma regra de
-   uso (RF-A05: reutilizável entre dimensões, criado inline como tag), só
-   mudando o registro e em qual campo da dimensão cada um é referenciado. */
-function criarServicoTag<T extends { id: string; nome: string }>(
-  registro: T[],
-  campo: 'fatoresRiscoIds' | 'fontesGeradorasIds',
-  prefixo: string,
-) {
-  /** Onde exatamente um id está vinculado (modelo/versão/dimensão) — usado
-     tanto pro contador da lista quanto pro alerta de confirmação antes de
-     excluir. */
-  const usosDe = (id: string) => {
-    const usos: { modelo: string; versao: string; dimensao: string }[] = []
-    for (const m of nr1Modelos) for (const v of m.versoes) for (const d of v.dimensoes) {
-      if (d[campo].includes(id)) usos.push({ modelo: m.nome, versao: v.versao, dimensao: d.nome })
-    }
-    return usos
-  }
+/** Sugestões de ação descartadas por risco. */
+const SUGESTOES_DESCARTADAS = new Map<string, Set<string>>()
 
-  return {
-    list: async (): Promise<T[]> => {
-      await delay(rand(150, 350))
-      return registro
-    },
-
-    /** Em quantas dimensões (de qualquer modelo/versão) cada id aparece —
-       só informativo, ao lado de cada linha da lista de gerenciamento. */
-    usoPorId: async (): Promise<Record<string, number>> => {
-      await delay(rand(150, 350))
-      const contagem: Record<string, number> = {}
-      for (const t of registro) contagem[t.id] = usosDe(t.id).length
-      return contagem
-    },
-
-    /** Onde um cadastro específico está vinculado — mostrado no alerta antes
-       de excluir, pra quem for excluir saber o que vai perder o vínculo. */
-    usos: async (id: string): Promise<{ modelo: string; versao: string; dimensao: string }[]> => {
-      await delay(rand(150, 350))
-      return usosDe(id)
-    },
-
-    /** Cria um cadastro novo, ou devolve o já existente com o mesmo nome
-       (evita duplicar ao digitar algo que já existe). */
-    criar: async (nome: string): Promise<T> => {
-      await delay(rand(200, 400))
-      const existente = registro.find((f) => f.nome.toLowerCase() === nome.trim().toLowerCase())
-      if (existente) return existente
-      const novo = { id: `${prefixo}-${Date.now().toString().slice(-6)}`, nome: nome.trim() } as T
-      registro.push(novo)
-      return novo
-    },
-
-    /** Renomeia — não precisa tocar nas dimensões que já referenciam este
-       cadastro, porque elas guardam o id, não o nome. */
-    renomear: async (id: string, nome: string): Promise<T | undefined> => {
-      await delay(rand(200, 400))
-      const f = registro.find((x) => x.id === id)
-      if (f) f.nome = nome.trim()
-      return f
-    },
-
-    /** Exclui o cadastro e desvincula de toda dimensão que o referenciava,
-       em qualquer modelo/versão — inclusive publicada/arquivada: fator e
-       fonte são metadado de governança sobre a dimensão, não fazem parte do
-       instrumento que o colaborador responde, então não entram na regra de
-       imutabilidade de versão (RF-A04) que vale pra itens/escala/pontuação.
-       A confirmação com a lista de dimensões afetadas é responsabilidade da
-       UI, chamando `usos()` antes de chamar isto aqui. */
-    remover: async (id: string): Promise<{ ok: boolean }> => {
-      await delay(rand(200, 400))
-      for (const m of nr1Modelos) for (const v of m.versoes) for (const d of v.dimensoes) {
-        d[campo] = d[campo].filter((x) => x !== id)
-      }
-      const i = registro.findIndex((x) => x.id === id)
-      if (i >= 0) registro.splice(i, 1)
-      return { ok: true }
-    },
-  }
+function removerDecisoes(riscoId: string) {
+  for (let i = nr1DecisoesFator.length - 1; i >= 0; i--) if (nr1DecisoesFator[i]!.riscoId === riscoId) nr1DecisoesFator.splice(i, 1)
 }
 
-/** Cadastro à parte de fatores de risco — reutilizável entre dimensões de
-   qualquer modelo. Sem tela própria: criado inline no formulário de
-   dimensão, como um sistema de tags. */
-export const nr1FatorRiscoService = criarServicoTag<Nr1FatorRisco>(nr1FatoresRisco, 'fatoresRiscoIds', 'fator')
+const slug = (s: string) =>
+  s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'item'
 
-/** Idem, para fontes geradoras de risco — cadastro independente (não tem
-   vínculo com fatores; as duas listas só se relacionam através da
-   dimensão que as referencia). */
-export const nr1FonteGeradoraService = criarServicoTag<Nr1FonteGeradora>(nr1FontesGeradoras, 'fontesGeradorasIds', 'fonte')
+const gerarIdUnico = (base: string, existentes: string[]) => {
+  let id = base
+  let n = 2
+  while (existentes.includes(id)) { id = `${base}-${n}`; n += 1 }
+  return id
+}
+
+/** Catálogo de fatores de risco, tabela de CIDs e o motor de cálculo dos
+   fatores por ciclo (fase 1 da nova estrutura). */
+export const nr1FatorService = {
+  catalogo: async (): Promise<Nr1FatorRisco[]> => {
+    await delay(rand(150, 350))
+    return nr1FatoresRisco
+  },
+
+  cids: async (): Promise<Nr1Cid[]> => {
+    await delay(rand(150, 350))
+    return nr1Cids
+  },
+
+  /** Perguntas que podem ser vinculadas a um fator — as do Modelo YNA
+     publicado (a matriz COPSOQ), com o domínio de cada uma. */
+  perguntas: async (): Promise<{ id: string; texto: string; dimensaoId: Nr1DimensaoId }[]> => {
+    await delay(rand(150, 350))
+    const yna = nr1Modelos.find((m) => m.escopo === 'yna')
+    const v = yna?.versoes.find((x) => x.status === 'publicada') ?? yna?.versoes[0]
+    return (v?.dimensoes ?? []).flatMap((d) => d.itens.map((i) => ({ id: i.id, texto: i.texto, dimensaoId: d.id })))
+  },
+
+  /** Ações sugeridas que o RH descartou para um risco (síncrono: estado de
+     tela, vale na sessão). */
+  sugestoesDescartadas: (riscoId: string): string[] => [...(SUGESTOES_DESCARTADAS.get(riscoId) ?? [])],
+
+  descartarSugestao: (riscoId: string, sugestaoId: string, descartar: boolean) => {
+    const atual = new Set(SUGESTOES_DESCARTADAS.get(riscoId) ?? [])
+    if (descartar) atual.add(sugestaoId)
+    else atual.delete(sugestaoId)
+    SUGESTOES_DESCARTADAS.set(riscoId, atual)
+  },
+
+  /** Planos do ciclo anterior a reavaliar no ciclo `campanhaId`: cada risco
+     do ciclo anterior que teve ação, com o mesmo fator/recorte antes e
+     depois, a leitura e as sugestões (efetividade e próximo passo). */
+  reavaliacao: async (campanhaId: string): Promise<Nr1ItemReavaliacao[]> => {
+    await delay(rand(300, 600))
+    const idAnterior = nr1CampanhaAnterior(campanhaId)
+    if (!idAnterior) return []
+    const atuais = nr1AvaliarFatores(campanhaId)
+    const riscosAtuais = nr1RiscosGerados(campanhaId)
+    const superadas = new Set(nr1Acoes.map((a) => a.versaoAnteriorId).filter(Boolean))
+    return nr1RiscosGerados(idAnterior).flatMap((r) => {
+      const acoes = nr1Acoes.filter((a) => a.riscoId === r.id && !superadas.has(a.id))
+      const versoesAnteriores = nr1Acoes.filter((a) => a.riscoId === r.id && superadas.has(a.id))
+      if (acoes.length === 0 && versoesAnteriores.length === 0) return []
+      const dep = r.departamentoIds[0] ?? null
+      const anterior = r.avaliacao!
+      const atual = atuais.find((a) => a.fatorId === r.fatorRiscoId && a.departamentoId === dep)
+      const lida = atual ? nr1EvolucaoFator(anterior.situacao === 'requer-plano' ? anterior : { ...anterior, situacao: 'requer-plano' }, atual) : 'sem-mudanca'
+      const evolucao: Nr1FatorEvolucao = lida === 'novo' ? 'sem-mudanca' : lida
+      const riscoAtual = riscosAtuais.find((x) => x.fatorRiscoId === r.fatorRiscoId && (x.departamentoIds[0] ?? null) === dep)
+      const abertas = acoes.filter((a) => a.status !== 'concluida')
+      const efetividadeSugerida: Nr1Efetividade = evolucao === 'saiu-do-gatilho' ? 'muito-efetiva' : evolucao === 'melhorou' ? 'parcialmente-efetiva' : 'inefetiva'
+      const decisaoSugerida: Nr1DecisaoReavaliacao = evolucao === 'saiu-do-gatilho' ? 'encerrar' : evolucao === 'melhorou' && abertas.length > 0 ? 'manter' : 'revisar'
+      const feita = nr1Reavaliacoes.find((x) => x.campanhaId === campanhaId && x.riscoAnteriorId === r.id)
+      return [{
+        riscoAnterior: r,
+        /* Uma ação já revisada (v1 → v2) entra pela versão anterior: é ela
+           que o ciclo anterior executou. */
+        acoes: [...acoes, ...versoesAnteriores.filter((v) => !acoes.some((a) => a.versaoAnteriorId === v.id && a.riscoId === r.id))],
+        anterior, atual, evolucao, riscoAtualId: riscoAtual?.id,
+        efetividadeSugerida, decisaoSugerida,
+        reavaliacao: feita && { decisao: feita.decisao, autor: feita.autor, em: feita.em },
+      }]
+    })
+  },
+
+  /** Registra a reavaliação de um plano do ciclo anterior: a efetividade de
+     cada ação (na própria ação, com registro na atividade) e a decisão. Em
+     "manter", as ações ainda abertas passam a responder ao risco do ciclo
+     atual. */
+  registrarReavaliacao: async (p: {
+    campanhaId: string
+    riscoAnteriorId: string
+    riscoAtualId?: string
+    efetividades: Record<string, Nr1Efetividade>
+    decisao: Nr1DecisaoReavaliacao
+  }): Promise<{ ok: boolean }> => {
+    await delay(rand(400, 700))
+    const ciclo = nr1Campanhas.find((c) => c.id === p.campanhaId)
+    const nomeCiclo = ciclo ? (ciclo.nome.split('·').pop() ?? ciclo.nome).trim() : p.campanhaId
+    for (const [acaoId, ef] of Object.entries(p.efetividades)) {
+      const a = nr1Acoes.find((x) => x.id === acaoId)
+      if (!a) continue
+      a.efetividade = ef
+      registrarAtividade(a, 'editada', `Avaliou a efetividade no ciclo ${nomeCiclo}: ${EFETIVIDADE[ef].label.toLowerCase()}`)
+    }
+    if (p.decisao === 'manter' && p.riscoAtualId) {
+      for (const a of nr1Acoes) {
+        if (a.riscoId === p.riscoAnteriorId && a.status !== 'concluida') {
+          a.riscoId = p.riscoAtualId
+          registrarAtividade(a, 'editada', `Manteve a ação no plano do ciclo ${nomeCiclo}`)
+        }
+      }
+    }
+    for (let i = nr1Reavaliacoes.length - 1; i >= 0; i--) {
+      if (nr1Reavaliacoes[i]!.campanhaId === p.campanhaId && nr1Reavaliacoes[i]!.riscoAnteriorId === p.riscoAnteriorId) nr1Reavaliacoes.splice(i, 1)
+    }
+    nr1Reavaliacoes.push({ campanhaId: p.campanhaId, riscoAnteriorId: p.riscoAnteriorId, decisao: p.decisao, autor: rhUsuarioAtual.nome, em: NR1_TODAY })
+    return { ok: true }
+  },
+
+  /** Cria ou atualiza um fator do catálogo. Fator novo ganha id pelo nome. */
+  salvar: async (f: Nr1FatorRisco): Promise<Nr1FatorRisco> => {
+    await delay(rand(300, 600))
+    const id = f.id || gerarIdUnico(`fator-${slug(f.nome)}`, nr1FatoresRisco.map((x) => x.id))
+    const salvo: Nr1FatorRisco = { ...f, id, acoesSugeridas: f.acoesSugeridas.map((a, i) => ({ ...a, id: a.id || `${id}-acao-${Date.now()}-${i}` })) }
+    const i = nr1FatoresRisco.findIndex((x) => x.id === id)
+    if (i >= 0) nr1FatoresRisco[i] = salvo
+    else nr1FatoresRisco.push(salvo)
+    return salvo
+  },
+
+  /** Exclui um fator do catálogo (e o vínculo dele nos domínios dos modelos). */
+  excluir: async (id: string): Promise<{ ok: boolean }> => {
+    await delay(rand(250, 500))
+    for (const m of nr1Modelos) for (const v of m.versoes) for (const d of v.dimensoes) d.fatoresRiscoIds = d.fatoresRiscoIds.filter((x) => x !== id)
+    const i = nr1FatoresRisco.findIndex((x) => x.id === id)
+    if (i >= 0) nr1FatoresRisco.splice(i, 1)
+    return { ok: i >= 0 }
+  },
+
+  salvarCid: async (c: Nr1Cid): Promise<Nr1Cid> => {
+    await delay(rand(250, 500))
+    const id = c.id || gerarIdUnico(`cid-${slug(c.codigo)}`, nr1Cids.map((x) => x.id))
+    const salvo = { ...c, id, codigo: c.codigo.trim().toUpperCase(), nome: c.nome.trim() }
+    const i = nr1Cids.findIndex((x) => x.id === id)
+    if (i >= 0) nr1Cids[i] = salvo
+    else nr1Cids.push(salvo)
+    return salvo
+  },
+
+  /** Exclui o CID da tabela e o desvincula de todo fator que o usava. */
+  excluirCid: async (id: string): Promise<{ ok: boolean }> => {
+    await delay(rand(250, 500))
+    for (const f of nr1FatoresRisco) f.cidIds = f.cidIds.filter((x) => x !== id)
+    const i = nr1Cids.findIndex((x) => x.id === id)
+    if (i >= 0) nr1Cids.splice(i, 1)
+    return { ok: i >= 0 }
+  },
+
+  fontes: async (): Promise<Nr1FonteGeradora[]> => {
+    await delay(rand(150, 350))
+    return nr1FontesGeradoras
+  },
+
+  salvarFonte: async (f: Nr1FonteGeradora): Promise<Nr1FonteGeradora> => {
+    await delay(rand(250, 500))
+    const id = f.id || gerarIdUnico(`fonte-${slug(f.nome)}`, nr1FontesGeradoras.map((x) => x.id))
+    const salvo = { id, nome: f.nome.trim() }
+    const i = nr1FontesGeradoras.findIndex((x) => x.id === id)
+    if (i >= 0) nr1FontesGeradoras[i] = salvo
+    else nr1FontesGeradoras.push(salvo)
+    return salvo
+  },
+
+  /** Exclui a fonte e a desvincula dos fatores e dos domínios. */
+  excluirFonte: async (id: string): Promise<{ ok: boolean }> => {
+    await delay(rand(250, 500))
+    for (const f of nr1FatoresRisco) f.fontesGeradorasIds = f.fontesGeradorasIds.filter((x) => x !== id)
+    for (const m of nr1Modelos) for (const v of m.versoes) for (const d of v.dimensoes) d.fontesGeradorasIds = d.fontesGeradorasIds.filter((x) => x !== id)
+    const i = nr1FontesGeradoras.findIndex((x) => x.id === id)
+    if (i >= 0) nr1FontesGeradoras.splice(i, 1)
+    return { ok: i >= 0 }
+  },
+
+  /** Fatores avaliados num ciclo — por departamento e na empresa inteira. */
+  avaliar: async (campanhaId: string): Promise<Nr1FatorAvaliado[]> => {
+    await delay(rand(300, 600))
+    return nr1AvaliarFatores(campanhaId)
+  },
+
+  /** Cada fator do ciclo com a leitura em relação ao ciclo anterior (mesmo
+     fator, mesmo recorte) — base da reavaliação dos planos. */
+  evolucao: async (campanhaId: string): Promise<{ atual: Nr1FatorAvaliado; anterior?: Nr1FatorAvaliado; evolucao: Nr1FatorEvolucao }[]> => {
+    await delay(rand(300, 600))
+    const idAnterior = nr1CampanhaAnterior(campanhaId)
+    const anteriores = idAnterior ? nr1AvaliarFatores(idAnterior) : []
+    return nr1AvaliarFatores(campanhaId).map((atual) => {
+      const anterior = anteriores.find((a) => a.fatorId === atual.fatorId && a.departamentoId === atual.departamentoId)
+      return { atual, anterior, evolucao: nr1EvolucaoFator(anterior, atual) }
+    })
+  },
+}
 
 export const nr1CampanhaService = {
   list: async (): Promise<Nr1Campanha[]> => {
@@ -373,82 +489,158 @@ export const nr1ResultadoService = {
      acima do k entram). */
   mediaPorDimensao: async (campanhaId?: string): Promise<{ dimensaoId: Nr1DimensaoId; nome: string; media: number; nivel: ReturnType<typeof nr1NivelPorMedia> }[]> => {
     await delay(rand(300, 600))
-    const linhas = nr1MapaCalor(campanhaId).filter((l) => !l.protegido)
-    return linhas[0]?.celulas.map((_, i) => {
-      const vals = linhas.map((l) => l.celulas[i]?.media ?? 0)
-      const media = Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1))
-      const dimensaoId = linhas[0]!.celulas[i]!.dimensaoId
-      return { dimensaoId, nome: nr1DimensaoNome(dimensaoId), media, nivel: nr1NivelPorMedia(media) }
-    }) ?? []
+    /* Nota da empresa: ponderada pelos respondentes, incluindo as áreas
+       ocultas por k-anonimato (elas não aparecem separadas no mapa). */
+    const id = campanhaId ?? (nr1Campanhas.find((c) => c.status === 'em-campo') ?? nr1Campanhas[0])!.id
+    return NR1_DIMENSOES.map((d, i) => {
+      const media = nr1MediaDimensaoEmpresa(id, i)
+      return { dimensaoId: d.id, nome: nr1DimensaoNome(d.id), media, nivel: nr1NivelPorMedia(media) }
+    })
   },
 
-  inventario: async (): Promise<Nr1RiscoInventario[]> => {
+  /** Inventário de riscos — por padrão, o do último ciclo encerrado. Os
+     riscos são gerados pelo motor a partir do resultado (ver
+     `nr1RiscosGerados`), não cadastrados à mão. */
+  /** Visão geral de um ciclo num recorte (empresa, área ou "outros"): a nota
+     de cada domínio e a do ciclo anterior no mesmo recorte, quando houver. */
+  visaoGeral: async (campanhaId: string, recorte: string | null): Promise<{
+    cicloAnteriorId?: string
+    dominios: { dimensaoId: Nr1DimensaoId; nome: string; media: number | null; nivel: Nr1NivelRisco | null; anterior: number | null }[]
+  }> => {
+    await delay(rand(250, 500))
+    const idAnterior = nr1CampanhaAnterior(campanhaId)
+    const atuais = nr1MediasDoRecorte(campanhaId, recorte)
+    const anteriores = idAnterior ? nr1MediasDoRecorte(idAnterior, recorte) : NR1_DIMENSOES.map(() => null)
+    return {
+      cicloAnteriorId: idAnterior,
+      dominios: NR1_DIMENSOES.map((d, i) => {
+        const media = atuais[i] ?? null
+        return { dimensaoId: d.id, nome: d.nome, media, nivel: media === null ? null : nr1NivelPorMedia(media), anterior: anteriores[i] ?? null }
+      }),
+    }
+  },
+
+  /** Evolução das notas por domínio ao longo dos ciclos encerrados, num
+     recorte (empresa, área ou "outros"). `null` = recorte sem dado no ciclo. */
+  evolucao: async (recorte: string | null): Promise<{ campanhaId: string; ciclo: string; medias: (number | null)[] }[]> => {
+    await delay(rand(300, 600))
+    return nr1CampanhasEncerradas().map((id) => {
+      const c = nr1Campanhas.find((x) => x.id === id)!
+      return { campanhaId: id, ciclo: (c.nome.split('·').pop() ?? c.nome).trim(), medias: nr1MediasDoRecorte(id, recorte) }
+    })
+  },
+
+  /** Recortes do ciclo: áreas visíveis e o agrupamento "Outros departamentos". */
+  recortes: async (campanhaId: string) => {
+    await delay(rand(150, 300))
+    return nr1RecortesDoCiclo(campanhaId)
+  },
+
+  /** Mapa de calor com as áreas pequenas agregadas numa linha "Outros
+     departamentos" (oculta se, somadas, ainda ficarem abaixo do k). */
+  mapaCalorAgregado: async (campanhaId: string): Promise<{ linhas: Nr1LinhaMapa[]; agregados: string[] }> => {
     await delay(rand(350, 700))
-    return nr1Inventario().sort((a, b) => b.nivelNum - a.nivelNum)
+    const { visiveis, outros } = nr1RecortesDoCiclo(campanhaId)
+    const base = nr1MapaCalor(campanhaId).filter((l) => visiveis.some((v) => v.id === l.departamentoId))
+    if (!outros) return { linhas: base, agregados: [] }
+    const medias = nr1MediasDoRecorte(campanhaId, NR1_RECORTE_OUTROS)
+    const linhaOutros: Nr1LinhaMapa = {
+      departamentoId: NR1_RECORTE_OUTROS,
+      departamento: 'Outros departamentos',
+      respondentes: outros.respondentes,
+      protegido: outros.protegido,
+      celulas: NR1_DIMENSOES.map((d, i) => {
+        const m = medias[i] ?? null
+        return m === null ? { dimensaoId: d.id, media: null, nivel: null } : { dimensaoId: d.id, media: m, nivel: nr1NivelPorMedia(m) }
+      }),
+    }
+    return { linhas: [...base, linhaOutros], agregados: outros.nomes }
   },
 
-  /** Adiciona um risco ao inventário manualmente — por exemplo, identificado
-     por auditoria ou observação direta do SESMT, não pela pesquisa. Nasce
-     sem histórico de ciclos: `nr1Inventario()` computa status/tendência a
-     partir de `nr1RiscosCiclos`, que não tem pontos para um risco recém-
-     criado, então ele aparece como "Identificado", sem sugestão ainda. */
-  adicionarRisco: async (p: {
-    dimensaoId: Nr1DimensaoId
-    departamentoIds: string[]
-    fator: string
-    danos: string
-    probabilidade: number
-    severidade: Nr1Severidade
-    controles: string[]
-    fatorRiscoId?: string
-    fontesGeradorasIds?: string[]
-    /** Ciclo analisado quando o risco foi registrado (análise a partir do
-       mapa de calor). */
-    campanhaId?: string
-    /** Presente quando o cadastro vem da aba "Riscos sugeridos" — grava a
-       rastreabilidade de que este fator nasceu de uma leitura assistida do
-       questionário, não de auditoria/observação direta do SESMT. */
-    origemSugestaoId?: string
-  }): Promise<Nr1RiscoInventario> => {
+  inventario: async (campanhaId?: string): Promise<Nr1RiscoInventario[]> => {
+    await delay(rand(350, 700))
+    const id = campanhaId ?? nr1CampanhaVigente()
+    return (id ? nr1RiscosGerados(id) : []).sort((a, b) => b.nivelNum - a.nivelNum)
+  },
+
+  /** Riscos de todos os ciclos encerrados — resolve o risco de origem de
+     qualquer ação, inclusive as de ciclos anteriores. */
+  riscosTodos: async (): Promise<Nr1RiscoInventario[]> => {
+    await delay(rand(300, 600))
+    return nr1RiscosTodos()
+  },
+
+  /** Ciclos encerrados (do mais antigo ao mais recente) e o vigente. */
+  ciclosEncerrados: async (): Promise<{ ids: string[]; vigente?: string }> => {
+    await delay(rand(150, 300))
+    return { ids: nr1CampanhasEncerradas(), vigente: nr1CampanhaVigente() }
+  },
+
+  /** Decisões do RH (dispensas e inclusões) de um ciclo. */
+  decisoes: async (campanhaId: string): Promise<Nr1DecisaoFator[]> => {
+    await delay(rand(150, 300))
+    return nr1DecisoesFator.filter((d) => d.campanhaId === campanhaId)
+  },
+
+  /** Dispensa um fator apontado num recorte — sai da lista de "requer plano"
+     e do inventário, com a justificativa registrada (fica para a
+     fiscalização). Bloqueado se já houver ação no plano. */
+  dispensarFator: async (p: { campanhaId: string; fatorId: string; departamentoId: string | null; justificativa: string }): Promise<{ ok: boolean; message?: string }> => {
+    await delay(rand(300, 600))
+    const riscoId = nr1RiscoIdGerado(p.campanhaId, p.fatorId, p.departamentoId)
+    if (nr1Acoes.some((a) => a.riscoId === riscoId)) {
+      return { ok: false, message: 'Este fator já tem ações no plano. Exclua as ações antes de dispensá-lo.' }
+    }
+    removerDecisoes(riscoId)
+    nr1DecisoesFator.push({ ...p, riscoId, tipo: 'dispensado', justificativa: p.justificativa.trim(), autor: rhUsuarioAtual.nome, em: NR1_TODAY })
+    return { ok: true }
+  },
+
+  /** Inclui um fator que o questionário não apontou (ex.: auditoria,
+     observação do SESMT) — entra no inventário com a justificativa. */
+  incluirFator: async (p: { campanhaId: string; fatorId: string; departamentoId: string | null; justificativa: string }): Promise<Nr1RiscoInventario | undefined> => {
+    await delay(rand(300, 600))
+    const riscoId = nr1RiscoIdGerado(p.campanhaId, p.fatorId, p.departamentoId)
+    removerDecisoes(riscoId)
+    nr1DecisoesFator.push({ ...p, riscoId, tipo: 'incluido', justificativa: p.justificativa.trim(), autor: rhUsuarioAtual.nome, em: NR1_TODAY })
+    return nr1RiscosGerados(p.campanhaId).find((r) => r.id === riscoId)
+  },
+
+  /** Desfaz uma dispensa ou inclusão — o fator volta a seguir o resultado. */
+  reconsiderarFator: async (riscoId: string): Promise<{ ok: boolean; message?: string }> => {
+    await delay(rand(250, 500))
+    if (nr1DecisoesFator.some((d) => d.riscoId === riscoId && d.tipo === 'incluido') && nr1Acoes.some((a) => a.riscoId === riscoId)) {
+      return { ok: false, message: 'Este fator já tem ações no plano. Exclua as ações antes de removê-lo.' }
+    }
+    removerDecisoes(riscoId)
+    return { ok: true }
+  },
+
+  /** Compatibilidade com a análise de risco antiga (fases seguintes a
+     substituem): registrar um risco vira incluir o fator em cada área. */
+  adicionarRisco: async (p: { dimensaoId: Nr1DimensaoId; departamentoIds: string[]; fatorRiscoId?: string; campanhaId?: string } & Record<string, unknown>): Promise<Nr1RiscoInventario | undefined> => {
     await delay(rand(400, 700))
-    const id = `r-${RISCOS.length + 1}`
-    RISCOS.push({ id, ...p })
-    return nr1Inventario().find((r) => r.id === id)!
+    const campanhaId = p.campanhaId ?? nr1CampanhaVigente()
+    if (!campanhaId || !p.fatorRiscoId) return undefined
+    const deps = p.departamentoIds.length ? p.departamentoIds : [null]
+    for (const dep of deps) {
+      const riscoId = nr1RiscoIdGerado(campanhaId, p.fatorRiscoId, dep)
+      removerDecisoes(riscoId)
+      nr1DecisoesFator.push({ riscoId, campanhaId, fatorId: p.fatorRiscoId, departamentoId: dep, tipo: 'incluido', justificativa: 'Identificado na análise do resultado.', autor: rhUsuarioAtual.nome, em: NR1_TODAY })
+    }
+    return nr1RiscosGerados(campanhaId).find((r) => r.id === nr1RiscoIdGerado(campanhaId, p.fatorRiscoId!, deps[0]!))
   },
 
-  /** Edita os campos do GRO de um risco já existente, mais o campo "Status"
-     (`status`, opcional) — grava em `RiscoSeed.statusManual`, não num campo
-     `status` (que não existe em `RiscoSeed`: o status só existe no formato
-     de leitura `Nr1RiscoInventario`, calculado por `nr1Inventario()`). A
-     partir daqui esse status vence o que a evolução entre ciclos calcularia,
-     até uma nova edição mudar de novo (ver `RiscoSeed.statusManual`,
-     `data/nr1Mock.ts`). */
-  editarRisco: async (id: string, p: {
-    dimensaoId: Nr1DimensaoId
-    departamentoIds: string[]
-    fator: string
-    danos: string
-    probabilidade: number
-    severidade: Nr1Severidade
-    controles: string[]
-    fatorRiscoId?: string
-    fontesGeradorasIds?: string[]
-    status?: Nr1RiscoStatus
-  }): Promise<Nr1RiscoInventario | undefined> => {
-    await delay(rand(400, 700))
-    const r = RISCOS.find((x) => x.id === id)
-    if (!r) return undefined
-    const { status, ...patch } = p
-    Object.assign(r, patch)
-    if (status) r.statusManual = status
-    return nr1Inventario().find((x) => x.id === id)
+  /** Probabilidade, severidade e dados do fator vêm do motor e do catálogo —
+     não são editáveis. Só o status manual ainda é aceito aqui. */
+  editarRisco: async (id: string, p: { status?: Nr1RiscoStatus } & Record<string, unknown>): Promise<Nr1RiscoInventario | undefined> => {
+    await delay(rand(300, 600))
+    if (p.status) nr1StatusManual.set(id, p.status)
+    return nr1RiscosTodos().find((x) => x.id === id)
   },
 
-  /** Exclui um risco do inventário — bloqueado enquanto houver ações do
-     plano de ação vinculadas a ele (excluir apagaria o vínculo que a
-     rastreabilidade do PGR depende, deixando ações "órfãs"). Como o app
-     ainda não tem como remover uma ação, na prática isso significa: só dá
-     para excluir um risco que nunca teve ação registrada. */
+  /** Tira um risco do inventário (registra como dispensado) — bloqueado se
+     houver ações vinculadas. */
   excluirRisco: async (id: string): Promise<{ ok: boolean; message?: string }> => {
     await delay(rand(300, 600))
     const vinculadas = nr1Acoes.filter((a) => a.riscoId === id)
@@ -458,33 +650,21 @@ export const nr1ResultadoService = {
         message: `Este risco tem ${vinculadas.length} ${vinculadas.length === 1 ? 'ação vinculada' : 'ações vinculadas'} no plano de ação. Não é possível excluir um risco com ações registradas.`,
       }
     }
-    const i = RISCOS.findIndex((x) => x.id === id)
-    if (i < 0) return { ok: false }
-    RISCOS.splice(i, 1)
+    const r = nr1RiscosTodos().find((x) => x.id === id)
+    if (!r?.fatorRiscoId) return { ok: false }
+    removerDecisoes(id)
+    nr1DecisoesFator.push({ riscoId: id, campanhaId: r.campanhaId, fatorId: r.fatorRiscoId, departamentoId: r.departamentoIds[0] ?? null, tipo: 'dispensado', justificativa: 'Removido do inventário.', autor: rhUsuarioAtual.nome, em: NR1_TODAY })
     return { ok: true }
   },
 
-  /** "Concluir risco" — atalho de um clique para o mesmo mecanismo do campo
-     "Status" em "Editar risco" (`RiscoSeed.statusManual`), fixado em
-     "Eliminado": julgamento do RH/SST de que o risco foi resolvido,
-     independente do que a evolução entre ciclos diria sozinha. Não é um
-     status novo — a evolução automática também pode chegar em "Eliminado"
-     sozinha; isto só é mais um caminho até lá. */
+  /** "Concluir risco" — julgamento do RH/SST de que o risco foi resolvido,
+     independente do que o próximo ciclo mostrar. */
   concluirRisco: async (id: string): Promise<{ ok: boolean }> => {
     await delay(rand(300, 600))
-    const r = RISCOS.find((x) => x.id === id)
-    if (!r) return { ok: false }
-    r.statusManual = 'eliminado'
+    nr1StatusManual.set(id, 'eliminado')
     return { ok: true }
   },
 
-  /** Histórico de um risco, ciclo a ciclo (nível, tendência, sugestão) — a
-     evolução de verdade, não só o último ponto que o card do inventário
-     mostra. Do mais antigo para o mais recente. */
-  riscoCiclos: async (riscoId: string): Promise<Nr1RiscoCiclo[]> => {
-    await delay(rand(250, 500))
-    return nr1RiscosCiclos.filter((c) => c.riscoId === riscoId)
-  },
 
   /** O domínio como está definido na versão do modelo aplicada no ciclo —
      descrição, fatores de risco e fontes geradoras vinculados (RF-A05). */
@@ -522,10 +702,9 @@ export const nr1ResultadoService = {
       const linha = linhas.find((l) => l.departamentoId === departamentoId)
       media = linha?.celulas.find((c) => c.dimensaoId === dimensaoId)?.media ?? 3
     } else {
-      const vals = linhas
-        .filter((l) => !l.protegido)
-        .map((l) => l.celulas.find((c) => c.dimensaoId === dimensaoId)?.media ?? 0)
-      media = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 3
+      /* Empresa: ponderada pelos respondentes, inclusive as áreas ocultas
+         por k-anonimato — a mesma nota do motor de fatores. */
+      media = nr1MediaDimensaoEmpresa(campanhaId, NR1_DIMENSOES.findIndex((d) => d.id === dimensaoId)) || 3
     }
 
     const distrib = nr1DistribuirPorItem(
@@ -536,43 +715,6 @@ export const nr1ResultadoService = {
     return dimensao.itens.map((it) => {
       const d = distrib.find((x) => x.itemId === it.id)!
       return { itemId: it.id, texto: it.texto, referencia: it.referencia, media: d.media, nivel: nr1NivelPorMedia(d.media) }
-    })
-  },
-
-  /** Leitura das 7 sugestões de risco psicossocial para um ciclo — ⚠️ é uma
-     TRIAGEM ASSISTIDA, nunca um diagnóstico automático (ver disclaimers em
-     `components/Nr1RiscosSugeridos.tsx`). `mediaEmpresa`/`nivelEmpresa` vêm
-     da mesma média que já aparece no "Risco por dimensão" do ciclo; os
-     departamentos envolvidos filtram as mesmas células do mapa de calor
-     (k-anonimato já aplicado) que atingem o gatilho da sugestão — nunca um
-     número à parte. Uma sugestão "dispara" tanto pela média da empresa
-     quanto por qualquer área isolada, porque um risco pode ser localizado
-     mesmo quando a média geral não preocupa. */
-  riscosSugeridos: async (campanhaId: string): Promise<Nr1RiscoSugeridoLeitura[]> => {
-    await delay(rand(350, 700))
-    const linhas = nr1MapaCalor(campanhaId).filter((l) => !l.protegido)
-    const inventario = nr1Inventario()
-
-    return NR1_RISCOS_SUGERIDOS.map((sugestao) => {
-      const vals = linhas.map((l) => l.celulas.find((c) => c.dimensaoId === sugestao.dimensaoId)?.media ?? 0)
-      const mediaEmpresa = vals.length ? Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1)) : 0
-      const nivelEmpresa = nr1NivelPorMedia(mediaEmpresa)
-
-      const departamentosEnvolvidos = linhas
-        .map((l) => {
-          const cel = l.celulas.find((c) => c.dimensaoId === sugestao.dimensaoId)
-          return cel?.media != null ? { departamentoId: l.departamentoId, departamento: l.departamento, media: cel.media, nivel: cel.nivel! } : null
-        })
-        .filter((d): d is NonNullable<typeof d> => d !== null)
-        .filter((d) => nr1NivelAtingeGatilho(d.nivel, sugestao.nivelGatilho))
-
-      const disparado = nr1NivelAtingeGatilho(nivelEmpresa, sugestao.nivelGatilho) || departamentosEnvolvidos.length > 0
-      const jaAdicionado = inventario.find((r) => r.origemSugestaoId === sugestao.id)
-
-      return {
-        sugestao, mediaEmpresa, nivelEmpresa, disparado, departamentosEnvolvidos,
-        jaNoInventario: !!jaAdicionado, riscoInventarioId: jaAdicionado?.id,
-      }
     })
   },
 
@@ -592,7 +734,7 @@ export const nr1ResultadoService = {
   /** Trilha risco → avaliação → inventário → ação → evidência (RF-F01). */
   trilha: async (riscoId: string): Promise<Nr1Trilha | undefined> => {
     await delay(rand(300, 600))
-    const risco = nr1Inventario().find((r) => r.id === riscoId)
+    const risco = nr1RiscosTodos().find((r) => r.id === riscoId)
     if (!risco) return undefined
     const campanha = nr1Campanhas.find((c) => c.id === risco.campanhaId)
     const acoes = nr1Acoes.filter((a) => a.riscoId === riscoId)

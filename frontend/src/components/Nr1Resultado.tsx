@@ -201,10 +201,15 @@ const MIN_PX_POR_DIMENSAO = 92
    passa por baixo dele durante o scroll. */
 const HEADER_STUCK_SHADOW = 'shadow-[0_6px_8px_-6px_rgba(0,0,0,0.14)] dark:shadow-[0_6px_8px_-6px_rgba(0,0,0,0.45)]'
 
-export function MapaCalorTable({ dimensoes, linhas, onClickCelula }: {
+export function MapaCalorTable({ dimensoes, linhas, onClickCelula, semAvisos = false, stickyTop = 0 }: {
   dimensoes: { id: Nr1DimensaoId; nome: string }[]
   linhas: Nr1LinhaMapa[]
   onClickCelula?: (dimensaoId: Nr1DimensaoId, departamentoId: string, departamento: string) => void
+  /** Esconde os avisos de anonimato e de inventário abaixo da tabela. */
+  semAvisos?: boolean
+  /** Distância do topo (px) em que o cabeçalho da tabela trava — quando há
+     outras barras fixas acima dela na página. */
+  stickyTop?: number
 }) {
   const K = NR1_PONTUACAO.kAnonimato
   const protegidas = linhas.filter((l) => l.protegido)
@@ -228,6 +233,10 @@ export function MapaCalorTable({ dimensoes, linhas, onClickCelula }: {
     return () => ro.disconnect()
   }, [minLargura])
 
+  /* Com scroll horizontal, a tabela rola dentro da própria caixa e o
+     cabeçalho trava no topo dela — o deslocamento da página não se aplica. */
+  const topo = precisaScrollHorizontal ? 0 : stickyTop
+
   return (
     <>
       <div
@@ -241,9 +250,9 @@ export function MapaCalorTable({ dimensoes, linhas, onClickCelula }: {
           </caption>
           <thead>
             <tr>
-              <th scope="col" style={{ width: MIN_PX_LABEL }} className={`sticky top-0 left-0 z-30 border-r border-b border-border bg-surface px-4 py-3 text-left text-[12px] font-semibold text-ink-secondary ${HEADER_STUCK_SHADOW}`}>Área</th>
+              <th scope="col" style={{ width: MIN_PX_LABEL, top: topo }} className={`sticky left-0 z-30 border-r border-b border-border bg-surface px-4 py-3 text-left text-[12px] font-semibold text-ink-secondary ${HEADER_STUCK_SHADOW}`}>Área</th>
               {dimensoes.map((d) => (
-                <th key={d.id} scope="col" className={`sticky top-0 z-20 border-b border-border bg-surface px-1.5 py-3 text-center text-[11px] font-semibold leading-snug text-ink-secondary ${HEADER_STUCK_SHADOW}`}>
+                <th key={d.id} scope="col" style={{ top: topo }} className={`sticky z-20 border-b border-border bg-surface px-1.5 py-3 text-center text-[11px] font-semibold leading-snug text-ink-secondary ${HEADER_STUCK_SHADOW}`}>
                   {d.nome}
                 </th>
               ))}
@@ -298,7 +307,7 @@ export function MapaCalorTable({ dimensoes, linhas, onClickCelula }: {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-        {(['baixo', 'atencao', 'risco', 'critico'] as const).map((n) => (
+        {(['baixo', 'atencao', 'risco'] as const).map((n) => (
           <span key={n} className="flex items-center gap-1.5 text-[12px] text-ink-secondary">
             <span className={`h-3 w-3 rounded-[4px] ${NIVEL_RISCO[n].dot}`} aria-hidden />
             {NIVEL_RISCO[n].label} · {NIVEL_RISCO[n].acao}
@@ -306,7 +315,7 @@ export function MapaCalorTable({ dimensoes, linhas, onClickCelula }: {
         ))}
       </div>
 
-      <div className="mt-5 flex gap-3 rounded-lg border border-border bg-surface p-4">
+      {!semAvisos && <div className="mt-5 flex gap-3 rounded-lg border border-border bg-surface p-4">
         <Icon icon="ph:lock-simple-bold" width={20} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
         <div>
           <p className="text-[13px] font-semibold text-ink">Anonimato estatístico</p>
@@ -321,9 +330,9 @@ export function MapaCalorTable({ dimensoes, linhas, onClickCelula }: {
             )}
           </p>
         </div>
-      </div>
+      </div>}
 
-      <div className="mt-4 flex flex-col gap-2 rounded-lg border border-border bg-surface-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+      {!semAvisos && <div className="mt-4 flex flex-col gap-2 rounded-lg border border-border bg-surface-2 p-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-[12.5px] leading-relaxed text-ink-secondary">
           Os fatores de maior risco já estão consolidados no inventário para o PGR.
         </p>
@@ -334,7 +343,7 @@ export function MapaCalorTable({ dimensoes, linhas, onClickCelula }: {
           Ver inventário
           <Icon icon="ph:arrow-right-bold" width={13} aria-hidden />
         </Link>
-      </div>
+      </div>}
     </>
   )
 }

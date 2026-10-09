@@ -10,6 +10,7 @@ const mngSidebarItems: NavItem[] = [
   { icon: 'ph:buildings-bold', label: 'Empresas', to: '/mng/empresas' },
   { icon: 'ph:shield-check-bold', label: 'Modelos de avaliação NR-1', to: '/mng/nr1/modelos' },
   { icon: 'ph:certificate-bold', label: 'Núcleo obrigatório', to: '/mng/nr1/nucleo' },
+  { icon: 'ph:warning-diamond-bold', label: 'Fatores de risco', to: '/mng/nr1/fatores' },
   { icon: 'ph:lifebuoy-bold', label: 'Suporte', to: '/mng/suporte' },
   { icon: 'ph:users-three-bold', label: 'Usuários', to: '/mng/gestores' },
 ]

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import QRCode from 'qrcode'
@@ -13,18 +13,20 @@ import { Modal } from '../../components/Modal'
 import { Select } from '../../components/Select'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
-import { RiscoPorDimensaoGrid, MapaCalorTable } from '../../components/Nr1Resultado'
+import { MapaCalorTable } from '../../components/Nr1Resultado'
+import { MenuAncoras, CabecalhoBloco, VisaoGeralBloco, useOpcoesRecorte } from '../../components/Nr1Blocos'
+import { FatoresBloco, PlanosBloco, ResumoPgrBloco } from '../../components/Nr1BlocosCiclo'
+import { Nr1AcaoDetalheModal } from '../../components/Nr1AcaoDetalhe'
 import { Nr1CicloStatusCard } from '../../components/Nr1CicloStatusCard'
-import { Nr1AnaliseRiscoModal, type Nr1AnaliseEscopo } from '../../components/Nr1AnaliseRisco'
+import { Nr1AnaliseRiscoModal, Nr1RiscoDetalheModal, type Nr1AnaliseEscopo } from '../../components/Nr1AnaliseRisco'
 import { cicloLabelCurto } from '../../components/Nr1PainelRiscoMapa'
-import { Nr1PerguntasCriticas } from '../../components/Nr1PerguntasCriticas'
 import { PAGE_MAX_W } from '../../lib/layout'
 import { pct } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
 import { nr1CampanhaService, nr1ModeloService, nr1ResultadoService } from '../../services/nr1'
 import { rhColaboradorService, rhDepartamentoService } from '../../services/rh'
-import { NR1_DIMENSOES } from '../../data/nr1Mock'
-import type { Nr1Campanha, Nr1DimensaoId, RhColaboradorStatus } from '../../types'
+import { NR1_DIMENSOES, NR1_RECORTE_OUTROS } from '../../data/nr1Mock'
+import type { Nr1Acao, Nr1Campanha, Nr1DimensaoId, Nr1RiscoInventario, RhColaboradorStatus } from '../../types'
 
 /** Link único do ciclo — identifica empresa e ciclo pelo próprio protocolo
    (já único e já no formato "NR1-{empresa}-{ano}-{sequencial}"), sem
@@ -240,29 +242,20 @@ function ListaCampanhas({ campanhas, onOpen, acoesCicloAtivo }: {
      no detalhe primeiro; o histórico já é só consulta). */
   acoesCicloAtivo?: ReactNode
 }) {
-  const ativa = campanhas.find((c) => c.status === 'em-campo')
-  const outras = [...campanhas.filter((c) => c.id !== ativa?.id)].sort((a, b) => b.inicio.localeCompare(a.inicio))
+  /* Uma lista só, do mais recente ao mais antigo — o ciclo em campo já se
+     destaca no próprio card (e é o único com as ações de encerrar e
+     compartilhar). */
+  const ordenadas = [...campanhas].sort((a, b) => b.inicio.localeCompare(a.inicio))
 
   return (
     <div className="flex flex-col gap-6">
-      {ativa && (
-        <section>
-          <h2 className="mb-3 text-[15px] font-semibold text-ink">Ciclo em campo</h2>
-          <Nr1CicloStatusCard campanha={ativa} destaque onClick={() => onOpen(ativa.id)} acoes={acoesCicloAtivo} />
-        </section>
-      )}
-      <section>
-        <h2 className="mb-3 text-[15px] font-semibold text-ink">Histórico</h2>
-        {outras.length > 0 ? (
-          <div className="flex flex-col gap-2">
-            {outras.map((c) => <Nr1CicloStatusCard key={c.id} campanha={c} onClick={() => onOpen(c.id)} />)}
-          </div>
-        ) : (
-          <p className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-[13px] text-ink-secondary">
-            Nenhum ciclo anterior ainda.
-          </p>
-        )}
-      </section>
+      <div className="flex flex-col gap-2">
+        {ordenadas.map((c) => (
+          c.status === 'em-campo'
+            ? <Nr1CicloStatusCard key={c.id} campanha={c} destaque onClick={() => onOpen(c.id)} acoes={acoesCicloAtivo} />
+            : <Nr1CicloStatusCard key={c.id} campanha={c} onClick={() => onOpen(c.id)} />
+        ))}
+      </div>
 
       <div className="flex gap-3 rounded-lg border border-border bg-surface-2 p-4">
         <Icon icon="ph:arrows-clockwise-bold" width={20} className="mt-0.5 shrink-0 text-primary dark:text-primary-300" aria-hidden />
@@ -458,8 +451,8 @@ function CompartilharLinkOpcoes({ link, campanhaId }: { link: string; campanhaId
    ------------------------------------------------------------------ */
 
 const TABS = [
-  { key: 'engajamento', label: 'Engajamento' },
   { key: 'resultado', label: 'Resultado' },
+  { key: 'engajamento', label: 'Engajamento' },
   { key: 'colaboradores', label: 'Colaboradores habilitados' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
@@ -485,7 +478,9 @@ function AbaEmColeta({ mensagem }: { mensagem: string }) {
 
 function CicloDetalheScreen({ campanhaId }: { campanhaId: string }) {
   const campanha = useService(() => nr1CampanhaService.get(campanhaId), [campanhaId])
-  const [tab, setTab] = useState<TabKey>('engajamento')
+  /* Sempre abre em "Resultado" (em campo, a aba explica que o resultado
+     sai quando o ciclo encerrar). */
+  const [tab, setTab] = useState<TabKey>('resultado')
   const [lembrete, setLembrete] = useState<{ areas: string[]; enviados?: number } | null>(null)
   const encerrarCiclo = useEncerrarCiclo(campanhaId, () => campanha.reload())
 
@@ -1009,68 +1004,133 @@ function CampanhaColaboradoresHabilitados({ campanha }: { campanha: Nr1Campanha 
   )
 }
 
-/* Aba "Resultado" — risco por dimensão (macro) + mapa de calor por área,
-   ambos do ciclo selecionado, não sempre o retrato mais recente, e as
-   perguntas da mais crítica para a menos crítica (`Nr1PerguntasCriticas`).
-   Clicar num card, numa célula ou numa pergunta abre a mesma análise de
-   risco em tela cheia da Matriz de risco (`Nr1AnaliseRiscoModal`). */
+/* Aba "Resultado" — três blocos com um menu de âncoras fixo no topo:
+   Visão geral (radar + cards dos domínios, com a nota do ciclo anterior e a
+   direção; filtrável por área), Visão por departamento (mapa de calor, com
+   as áreas pequenas agregadas em "Outros departamentos") e Fatores de risco
+   identificados (a mesma matriz P × S e lista do Inventário). */
+const SECOES_RESULTADO = [
+  { id: 'visao-geral', label: 'Visão geral', icon: 'ph:chart-polar-bold' },
+  { id: 'departamentos', label: 'Departamentos', icon: 'ph:grid-four-bold' },
+  { id: 'fatores', label: 'Fatores de risco', icon: 'ph:warning-diamond-bold' },
+  { id: 'planos', label: 'Planos de ação', icon: 'ph:list-checks-bold' },
+  { id: 'pgr', label: 'Resumo PGR', icon: 'ph:file-text-bold' },
+] as const
+
 function CampanhaResultado({ campanha }: { campanha: Nr1Campanha }) {
   const campanhaId = campanha.id
-  const dimensoes = useService(() => nr1ResultadoService.mediaPorDimensao(campanhaId), [campanhaId])
   const mapa = useService(() => nr1ResultadoService.mapaCalor(campanhaId), [campanhaId])
   const [analise, setAnalise] = useState<Nr1AnaliseEscopo | null>(null)
+  const [detalhe, setDetalhe] = useState<{ risco: Nr1RiscoInventario; sugestoes: boolean } | null>(null)
+  const [acaoAberta, setAcaoAberta] = useState<{ acao: Nr1Acao; editar: boolean } | null>(null)
+  const todosRiscos = useService(() => nr1ResultadoService.riscosTodos(), [])
+  const [versaoRiscos, setVersaoRiscos] = useState(0)
+  /* Filtro geral da aba — toda a empresa ou uma área; vale para os quatro
+     blocos. */
+  const [recorte, setRecorte] = useState<string>('empresa')
+  const opcoesRecorte = useOpcoesRecorte(campanhaId)
 
-  const abrirAnalise = (dimensaoId: Nr1DimensaoId, departamentoId?: string, itemId?: string) => {
-    if (mapa.status !== 'success') return
-    setAnalise({ campanhaId, cicloLabel: cicloLabelCurto(campanha), dimensaoId, departamentoId, itemId, linhas: mapa.data })
+  const abrirAnalise = (dimensaoId: Nr1DimensaoId, departamentoId?: string) => {
+    if (mapa.status !== 'success' || departamentoId === NR1_RECORTE_OUTROS) return
+    setAnalise({ campanhaId, cicloLabel: cicloLabelCurto(campanha), dimensaoId, departamentoId, linhas: mapa.data })
   }
 
   return (
     <>
-      <section className="mb-6">
-        <h2 className="mb-3 text-[15px] font-semibold text-ink">Risco por domínio</h2>
-        {(dimensoes.status === 'idle' || dimensoes.status === 'loading') && (
-          <div className="flex flex-col gap-2">{NR1_DIMENSOES.map((d) => <Skeleton key={d.id} className="h-10 w-full rounded-lg" />)}</div>
-        )}
-        {dimensoes.status === 'error' && <ErrorState message={dimensoes.message} onRetry={dimensoes.reload} />}
-        {dimensoes.status === 'success' && (
-          <RiscoPorDimensaoGrid
-            dimensoes={dimensoes.data}
-            onClickDimensao={(dimensaoId) => abrirAnalise(dimensaoId)}
-          />
-        )}
-        <p className="mt-2 text-[11px] text-ink-muted">
-          Média de 1 a 5, onde 5 é a situação desejável. Áreas com menos de 4 respondentes não
-          entram no cálculo. Clique num card para analisar o domínio e registrar riscos.
-        </p>
-      </section>
+      <MenuAncoras secoes={SECOES_RESULTADO} recorte={recorte} onRecorte={setRecorte} opcoesRecorte={opcoesRecorte} />
 
-      <section>
-        <h2 className="mb-3 text-[15px] font-semibold text-ink">Mapa de calor por área</h2>
-        {(mapa.status === 'idle' || mapa.status === 'loading') && <Skeleton className="h-80 w-full rounded-lg" />}
-        {mapa.status === 'error' && <ErrorState message={mapa.message} onRetry={mapa.reload} />}
-        {mapa.status === 'success' && (
+      <div className="flex flex-col">
+        <section id="visao-geral" className="scroll-mt-16">
+          <VisaoGeralBloco campanha={campanha} recorte={recorte} onAbrirDominio={abrirAnalise} />
+        </section>
+        <section id="departamentos" className="mt-16 scroll-mt-16 border-t-2 border-border pt-12">
+          <DepartamentosBloco campanhaId={campanhaId} recorte={recorte} onAbrirCelula={abrirAnalise} />
+        </section>
+        <section id="fatores" className="mt-16 scroll-mt-16 border-t-2 border-border pt-12">
+          <FatoresBloco key={versaoRiscos} campanhaId={campanhaId} recorte={recorte} onAbrir={(risco, sugestoes = false) => setDetalhe({ risco, sugestoes })} />
+        </section>
+        <section id="planos" className="mt-16 scroll-mt-16 border-t-2 border-border pt-12">
+          <PlanosBloco key={versaoRiscos} campanha={campanha} recorte={recorte} onAbrir={(acao, editar = false) => setAcaoAberta({ acao, editar })} />
+        </section>
+        <section id="pgr" className="mt-16 scroll-mt-16 border-t-2 border-border pt-12">
+          <ResumoPgrBloco
+            key={versaoRiscos}
+            campanha={campanha}
+            recorte={recorte}
+            recorteNome={opcoesRecorte.find((o) => o.value === recorte)?.label ?? 'Toda a empresa'}
+          />
+        </section>
+      </div>
+
+      <Nr1AnaliseRiscoModal escopo={analise} onClose={() => setAnalise(null)} onRiscosAlterados={() => setVersaoRiscos((v) => v + 1)} />
+      <Nr1RiscoDetalheModal
+        risco={detalhe?.risco ?? null}
+        onClose={() => setDetalhe(null)}
+        onAlterado={() => { setVersaoRiscos((v) => v + 1); todosRiscos.reload() }}
+      />
+      <Nr1AcaoDetalheModal
+        acao={acaoAberta?.acao ?? null}
+        editar={acaoAberta?.editar}
+        riscos={todosRiscos.status === 'success' ? todosRiscos.data : []}
+        onClose={() => setAcaoAberta(null)}
+        onAlterado={() => setVersaoRiscos((v) => v + 1)}
+      />
+    </>
+  )
+}
+
+/* Bloco 2 — Visão por departamento: domínio × departamento, com as áreas
+   abaixo do k-anonimato agregadas em "Outros departamentos". */
+function DepartamentosBloco({ campanhaId, recorte, onAbrirCelula }: {
+  campanhaId: string
+  recorte: string
+  onAbrirCelula: (dimensaoId: Nr1DimensaoId, departamentoId?: string) => void
+}) {
+  const mapa = useService(() => nr1ResultadoService.mapaCalorAgregado(campanhaId), [campanhaId])
+  const outros = mapa.status === 'success' ? mapa.data.linhas.find((l) => l.departamentoId === NR1_RECORTE_OUTROS) : undefined
+  /* O cabeçalho da matriz trava logo abaixo do cabeçalho do bloco (que já
+     trava abaixo do menu): a posição é medida, porque a altura do cabeçalho
+     do bloco muda com a largura da tela. */
+  const cabecalhoRef = useRef<HTMLDivElement>(null)
+  const [topoTabela, setTopoTabela] = useState(0)
+  useEffect(() => {
+    const el = cabecalhoRef.current
+    if (!el) return
+    const medir = () => setTopoTabela((parseFloat(getComputedStyle(el).top) || 0) + el.offsetHeight)
+    medir()
+    const ro = new ResizeObserver(medir)
+    ro.observe(el)
+    window.addEventListener('resize', medir)
+    return () => { ro.disconnect(); window.removeEventListener('resize', medir) }
+  }, [])
+  /* Com uma área no filtro geral, só a linha dela. */
+  const linhas = mapa.status === 'success' ? mapa.data.linhas.filter((l) => recorte === 'empresa' || l.departamentoId === recorte) : []
+  return (
+    <>
+      <CabecalhoBloco refEl={cabecalhoRef} titulo="Visão por departamento" icon="ph:grid-four-bold" subtitulo="Nota de cada domínio em cada área. Clique numa célula para ver o resultado e os fatores de risco daquela área." />
+      {(mapa.status === 'idle' || mapa.status === 'loading') && <Skeleton className="h-80 w-full rounded-lg" />}
+      {mapa.status === 'error' && <ErrorState message={mapa.message} onRetry={mapa.reload} />}
+      {mapa.status === 'success' && (
+        <>
           <MapaCalorTable
             dimensoes={NR1_DIMENSOES}
-            linhas={mapa.data}
-            onClickCelula={(dimensaoId, departamentoId) => abrirAnalise(dimensaoId, departamentoId)}
+            linhas={linhas}
+            onClickCelula={(dimensaoId, departamentoId) => onAbrirCelula(dimensaoId, departamentoId)}
+            semAvisos
+            stickyTop={topoTabela}
           />
-        )}
-        <p className="mt-2 text-[11px] text-ink-muted">Clique numa célula para analisar o domínio naquela área e registrar riscos.</p>
-      </section>
-
-      {mapa.status === 'success' && (
-        <div className="mt-6">
-          <Nr1PerguntasCriticas
-            campanhaId={campanhaId}
-            linhas={mapa.data}
-            onClickPergunta={({ dimensaoId, itemId, departamentoId }) => abrirAnalise(dimensaoId, departamentoId, itemId)}
-            dicaClique={(dep) => `Clique numa pergunta para analisar o domínio${dep ? ` em ${dep}` : ''} e registrar riscos.`}
-          />
-        </div>
+          {mapa.data.agregados.length > 0 && (recorte === 'empresa' || recorte === NR1_RECORTE_OUTROS) && (
+            <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-ink-muted">
+              <Icon icon="ph:stack-bold" width={12} className="mt-0.5 shrink-0" aria-hidden />
+              <span>
+                <strong className="font-semibold text-ink-secondary">Outros departamentos</strong> reúne as áreas com menos de 4 respondentes:{' '}
+                {mapa.data.agregados.join(', ')}.
+                {outros?.protegido && ' Mesmo somadas, ainda ficam abaixo de 4 respondentes — o resultado fica oculto, mas entra na nota da empresa.'}
+              </span>
+            </p>
+          )}
+        </>
       )}
-
-      <Nr1AnaliseRiscoModal escopo={analise} onClose={() => setAnalise(null)} />
     </>
   )
 }

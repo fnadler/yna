@@ -4,7 +4,6 @@ import { Icon } from '@iconify/react'
 import { Skeleton } from './Skeleton'
 import { ErrorState } from './ErrorState'
 import { RiscoPorDimensaoGrid, MapaCalorTable } from './Nr1Resultado'
-import { Nr1PerguntasSheet, type Nr1PerguntasEscopo } from './Nr1PerguntasSheet'
 import { Nr1AnaliseRiscoModal, type Nr1AnaliseEscopo } from './Nr1AnaliseRisco'
 import { useService } from '../hooks/useService'
 import { nr1CampanhaService, nr1ResultadoService } from '../services/nr1'
@@ -13,7 +12,7 @@ import {
   NR1_SIM_MAX_DIMENSOES, NR1_SIM_MAX_DEPARTAMENTOS, lerSimulacaoDaUrl, nr1SimulacaoEhPadrao,
   nr1DimensoesParaSimulacao, nr1DepartamentosParaSimulacao, nr1MapaCalorSimulado, nr1MediaPorDimensaoSimulada,
 } from '../lib/nr1Simulacao'
-import type { Nr1Campanha } from '../types'
+import type { Nr1Campanha, Nr1DimensaoId } from '../types'
 
 /** Rótulo curto de um ciclo para o seletor — o pedaço depois do "·" no nome
    ("Avaliação de riscos psicossociais · 1º semestre 2026" → "1º semestre
@@ -25,27 +24,21 @@ export const cicloLabelCurto = (c: Nr1Campanha) => {
 
 /* Bloco "Risco por domínio + mapa de calor" com seletor de ciclo, simulador
    de densidade (`?dims=`/`?deps=`, ver `lib/nr1Simulacao.ts`) e a abertura
-   da pontuação por pergunta ao clicar num card ou numa célula. Extraído da
-   Visão geral (`NR1RhCockpit`) para o Inventário de riscos mostrar
-   exatamente o mesmo comportamento — inclusive as regras de layout para
-   mais domínios/departamentos, que moram em `Nr1Resultado`.
+   da análise do domínio em tela cheia (`Nr1AnaliseRiscoModal`) ao clicar
+   num card ou numa célula — o resultado e os fatores de risco apontados.
+   As regras de layout para mais domínios/departamentos moram em
+   `Nr1Resultado`.
 
-   `somenteEncerrados`: o Inventário só olha ciclos finalizados (é a base do
-   PGR — um ciclo em campo ainda não fechou o retrato); a Visão geral mostra
-   todos, incluindo o em campo. */
-export function Nr1PainelRiscoMapa({ titulo, subtitulo, somenteEncerrados = false, analise = false, onRiscosAlterados, onCicloChange }: {
+   `somenteEncerrados`: só ciclos finalizados — um ciclo em campo ainda não
+   fechou o retrato, então não tem fatores de risco a tratar. */
+export function Nr1PainelRiscoMapa({ titulo, subtitulo, somenteEncerrados = false, onRiscosAlterados, onCicloChange }: {
   titulo: string
   subtitulo: string
   somenteEncerrados?: boolean
-  /** Clicar num card/célula abre a análise de risco em tela cheia
-     (`Nr1AnaliseRiscoModal`) em vez da lista de perguntas. */
-  analise?: boolean
   onRiscosAlterados?: () => void
-  /** Avisa quem usa o painel qual ciclo está selecionado (ex.: a lista de
-     perguntas da Matriz de risco acompanha o mesmo ciclo). */
+  /** Avisa quem usa o painel qual ciclo está selecionado. */
   onCicloChange?: (campanhaId: string | undefined) => void
 }) {
-  const [perguntas, setPerguntas] = useState<Nr1PerguntasEscopo | null>(null)
   const [analiseEscopo, setAnaliseEscopo] = useState<Nr1AnaliseEscopo | null>(null)
 
   const campanhas = useService(() => nr1CampanhaService.list(), [])
@@ -61,8 +54,7 @@ export function Nr1PainelRiscoMapa({ titulo, subtitulo, somenteEncerrados = fals
   const dimensoes = useService(() => nr1ResultadoService.mediaPorDimensao(campanhaId), [campanhaId])
   const mapa = useService(() => nr1ResultadoService.mapaCalor(campanhaId), [campanhaId])
 
-  const abrir = (p: Nr1PerguntasEscopo) => {
-    if (!analise) { setPerguntas(p); return }
+  const abrir = (p: { campanhaId: string; dimensaoId: Nr1DimensaoId; departamentoId?: string }) => {
     const ciclo = ciclos.find((c) => c.id === p.campanhaId)
     if (mapa.status !== 'success' || !ciclo) return
     setAnaliseEscopo({
@@ -192,15 +184,12 @@ export function Nr1PainelRiscoMapa({ titulo, subtitulo, somenteEncerrados = fals
           {!simulando && dimensoes.status === 'success' && (
             <RiscoPorDimensaoGrid
               dimensoes={dimensoes.data}
-              onClickDimensao={campanhaId ? (dimensaoId) => {
-                const d = dimensoes.data.find((x) => x.dimensaoId === dimensaoId)!
-                abrir({ campanhaId, dimensaoId, media: d.media })
-              } : undefined}
+              onClickDimensao={campanhaId ? (dimensaoId) => abrir({ campanhaId, dimensaoId }) : undefined}
             />
           )}
           <p className="mt-2 text-[11px] text-ink-muted">
-            Média de 1 a 5, onde 5 é a situação desejável. Áreas com menos de 4 respondentes não
-            entram no cálculo.{!simulando && campanhaId && (analise ? ' Clique num card para analisar o domínio e registrar riscos.' : ' Clique num card para ver a pontuação por pergunta.')}
+            Média da empresa de 1 a 5, onde 5 é a situação desejável, ponderada pelos respondentes.
+            Áreas com menos de 4 respondentes entram nesta nota, mas não aparecem separadas no mapa.{!simulando && campanhaId && ' Clique num card para ver o resultado do domínio e os fatores de risco apontados.'}
           </p>
 
           <div className="my-6 border-t border-border" />
@@ -213,18 +202,13 @@ export function Nr1PainelRiscoMapa({ titulo, subtitulo, somenteEncerrados = fals
             <MapaCalorTable
               dimensoes={NR1_DIMENSOES}
               linhas={mapa.data}
-              onClickCelula={campanhaId ? (dimensaoId, departamentoId, departamento) => {
-                const linha = mapa.data.find((l) => l.departamentoId === departamentoId)!
-                const media = linha.celulas.find((c) => c.dimensaoId === dimensaoId)!.media ?? 0
-                abrir({ campanhaId, dimensaoId, departamentoId, departamento, media })
-              } : undefined}
+              onClickCelula={campanhaId ? (dimensaoId, departamentoId) => abrir({ campanhaId, dimensaoId, departamentoId }) : undefined}
             />
           )}
-          {!simulando && campanhaId && <p className="mt-2 text-[11px] text-ink-muted">{analise ? 'Clique numa célula para analisar o domínio naquela área e registrar riscos.' : 'Clique numa célula para ver a pontuação por pergunta daquela área.'}</p>}
+          {!simulando && campanhaId && <p className="mt-2 text-[11px] text-ink-muted">Clique numa célula para ver o resultado do domínio e os fatores de risco daquela área.</p>}
         </>
       )}
 
-      <Nr1PerguntasSheet escopo={perguntas} onClose={() => setPerguntas(null)} />
       <Nr1AnaliseRiscoModal escopo={analiseEscopo} onClose={() => setAnaliseEscopo(null)} onRiscosAlterados={onRiscosAlterados} />
     </section>
   )

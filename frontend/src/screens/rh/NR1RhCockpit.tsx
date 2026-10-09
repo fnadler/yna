@@ -10,6 +10,8 @@ import { Nr1AcaoDetalheModal } from '../../components/Nr1AcaoDetalhe'
 import { Nr1PainelRiscoMapa } from '../../components/Nr1PainelRiscoMapa'
 import { Toast } from '../../components/Toast'
 import { PAGE_MAX_W } from '../../lib/layout'
+import { nr1DiasEntre, nr1UrgenciaPrazo } from '../../lib/nr1'
+import { NR1_TODAY } from '../../data/nr1Mock'
 import { useService } from '../../hooks/useService'
 import { useRh } from '../../contexts/RhContext'
 import { nr1CampanhaService, nr1ResultadoService, nr1AcaoService } from '../../services/nr1'
@@ -17,38 +19,11 @@ import type { Nr1Acao } from '../../types'
 
 /* NR1-RH-06 — Visão geral da conformidade NR-1 (RF-I01).
 
-   Era o hub que concentrava as outras 8 telas atrás de si (cards + atalhos
-   secundários) — o que fazia o módulo parecer improvisado e espremia
-   mapeamento, planejamento e controle atrás de um único ponto de entrada.
-   Depois, virou um resumo estático de 10 segundos (risco por dimensão + mapa
-   de calor, sem interação), com o card de estado do ciclo só na antiga Home
-   (RH10Home.tsx), para não duplicar informação em dois lugares.
-
-   Essa segunda versão durou até esta tela ser promovida a primeiro item da
-   sidebar, sem agrupamento (ver RhAppLayout) — o item mais visível do menu.
-   Por pedido explícito, ela ganhou o que fazia essa promoção valer a pena:
-   saudação, o mesmo card de estado do ciclo da antiga Home/Ciclos de
-   avaliação, um bloco dos planos de ação da própria pessoa, e o risco por
-   dimensão/mapa de calor agora clicáveis (mesma interação da aba "Resultado"
-   do detalhe de um ciclo — abre `Nr1PerguntasSheet` com a pontuação por
-   pergunta).
-
-   Essa promoção deixou esta tela e a Home dizendo a mesma coisa de duas
-   formas diferentes (ambas tinham saudação + card de ciclo + risco por
-   dimensão) — a duplicação que a versão anterior evitava de propósito. A
-   Home (RH10Home.tsx, rota /rh/home) foi removida depois, e `/rh` passou a
-   redirecionar direto pra esta tela (ver RhAppLayout/App.tsx) — o conteúdo
-   que só existia lá ("Suas pendências" agregadas da empresa e os atalhos
-   "A cadeia") não foi portado pra cá; se fizer falta, é um pedido à parte.
-
-   "Risco por dimensão"/"Mapa de calor" viraram um único bloco com um
-   seletor de ciclo por cima (visual de aba, mesmo padrão da Engajamento/
-   Resultado/Riscos sugeridos do detalhe de um ciclo — `NR1RhCiclos.tsx`),
-   em vez de duas seções soltas cada uma sempre mostrando o ciclo padrão do
-   serviço. Por padrão, o ciclo mais recente por data de início (mesmo em
-   campo); trocar de aba troca os dois juntos, porque ambos leem o mesmo
-   `campanhaId` escolhido — daí estarem dentro do mesmo card, não é só
-   estética: é o que deixa claro que o seletor vale para o bloco inteiro. */
+   O primeiro item do menu: o estado do ciclo em campo, as pendências da
+   empresa no fluxo (fatores sem plano, ações atrasadas
+   ou vencendo — cada uma com o atalho para onde se resolve), os planos de
+   ação da própria pessoa e o risco por domínio/mapa de calor dos ciclos
+   encerrados, que abre a análise do domínio com os fatores apontados. */
 
 export function NR1RhCockpit() {
   const { usuario, setInstrumentoNr1 } = useRh()
@@ -56,7 +31,8 @@ export function NR1RhCockpit() {
 
   const campanha = useService(() => nr1CampanhaService.ativa(), [])
   const acoes = useService(() => nr1AcaoService.list(), [])
-  const inventario = useService(() => nr1ResultadoService.inventario(), [])
+  /* Riscos de todos os ciclos — a ação pode responder a um risco de um ciclo anterior. */
+  const inventario = useService(() => nr1ResultadoService.riscosTodos(), [])
   const [detalhe, setDetalhe] = useState<Nr1Acao | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
 
@@ -95,6 +71,24 @@ export function NR1RhCockpit() {
 
   const riscos = inventario.status === 'success' ? inventario.data : []
 
+  /* Pendências da empresa no fluxo NR-1 — o que o RH precisa fazer agora,
+     cada uma com o atalho para a tela onde se resolve. Todas leem o último
+     ciclo encerrado (o que alimenta o inventário). */
+  const pendencias = useService(async () => {
+    const { vigente } = await nr1ResultadoService.ciclosEncerrados()
+    const [atuais, todas] = await Promise.all([
+      vigente ? nr1ResultadoService.inventario(vigente) : Promise.resolve([]),
+      nr1AcaoService.list(),
+    ])
+    const superadas = new Set(todas.map((a) => a.versaoAnteriorId).filter(Boolean))
+    const vigentes = todas.filter((a) => !superadas.has(a.id) && a.status !== 'concluida')
+    return {
+      semPlano: atuais.filter((r) => !todas.some((a) => a.riscoId === r.id)).length,
+      atrasadas: vigentes.filter((a) => a.status === 'atrasada' || nr1UrgenciaPrazo(nr1DiasEntre(NR1_TODAY, a.quando)) === 'vencida').length,
+      vencendo: vigentes.filter((a) => a.status !== 'atrasada' && nr1UrgenciaPrazo(nr1DiasEntre(NR1_TODAY, a.quando)) === 'vencendo').length,
+    }
+  }, [])
+
   return (
     <div className="min-h-full bg-yna-gradient-soft dark:[background-image:var(--yna-gradient-dark)]">
       <div className={`mx-auto ${PAGE_MAX_W} px-5 lg:px-8 pt-0 lg:pt-9 pb-10`}>
@@ -118,6 +112,54 @@ export function NR1RhCockpit() {
                 onClick={() => navigate(`/rh/nr1/ciclos/${campanha.data!.id}`)}
               />
             )}
+          </section>
+
+          {/* Suas pendências */}
+          <section>
+            <h2 className="mb-3 text-[15px] font-semibold text-ink">Pendências da empresa</h2>
+            {(pendencias.status === 'idle' || pendencias.status === 'loading') && <Skeleton className="h-20 w-full rounded-lg" />}
+            {pendencias.status === 'error' && <ErrorState message={pendencias.message} onRetry={pendencias.reload} />}
+            {pendencias.status === 'success' && (() => {
+              const p = pendencias.data
+              const itens = [
+                { n: p.semPlano, icon: 'ph:warning-diamond-bold', cls: 'bg-warning/25 text-warning-ink', texto: p.semPlano === 1 ? 'fator de risco apontado ainda sem plano de ação' : 'fatores de risco apontados ainda sem plano de ação', to: '/rh/nr1/inventario', acao: 'Criar planos' },
+                { n: p.atrasadas, icon: 'ph:alarm-bold', cls: 'bg-danger/15 text-danger-ink', texto: p.atrasadas === 1 ? 'ação atrasada ou com prazo vencido' : 'ações atrasadas ou com prazo vencido', to: '/rh/nr1/plano-acao', acao: 'Ver ações' },
+                { n: p.vencendo, icon: 'ph:hourglass-medium-bold', cls: 'bg-surface-2 text-ink-secondary', texto: p.vencendo === 1 ? 'ação vence nos próximos 7 dias' : 'ações vencem nos próximos 7 dias', to: '/rh/nr1/plano-acao', acao: 'Ver ações' },
+              ].filter((i) => i.n > 0)
+              if (itens.length === 0) {
+                return (
+                  <div className="flex items-center gap-3 rounded-lg border border-border bg-surface px-5 py-4">
+                    <Icon icon="ph:check-circle-bold" width={20} className="shrink-0 text-success" aria-hidden />
+                    <p className="text-[13.5px] text-ink-secondary">Tudo em dia: nenhum fator sem plano, nenhuma reavaliação pendente e nenhuma ação atrasada.</p>
+                  </div>
+                )
+              }
+              return (
+                <ul className="grid gap-2 sm:grid-cols-2">
+                  {itens.map((i) => (
+                    <li key={i.texto}>
+                      <button
+                        type="button"
+                        onClick={() => navigate(i.to)}
+                        className="flex w-full items-center gap-3 rounded-lg border border-border bg-surface p-3.5 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
+                      >
+                        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${i.cls}`}>
+                          <Icon icon={i.icon} width={18} aria-hidden />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-mono text-[18px] font-bold leading-none text-ink">{i.n}</span>
+                          <span className="mt-1 block text-[12.5px] leading-snug text-ink-secondary">{i.texto}</span>
+                        </span>
+                        <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-primary dark:text-primary-300">
+                          {i.acao}
+                          <Icon icon="ph:arrow-right-bold" width={11} aria-hidden />
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )
+            })()}
           </section>
 
           {/* Seus planos de ação */}
@@ -149,9 +191,14 @@ export function NR1RhCockpit() {
             )}
           </section>
 
-          {/* Risco por domínio + mapa de calor — bloco compartilhado com o
-             Inventário de riscos (ver `Nr1PainelRiscoMapa`). */}
-          <Nr1PainelRiscoMapa titulo="Risco por domínio e mapa de calor" subtitulo="Dados do ciclo selecionado abaixo." />
+          {/* Risco por domínio + mapa de calor dos ciclos encerrados — clicar
+             abre a análise do domínio com os fatores de risco apontados. */}
+          <Nr1PainelRiscoMapa
+            titulo="Risco por domínio e mapa de calor"
+            subtitulo="Resultado dos ciclos encerrados. O ciclo em campo aparece aqui quando for encerrado."
+            somenteEncerrados
+            onRiscosAlterados={() => { acoes.reload(); pendencias.reload() }}
+          />
         </div>
 
         <div className="mt-6 flex gap-3 rounded-lg border border-border bg-surface-2 p-4">
@@ -169,7 +216,7 @@ export function NR1RhCockpit() {
         acao={detalhe}
         riscos={riscos}
         onClose={() => setDetalhe(null)}
-        onAlterado={() => acoes.reload()}
+        onAlterado={() => { acoes.reload(); pendencias.reload() }}
       />
 
       <Toast message={feedback} onClose={() => setFeedback(null)} />

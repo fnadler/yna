@@ -32,7 +32,7 @@ export function AcaoLinha({ acao, risco, onClick }: {
 
   const riscoTexto = risco && (
     <p className="min-w-0 truncate text-[11.5px] text-ink-secondary" title={nr1RotuloRisco(risco)}>
-      <span className="font-medium text-ink">{risco.dimensao}</span> · {risco.fator}
+      <span className="font-medium text-ink">{risco.fator}</span> · {risco.grupoExposto}
     </p>
   )
 
