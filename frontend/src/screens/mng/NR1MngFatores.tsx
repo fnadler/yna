@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { MngTopBar } from '../../components/MngTopBar'
 import { PageHeader } from '../../components/PageHeader'
@@ -6,7 +7,6 @@ import { Button } from '../../components/Button'
 import { Sheet } from '../../components/Sheet'
 import { Modal } from '../../components/Modal'
 import { Select } from '../../components/Select'
-import { SearchSelect } from '../../components/SearchSelect'
 import { MultiSelect } from '../../components/MultiSelect'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
@@ -36,7 +36,7 @@ export function NR1MngFatores() {
   const [fatores, setFatores] = useState<Nr1FatorRisco[] | null>(null)
   const [cids, setCids] = useState<Nr1Cid[]>([])
   const [fontes, setFontes] = useState<Nr1FonteGeradora[]>([])
-  const [perguntas, setPerguntas] = useState<{ id: string; texto: string; dimensaoId: Nr1DimensaoId }[]>([])
+  const [perguntas, setPerguntas] = useState<{ id: string; texto: string; dimensaoId: Nr1DimensaoId; fatoresRiscoIds: string[] }[]>([])
   const [erro, setErro] = useState<string | null>(null)
   const [aba, setAba] = useState<Aba>('fatores')
   const [feedback, setFeedback] = useState<string | null>(null)
@@ -143,7 +143,7 @@ function AbaFatores({ fatores, cids, fontes, perguntas, onAlterado, onFeedback }
   fatores: Nr1FatorRisco[]
   cids: Nr1Cid[]
   fontes: Nr1FonteGeradora[]
-  perguntas: { id: string; texto: string; dimensaoId: Nr1DimensaoId }[]
+  perguntas: { id: string; texto: string; dimensaoId: Nr1DimensaoId; fatoresRiscoIds: string[] }[]
   onAlterado: () => Promise<void>
   onFeedback: (m: string) => void
 }) {
@@ -217,9 +217,14 @@ function AbaFatores({ fatores, cids, fontes, perguntas, onAlterado, onFeedback }
                         })}
                         {f.cidIds.length === 0 && <span className="text-warning-ink">Sem CID</span>}
                         <span className="text-ink-muted">·</span>
-                        <span className={f.itemIds.length === 0 ? 'font-medium text-warning-ink' : ''}>
-                          {f.itemIds.length} {f.itemIds.length === 1 ? 'pergunta' : 'perguntas'}
-                        </span>
+                        {(() => {
+                          const n = perguntas.filter((p) => p.fatoresRiscoIds.includes(f.id)).length
+                          return (
+                            <span className={n === 0 ? 'font-medium text-warning-ink' : ''}>
+                              {n} {n === 1 ? 'pergunta' : 'perguntas'}
+                            </span>
+                          )
+                        })()}
                         <span className="text-ink-muted">·</span>
                         <span>{f.acoesSugeridas.length} {f.acoesSugeridas.length === 1 ? 'ação sugerida' : 'ações sugeridas'}</span>
                       </div>
@@ -264,7 +269,7 @@ function FatorForm({ inicial, cids, fontes, perguntas, onClose, onSalvo, onExclu
   inicial?: Nr1FatorRisco
   cids: Nr1Cid[]
   fontes: Nr1FonteGeradora[]
-  perguntas: { id: string; texto: string; dimensaoId: Nr1DimensaoId }[]
+  perguntas: { id: string; texto: string; dimensaoId: Nr1DimensaoId; fatoresRiscoIds: string[] }[]
   onClose: () => void
   onSalvo: (f: Nr1FatorRisco, novo: boolean) => void
   onExcluido: () => void
@@ -274,13 +279,12 @@ function FatorForm({ inicial, cids, fontes, perguntas, onClose, onSalvo, onExclu
   const [descricao, setDescricao] = useState(inicial?.descricao ?? '')
   const [severidade, setSeveridade] = useState<Nr1Severidade>(inicial?.severidade ?? 3)
   const [cidIds, setCidIds] = useState<string[]>(inicial?.cidIds ?? [])
-  const [itemIds, setItemIds] = useState<string[]>(inicial?.itemIds ?? [])
   const [fonteIds, setFonteIds] = useState<string[]>(inicial?.fontesGeradorasIds ?? [])
   const [acoes, setAcoes] = useState<Nr1AcaoSugerida[]>(inicial?.acoesSugeridas ?? [])
   const [salvando, setSalvando] = useState(false)
   const [confirmarExclusao, setConfirmarExclusao] = useState(false)
 
-  const valido = nome.trim().length >= 3 && descricao.trim().length >= 10 && itemIds.length > 0 && cidIds.length > 0
+  const valido = nome.trim().length >= 3 && descricao.trim().length >= 10 && cidIds.length > 0
     && acoes.every((a) => a.oQue.trim().length >= 5)
 
   const salvar = async () => {
@@ -289,7 +293,7 @@ function FatorForm({ inicial, cids, fontes, perguntas, onClose, onSalvo, onExclu
     const salvo = await nr1FatorService.salvar({
       id: inicial?.id ?? '',
       nome: nome.trim(), dimensaoId, descricao: descricao.trim(), severidade,
-      cidIds, itemIds, fontesGeradorasIds: fonteIds,
+      cidIds, fontesGeradorasIds: fonteIds,
       acoesSugeridas: acoes.map((a) => ({ ...a, oQue: a.oQue.trim(), porQue: a.porQue.trim(), como: a.como.trim() })),
     })
     setSalvando(false)
@@ -304,7 +308,6 @@ function FatorForm({ inicial, cids, fontes, perguntas, onClose, onSalvo, onExclu
     onExcluido()
   }
 
-  const perguntaPorId = useMemo(() => new Map(perguntas.map((p) => [p.id, p])), [perguntas])
   const dominioNome = (id: Nr1DimensaoId) => NR1_DIMENSOES.find((d) => d.id === id)?.nome ?? id
 
   if (confirmarExclusao && inicial) {
@@ -385,38 +388,34 @@ function FatorForm({ inicial, cids, fontes, perguntas, onClose, onSalvo, onExclu
         </div>
       </Secao>
 
-      <Secao titulo="Perguntas que indicam o fator" hint="A probabilidade do fator sai da nota média destas perguntas. Uma pergunta pode indicar mais de um fator.">
-        {itemIds.length === 0 && <p className="mb-2 rounded-lg bg-warning-bg px-3.5 py-2.5 text-[12px] text-warning-ink">Sem perguntas vinculadas, o fator nunca é identificado.</p>}
-        <ul className="mb-2 flex flex-col gap-1.5">
-          {itemIds.map((id) => {
-            const p = perguntaPorId.get(id)
+      <Secao titulo="Perguntas que indicam o fator" hint="Perguntas da versão publicada do Modelo YNA. O vínculo é feito no cadastro de cada pergunta, no editor do modelo; o que mudar num rascunho passa a valer quando ele for publicado. A probabilidade do fator sai da nota média destas perguntas.">
+        {(() => {
+          const vinculadas = inicial ? perguntas.filter((p) => p.fatoresRiscoIds.includes(inicial.id)) : []
+          if (vinculadas.length === 0) {
             return (
-              <li key={id} className="flex items-start gap-2.5 rounded-lg border border-border bg-surface px-3 py-2.5">
-                <span className="mt-0.5 shrink-0 font-mono text-[11px] font-semibold text-ink-muted">{id}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] leading-snug text-ink">{p?.texto ?? 'Pergunta fora do modelo publicado'}</p>
-                  {p && <p className="mt-0.5 text-[11px] text-ink-muted">{dominioNome(p.dimensaoId)}</p>}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setItemIds((l) => l.filter((x) => x !== id))}
-                  aria-label={`Desvincular ${id}`}
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-hover hover:text-danger-ink"
-                >
-                  <Icon icon="ph:x-bold" width={13} aria-hidden />
-                </button>
-              </li>
+              <p className="rounded-lg bg-warning-bg px-3.5 py-2.5 text-[12px] text-warning-ink">
+                {inicial ? 'Nenhuma pergunta do modelo publicado indica este fator — sem isso, ele nunca é identificado.' : 'Depois de criar o fator, vincule-o às perguntas no editor do modelo.'}
+              </p>
             )
-          })}
-        </ul>
-        <SearchSelect
-          value=""
-          onChange={(v) => v && setItemIds((l) => (l.includes(v) ? l : [...l, v]))}
-          size="md"
-          placeholder="Vincular uma pergunta…"
-          searchPlaceholder="Buscar pelo código ou texto…"
-          options={perguntas.filter((p) => !itemIds.includes(p.id)).map((p) => ({ value: p.id, label: `${p.id} · ${p.texto}` }))}
-        />
+          }
+          return (
+            <ul className="flex flex-col gap-1.5">
+              {vinculadas.map((p) => (
+                <li key={p.id} className="flex items-start gap-2.5 rounded-lg border border-border bg-surface px-3 py-2.5">
+                  <span className="mt-0.5 shrink-0 font-mono text-[11px] font-semibold text-ink-muted">{p.id}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] leading-snug text-ink">{p.texto}</p>
+                    <p className="mt-0.5 text-[11px] text-ink-muted">{dominioNome(p.dimensaoId)}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )
+        })()}
+        <Link to="/mng/nr1/modelos/mod-yna" className="inline-flex w-fit items-center gap-1 text-[12px] font-medium text-primary hover:underline dark:text-primary-300">
+          Vincular perguntas no editor do Modelo YNA
+          <Icon icon="ph:arrow-right-bold" width={11} aria-hidden />
+        </Link>
       </Secao>
 
       <Secao titulo="Fontes geradoras típicas" hint="O que costuma gerar o fator — ajuda o RH a entender a causa.">

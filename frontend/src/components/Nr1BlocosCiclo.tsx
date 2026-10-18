@@ -9,23 +9,23 @@ import { Skeleton } from './Skeleton'
 import { ErrorState } from './ErrorState'
 import { SearchSelect } from './SearchSelect'
 import { Toast } from './Toast'
-import { AcaoForm } from './Nr1AcaoForm'
+import { AcaoForm, TODA_EMPRESA } from './Nr1AcaoForm'
 import { CabecalhoBloco, useOpcoesRecorte } from './Nr1Blocos'
-import { Nr1MatrizRiscos, Nr1NotaRisco, Nr1SeveridadeTag } from './Nr1RiscosVisao'
+import { Nr1MatrizRiscos, Nr1SeveridadeTag } from './Nr1RiscosVisao'
 import { Nr1ResumoPgrChamada, Nr1ResumoPgrModal } from './Nr1ResumoPgr'
-import { NR1_PROBABILIDADE_ROTULOS, ACAO_STATUS, fmtData, nr1DiasEntre } from '../lib/nr1'
+import { ACAO_STATUS, fmtData, nr1DiasEntre } from '../lib/nr1'
 import { useService } from '../hooks/useService'
 import { nr1ResultadoService, nr1AcaoService, nr1FatorService } from '../services/nr1'
-import { NR1_RECORTE_OUTROS, NR1_TODAY } from '../data/nr1Mock'
-import type { Nr1Acao, Nr1AcaoStatus, Nr1Campanha, Nr1Cid, Nr1FatorRisco, Nr1RiscoInventario } from '../types'
+import { NR1_RECORTE_OUTROS, NR1_TODAY, nr1RiscoNoRecorte } from '../data/nr1Mock'
+import type { Nr1Acao, Nr1AcaoStatus, Nr1Campanha, Nr1FatorRisco, Nr1RiscoInventario } from '../types'
 
 /* Blocos de um ciclo usados na aba Resultado do detalhe do ciclo e nas
    telas próprias do menu (Inventário de riscos, Planos de ação e Resumo para
    o PGR): fatores de risco identificados, planos de ação e resumo do PGR. */
 
 /* Bloco 3 — Fatores de risco identificados: a mesma matriz P × S do
-   Inventário e, abaixo, os fatores agrupados por departamento, com editar
-   (abre o detalhe do risco e o plano) e ignorar (com justificativa). */
+   Inventário e, abaixo, a lista dos fatores que as respostas apontaram —
+   um por fator, com a severidade, os departamentos expostos e o plano. */
 export function FatoresBloco({ campanhaId, recorte, onAbrir, semCabecalho = false, adicionarAberto, onAdicionarChange, filtroMatriz = false }: {
   campanhaId: string
   recorte: string
@@ -44,44 +44,29 @@ export function FatoresBloco({ campanhaId, recorte, onAbrir, semCabecalho = fals
   const riscos = useService(() => nr1ResultadoService.inventario(campanhaId), [campanhaId])
   const acoes = useService(() => nr1AcaoService.list(), [])
   const catalogo = useService(() => nr1FatorService.catalogo(), [])
-  const cids = useService(() => nr1FatorService.cids(), [])
   const recortes = useService(() => nr1ResultadoService.recortes(campanhaId), [campanhaId])
-  const [ignorar, setIgnorar] = useState<Nr1RiscoInventario | null>(null)
   const [adicionarInterno, setAdicionarInterno] = useState(false)
   const adicionar = adicionarAberto ?? adicionarInterno
   const setAdicionar = (v: boolean) => { setAdicionarInterno(v); onAdicionarChange?.(v) }
   const [feedback, setFeedback] = useState<string | null>(null)
-  /* "Só sem plano": mostra apenas os fatores que ainda pedem ação. */
+  /* "Precisam de ação": mostra apenas os fatores que ainda não têm plano. */
   const [soSemPlano, setSoSemPlano] = useState(false)
-  /* Departamentos recolhidos (por padrão, todos abertos). */
-  const [recolhidos, setRecolhidos] = useState<Set<string>>(new Set())
 
   const todasAcoes = acoes.status === 'success' ? acoes.data : []
   const acoesDe = (id: string) => todasAcoes.filter((a) => a.riscoId === id && !todasAcoes.some((b) => b.versaoAnteriorId === a.id))
-  const doRecorte = (riscos.status === 'success' ? riscos.data : [])
-    .filter((r) => recorte === 'empresa' || (r.departamentoIds[0] ?? 'empresa') === recorte)
+  const todos = riscos.status === 'success' ? riscos.data : []
+  /* Com um departamento no filtro, ficam os fatores em que ele está exposto. */
+  const doRecorte = todos.filter((r) => nr1RiscoNoRecorte(r, recorte))
   const semPlanoDe = (rs: Nr1RiscoInventario[]) => rs.filter((r) => acoesDe(r.id).length === 0)
   const semPlano = semPlanoDe(doRecorte).length
-  const lista = soSemPlano ? semPlanoDe(doRecorte) : doRecorte
+  /* Os sem plano primeiro; depois do maior para o menor nível. */
+  const lista = (soSemPlano ? semPlanoDe(doRecorte) : doRecorte)
+    .sort((x, y) => (acoesDe(x.id).length === 0 ? 0 : 1) - (acoesDe(y.id).length === 0 ? 0 : 1) || y.nivelNum - x.nivelNum)
+  /* Na matriz, a probabilidade e o nível são os do departamento filtrado. */
+  const naMatriz = (rec: string) => doRecorte.map((r) => nr1RiscoNoRecorte(r, rec)).filter((r): r is Nr1RiscoInventario => !!r)
+  const abrirOriginal = (r: Nr1RiscoInventario) => onAbrir(todos.find((x) => x.id === r.id) ?? r)
 
-  /* Grupos na ordem dos departamentos, com a empresa (fatores apontados no
-     geral) por último. Dentro do grupo, os sem plano primeiro. */
   const visiveis = recortes.status === 'success' ? recortes.data.visiveis : []
-  const grupos = [
-    ...visiveis.map((d) => ({ id: d.id, nome: d.nome, respondentes: d.respondentes as number | undefined })),
-    { id: 'empresa', nome: 'Toda a empresa (geral)', respondentes: undefined as number | undefined },
-  ]
-    .map((g) => ({
-      ...g,
-      riscos: lista
-        .filter((r) => (r.departamentoIds[0] ?? 'empresa') === g.id)
-        .sort((x, y) => (acoesDe(x.id).length === 0 ? 0 : 1) - (acoesDe(y.id).length === 0 ? 0 : 1) || y.nivelNum - x.nivelNum),
-    }))
-    .filter((g) => g.riscos.length > 0)
-
-  const alternar = (id: string) => setRecolhidos((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
-  const todosAbertos = grupos.every((g) => !recolhidos.has(g.id))
-
   const recarregar = () => { riscos.reload(); acoes.reload() }
 
   return (
@@ -113,103 +98,47 @@ export function FatoresBloco({ campanhaId, recorte, onAbrir, semCabecalho = fals
                   <Select size="sm" value={recorteMatriz} onChange={setRecorteMatriz} ariaLabel="Filtrar a matriz por departamento" options={opcoesMatriz} />
                 </div>
               )}
-              riscos={doRecorte.filter((r) => recorteMatriz === 'empresa' || (r.departamentoIds[0] ?? 'empresa') === recorteMatriz)}
-              onAbrir={(r) => onAbrir(r)}
+              riscos={naMatriz(recorteMatriz)}
+              onAbrir={abrirOriginal}
             />
           ) : (
-            <Nr1MatrizRiscos riscos={doRecorte} onAbrir={(r) => onAbrir(r)} />
+            <Nr1MatrizRiscos riscos={naMatriz(recorte)} onAbrir={abrirOriginal} />
           )}
 
-          {/* Barra da lista: mostrar só o que pede ação e abrir/recolher tudo. */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex gap-1 rounded-lg bg-surface-2 p-1" role="radiogroup" aria-label="Fatores exibidos">
-              {[
-                { v: false, label: `Todos (${doRecorte.length})` },
-                { v: true, label: `Precisam de ação (${semPlano})` },
-              ].map((o) => (
-                <button
-                  key={String(o.v)}
-                  type="button"
-                  role="radio"
-                  aria-checked={soSemPlano === o.v}
-                  onClick={() => setSoSemPlano(o.v)}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold transition-all ${
-                    soSemPlano === o.v ? 'bg-surface text-ink shadow-xs' : 'text-ink-secondary hover:text-ink'
-                  }`}
-                >
-                  {o.v && <span className="h-2 w-2 rounded-full bg-warning" aria-hidden />}
-                  {o.label}
-                </button>
-              ))}
-            </div>
-            {grupos.length > 1 && (
-              <Button
-                size="sm"
-                variant="ghost"
-                iconLeft={todosAbertos ? 'ph:arrows-in-line-vertical-bold' : 'ph:arrows-out-line-vertical-bold'}
-                onClick={() => setRecolhidos(todosAbertos ? new Set(grupos.map((g) => g.id)) : new Set())}
+          {/* Barra da lista: mostrar só o que pede ação. */}
+          <div className="flex gap-1 self-start rounded-lg bg-surface-2 p-1" role="radiogroup" aria-label="Fatores exibidos">
+            {[
+              { v: false, label: `Todos (${doRecorte.length})` },
+              { v: true, label: `Precisam de ação (${semPlano})` },
+            ].map((o) => (
+              <button
+                key={String(o.v)}
+                type="button"
+                role="radio"
+                aria-checked={soSemPlano === o.v}
+                onClick={() => setSoSemPlano(o.v)}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold transition-all ${
+                  soSemPlano === o.v ? 'bg-surface text-ink shadow-xs' : 'text-ink-secondary hover:text-ink'
+                }`}
               >
-                {todosAbertos ? 'Recolher todos' : 'Expandir todos'}
-              </Button>
-            )}
+                {o.v && <span className="h-2 w-2 rounded-full bg-warning" aria-hidden />}
+                {o.label}
+              </button>
+            ))}
           </div>
 
-          {grupos.length === 0 && (
-            <p className="rounded-lg border border-border bg-surface px-5 py-8 text-center text-[13px] text-ink-secondary">Todos os fatores deste recorte já têm plano de ação.</p>
-          )}
-
-          {grupos.map((g) => {
-            const aberto = !recolhidos.has(g.id)
-            const pendentes = semPlanoDe(g.riscos).length
-            return (
-              <div key={g.id} className="overflow-hidden rounded-lg border border-border bg-surface">
-                <button
-                  type="button"
-                  onClick={() => alternar(g.id)}
-                  aria-expanded={aberto}
-                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-surface-hover"
-                >
-                  <Icon icon="ph:caret-down-bold" width={15} className={`shrink-0 text-ink-muted transition-transform ${aberto ? '' : '-rotate-90'}`} aria-hidden />
-                  <span className="min-w-0 flex-1">
-                    <span className="font-heading text-[15px] font-semibold text-ink">{g.nome}</span>
-                    <span className="ml-2 text-[12px] text-ink-muted">
-                      {g.riscos.length} {g.riscos.length === 1 ? 'fator' : 'fatores'}{g.respondentes !== undefined ? ` · ${g.respondentes} respondentes` : ''}
-                    </span>
-                  </span>
-                  {pendentes > 0
-                    ? <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-warning/25 px-2.5 py-1 text-[11.5px] font-semibold text-warning-ink"><span className="h-1.5 w-1.5 rounded-full bg-warning" aria-hidden />{pendentes} {pendentes === 1 ? 'precisa' : 'precisam'} de ação</span>
-                    : <span className="inline-flex shrink-0 items-center gap-1 text-[11.5px] font-semibold text-success-ink"><Icon icon="ph:check-circle-fill" width={14} aria-hidden />Todos com plano</span>}
-                </button>
-                {aberto && (
-                  <div className="border-t border-border">
-                    <ListaFatoresDepartamento
-                      riscos={g.riscos}
-                      acoesDe={acoesDe}
-                      catalogo={catalogo.status === 'success' ? catalogo.data : []}
-                      cids={cids.status === 'success' ? cids.data : []}
-                      onEditar={(r) => onAbrir(r)}
-                      onIgnorar={setIgnorar}
-                      onNovaAcao={(r) => onAbrir(r, true)}
-                    />
-                  </div>
-                )}
-              </div>
-            )
-          })}
+          {lista.length === 0
+            ? <p className="rounded-lg border border-border bg-surface px-5 py-8 text-center text-[13px] text-ink-secondary">Todos os fatores deste recorte já têm plano de ação.</p>
+            : <ListaFatores riscos={lista} acoesDe={acoesDe} onAbrir={(r) => onAbrir(r)} onNovaAcao={(r) => onAbrir(r, true)} />}
         </div>
       )}
 
-      <IgnorarFatorModal
-        risco={ignorar}
-        onClose={() => setIgnorar(null)}
-        onIgnorado={() => { setIgnorar(null); recarregar(); setFeedback('Fator ignorado. A justificativa ficou registrada.') }}
-      />
       <AdicionarRiscoModal
         aberto={adicionar}
         campanhaId={campanhaId}
         areas={visiveis}
         fatores={catalogo.status === 'success' ? catalogo.data : []}
-        riscos={riscos.status === 'success' ? riscos.data : []}
+        riscos={todos}
         onClose={() => setAdicionar(false)}
         onAdicionado={(r) => { setAdicionar(false); recarregar(); setFeedback('Risco adicionado. Agora crie o plano de ação.'); if (r) onAbrir(r, true) }}
       />
@@ -220,41 +149,36 @@ export function FatoresBloco({ campanhaId, recorte, onAbrir, semCabecalho = fals
 
 /* Todas as colunas com largura definida (nenhuma `auto`): cabeçalho e linhas
    são grades separadas e só alinham se as trilhas forem idênticas. */
-const FATORES_GRID_COLS = 'grid-cols-[minmax(0,1.3fr)_112px_112px_88px_minmax(0,1.5fr)_96px_184px]'
+const FATORES_GRID_COLS = 'grid-cols-[minmax(0,1fr)_150px_200px_170px]'
 
-function ListaFatoresDepartamento({ riscos, acoesDe, catalogo, cids, onEditar, onIgnorar, onNovaAcao }: {
+function ListaFatores({ riscos, acoesDe, onAbrir, onNovaAcao }: {
   riscos: Nr1RiscoInventario[]
   acoesDe: (riscoId: string) => Nr1Acao[]
-  catalogo: Nr1FatorRisco[]
-  cids: Nr1Cid[]
-  onEditar: (r: Nr1RiscoInventario) => void
-  onIgnorar: (r: Nr1RiscoInventario) => void
+  onAbrir: (r: Nr1RiscoInventario) => void
   /** Abre o detalhe do risco já na escolha das ações sugeridas. */
   onNovaAcao: (r: Nr1RiscoInventario) => void
 }) {
-  const lesoes = (r: Nr1RiscoInventario) => (catalogo.find((f) => f.id === r.fatorRiscoId)?.cidIds ?? [])
-    .map((id) => cids.find((c) => c.id === id)).filter((c): c is Nr1Cid => !!c)
   return (
-    <div>
-      <div className={`hidden items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 lg:grid ${FATORES_GRID_COLS}`}>
-        {['Fator de risco', 'Severidade', 'Probabilidade', 'Nível', 'Possíveis lesões e agravos', 'Ações', ''].map((c, i) => (
-          <span key={i} className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">{c}</span>
+    <div className="rounded-lg border border-border bg-surface">
+      <div className={`hidden items-center gap-4 rounded-t-lg border-b border-border bg-surface-2 px-4 py-2.5 lg:grid ${FATORES_GRID_COLS}`}>
+        {['Fator de risco', 'Severidade', 'Departamentos afetados', 'Plano de ação'].map((c) => (
+          <span key={c} className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">{c}</span>
         ))}
       </div>
       <ul className="divide-y divide-border">
         {riscos.map((r) => {
           const n = acoesDe(r.id).length
-          /* Com ações: botão com a contagem, que abre o plano. Sem ações:
-             "+ Ação", que abre direto nas ações sugeridas. */
+          /* Com ações: a contagem, que abre o plano. Sem ações: o botão que
+             abre direto nas ações sugeridas. */
           const acoesBtn = n > 0 ? (
             <button
               type="button"
-              onClick={() => onEditar(r)}
+              onClick={() => onAbrir(r)}
               className="inline-flex w-fit items-center gap-1.5 rounded-pill border border-border bg-surface-2 px-3 py-1.5 text-[12.5px] font-semibold text-ink transition-colors hover:border-primary/50 hover:bg-primary-50 hover:text-primary dark:hover:text-primary-300"
               title="Ver o plano de ação"
             >
               <Icon icon="ph:list-checks-bold" width={14} aria-hidden />
-              {n} {n === 1 ? 'ação' : 'ações'}
+              {n} {n === 1 ? 'ação vinculada' : 'ações vinculadas'}
             </button>
           ) : (
             <button
@@ -263,58 +187,34 @@ function ListaFatoresDepartamento({ riscos, acoesDe, catalogo, cids, onEditar, o
               className="inline-flex w-fit items-center gap-1 rounded-pill bg-primary px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-primary-600"
             >
               <Icon icon="ph:plus-bold" width={13} aria-hidden />
-              Ação
+              Criar plano de ação
             </button>
           )
-          const botoes = (
-            <div className="flex shrink-0 items-center justify-end gap-1">
-              <Button size="sm" variant="ghost" iconLeft="ph:pencil-simple-bold" onClick={() => onEditar(r)}>Editar</Button>
-              <Button size="sm" variant="ghost" iconLeft="ph:eye-slash-bold" onClick={() => onIgnorar(r)}>Ignorar</Button>
-            </div>
-          )
-          const listaLesoes = (
-            <ul className="flex flex-col gap-0.5">
-              {lesoes(r).map((c) => (
-                <li key={c.id} className="flex gap-1.5 text-[12px] leading-snug text-ink-secondary">
-                  <span className="w-11 shrink-0 font-mono font-semibold text-ink">{c.codigo}</span>
-                  <span className="min-w-0">{c.nome}</span>
-                </li>
-              ))}
-            </ul>
+          const nome = (
+            <button type="button" onClick={() => onAbrir(r)} className="min-w-0 text-left">
+              <span className="block text-[13.5px] font-medium leading-snug text-ink hover:text-primary hover:underline dark:hover:text-primary-300">{r.fator}</span>
+              <span className="mt-0.5 block text-[11.5px] text-ink-muted">{r.dimensao}{r.origem === 'manual' ? ' · incluído pelo RH' : ''}</span>
+            </button>
           )
           return (
-            <li key={r.id} className={`relative px-4 py-3.5 ${n === 0 ? 'bg-warning/[0.07]' : ''}`}>
-              {/* Fator sem nenhuma ação: faixa lateral e etiqueta. */}
+            <li key={r.id} className={`relative px-4 py-3.5 last:rounded-b-lg ${n === 0 ? 'bg-warning/[0.07]' : ''}`}>
+              {/* Fator sem nenhuma ação: faixa lateral. */}
               {n === 0 && <span className="absolute inset-y-0 left-0 w-1 bg-warning" aria-hidden />}
               {/* Desktop */}
-              <div className={`hidden items-center gap-3 lg:grid ${FATORES_GRID_COLS}`}>
-                <div className="min-w-0">
-                  <p className="text-[13.5px] font-medium leading-snug text-ink">{r.fator}</p>
-                  <p className="mt-0.5 text-[11.5px] text-ink-muted">{r.dimensao}{r.origem === 'manual' ? ' · incluído pelo RH' : ''}</p>
-                  {n === 0 && <p className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-warning-ink"><Icon icon="ph:warning-circle-bold" width={12} aria-hidden />Precisa de plano de ação</p>}
-                </div>
+              <div className={`hidden items-center gap-4 lg:grid ${FATORES_GRID_COLS}`}>
+                {nome}
                 <Nr1SeveridadeTag severidade={r.severidade} />
-                <p className="text-[12.5px] text-ink-secondary">{r.probabilidade} · {NR1_PROBABILIDADE_ROTULOS[r.probabilidade - 1]}</p>
-                <Nr1NotaRisco risco={r} compacta />
-                {listaLesoes}
+                <DepartamentosAfetados nomes={departamentosDoRisco(r)} />
                 {acoesBtn}
-                {botoes}
               </div>
               {/* Mobile */}
-              <div className="flex flex-col gap-2 lg:hidden">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[13.5px] font-medium leading-snug text-ink">{r.fator}</p>
-                    <p className="mt-0.5 text-[11.5px] text-ink-muted">{r.dimensao}</p>
-                  </div>
-                  <Nr1NotaRisco risco={r} compacta />
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-[12px] text-ink-secondary">
+              <div className="flex flex-col gap-2.5 lg:hidden">
+                {nome}
+                <div className="flex flex-wrap items-center gap-2">
                   <Nr1SeveridadeTag severidade={r.severidade} />
-                  <span>Probabilidade {r.probabilidade} · {NR1_PROBABILIDADE_ROTULOS[r.probabilidade - 1]}</span>
+                  <DepartamentosAfetados nomes={departamentosDoRisco(r)} />
                 </div>
-                {listaLesoes}
-                <div className="flex flex-wrap items-center gap-2">{acoesBtn}{botoes}</div>
+                {acoesBtn}
               </div>
             </li>
           )
@@ -324,10 +224,51 @@ function ListaFatoresDepartamento({ riscos, acoesDe, catalogo, cids, onEditar, o
   )
 }
 
+/** Departamentos expostos a um fator (vazio = só a empresa inteira). */
+const departamentosDoRisco = (r: Nr1RiscoInventario) =>
+  r.grupos.filter((g) => g.departamentoId !== null).map((g) => g.departamento)
+
+/** Departamentos do "Onde" de uma ação (vazio = toda a empresa). */
+const departamentosDaAcao = (a: Nr1Acao) =>
+  a.onde.split(',').map((x) => x.trim()).filter((x) => x && x !== TODA_EMPRESA)
+
+/** Número de departamentos (de um fator ou de uma ação); passar o mouse
+   (ou focar) mostra o nome de cada um. Sem nenhum, "Toda a empresa". */
+function DepartamentosAfetados({ nomes }: { nomes: string[] }) {
+  if (nomes.length === 0) {
+    return (
+      <span className="inline-flex w-fit items-center gap-1.5 text-[12.5px] text-ink-secondary">
+        <Icon icon="ph:buildings-bold" width={14} className="text-ink-muted" aria-hidden />
+        Toda a empresa
+      </span>
+    )
+  }
+  return (
+    <span className="group relative inline-flex w-fit">
+      <span
+        tabIndex={0}
+        aria-label={`${nomes.length} ${nomes.length === 1 ? 'departamento' : 'departamentos'}: ${nomes.join(', ')}`}
+        className="inline-flex cursor-default items-center gap-1.5 rounded-pill border border-border bg-surface px-2.5 py-1 text-[12.5px] font-medium text-ink outline-none transition-colors hover:border-border-strong focus-visible:border-primary"
+      >
+        <Icon icon="ph:users-three-bold" width={14} className="text-ink-muted" aria-hidden />
+        {nomes.length} {nomes.length === 1 ? 'departamento' : 'departamentos'}
+      </span>
+      <span role="tooltip" className="pointer-events-none invisible absolute left-0 top-full z-30 mt-1.5 w-max min-w-44 max-w-64 rounded-lg border border-border bg-surface p-2.5 opacity-0 shadow-lg transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+        <span className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Departamentos</span>
+        <span className="flex flex-col gap-1">
+          {nomes.map((n) => (
+            <span key={n} className="text-[12.5px] leading-snug text-ink">{n}</span>
+          ))}
+        </span>
+      </span>
+    </span>
+  )
+}
+
 /* Bloco 4 — Planos de ação do ciclo: as ações que respondem aos fatores
    deste ciclo — criadas nele ou mantidas/revisadas do ciclo anterior —
-   agrupadas por departamento, no mesmo modelo dos fatores de risco. */
-const PLANOS_GRID_COLS = 'grid-cols-[minmax(0,1fr)_150px_200px_120px_96px]'
+   numa lista só, com os departamentos onde cada ação acontece ("Onde"). */
+const PLANOS_GRID_COLS = 'grid-cols-[minmax(0,1fr)_170px_140px_190px_116px_88px]'
 
 export function PlanosBloco({ campanha, recorte: recorteExterno, onAbrir, semCabecalho = false, filtroDepartamento = false, novaAcaoAberta, onNovaAcaoChange }: {
   campanha: Nr1Campanha
@@ -351,7 +292,6 @@ export function PlanosBloco({ campanha, recorte: recorteExterno, onAbrir, semCab
   const recortes = useService(() => nr1ResultadoService.recortes(campanha.id), [campanha.id])
   const [status, setStatus] = useState('todas')
   const [responsavel, setResponsavel] = useState('todos')
-  const [recolhidos, setRecolhidos] = useState<Set<string>>(new Set())
   const [novaAcaoInterna, setNovaAcaoInterna] = useState(false)
   const novaAcao = novaAcaoAberta ?? novaAcaoInterna
   const setNovaAcao = (v: boolean) => { setNovaAcaoInterna(v); onNovaAcaoChange?.(v) }
@@ -378,34 +318,32 @@ export function PlanosBloco({ campanha, recorte: recorteExterno, onAbrir, semCab
     setFeedback('Ação concluída.')
   }
 
-  const lista = (riscos.status === 'success' ? riscos.data : [])
-    .filter((r) => recorte === 'empresa' || (r.departamentoIds[0] ?? 'empresa') === recorte)
+  const lista = riscos.status === 'success' ? riscos.data : []
+  const visiveis = recortes.status === 'success' ? recortes.data.visiveis : []
+  /* Áreas citadas no "Onde" da ação (gravado como nomes separados por vírgula). */
+  const areasDaAcao = (a: Nr1Acao) => {
+    const nomes = a.onde.split(',').map((x) => x.trim())
+    return visiveis.filter((d) => nomes.includes(d.nome)).map((d) => d.id)
+  }
+  /* Filtro de departamento: ações daquela área, ou gerais de um fator a que
+     ela está exposta. */
+  const noRecorte = (a: Nr1Acao) => {
+    if (recorte === 'empresa') return true
+    const areas = areasDaAcao(a)
+    return areas.length > 0 ? areas.includes(recorte) : !!lista.find((r) => r.id === a.riscoId)?.departamentoIds.includes(recorte)
+  }
   const todas = acoes.status === 'success' ? acoes.data : []
   const superadas = new Set(todas.map((a) => a.versaoAnteriorId).filter(Boolean))
-  const doCiclo = todas.filter((a) => !superadas.has(a.id) && lista.some((r) => r.id === a.riscoId))
+  const doCiclo = todas.filter((a) => !superadas.has(a.id) && lista.some((r) => r.id === a.riscoId) && noRecorte(a))
   const responsaveis = [...new Set(doCiclo.map((a) => a.quem))].sort((a, b) => a.localeCompare(b))
+  /* Abertas por prazo; concluídas no fim. */
   const filtradas = doCiclo
     .filter((a) => status === 'todas' || a.status === status)
     .filter((a) => responsavel === 'todos' || a.quem === responsavel)
+    .sort((x, y) => (x.status === 'concluida' ? 1 : 0) - (y.status === 'concluida' ? 1 : 0) || x.quando.localeCompare(y.quando))
   const riscoDe = (a: Nr1Acao) => lista.find((r) => r.id === a.riscoId)
   const contagem = (st: string) => doCiclo.filter((a) => a.status === st).length
   const vencida = (a: Nr1Acao) => a.status !== 'concluida' && nr1DiasEntre(NR1_TODAY, a.quando) < 0
-
-  /* Grupos na ordem dos departamentos (empresa por último). Dentro do grupo:
-     abertas por prazo, concluídas no fim. */
-  const visiveis = recortes.status === 'success' ? recortes.data.visiveis : []
-  const grupos = [
-    ...visiveis.map((d) => ({ id: d.id, nome: d.nome })),
-    { id: 'empresa', nome: 'Toda a empresa (geral)' },
-  ]
-    .map((g) => ({
-      ...g,
-      acoes: filtradas
-        .filter((a) => (riscoDe(a)?.departamentoIds[0] ?? 'empresa') === g.id)
-        .sort((x, y) => (x.status === 'concluida' ? 1 : 0) - (y.status === 'concluida' ? 1 : 0) || x.quando.localeCompare(y.quando)),
-    }))
-    .filter((g) => g.acoes.length > 0)
-  const alternar = (id: string) => setRecolhidos((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })
 
   /* De onde a ação veio: revisão (nova versão de uma ação do ciclo
      anterior), mantida na reavaliação, ou criada neste ciclo. */
@@ -491,115 +429,97 @@ export function PlanosBloco({ campanha, recorte: recorteExterno, onAbrir, semCab
             <KanbanAcoes acoes={filtradas} riscoDe={riscoDe} onAbrir={onAbrir} onMover={moverStatus} />
           )}
 
-          {visualizacao === 'lista' && grupos.length === 0 && (
+          {visualizacao === 'lista' && filtradas.length === 0 && (
             <p className="rounded-lg border border-border bg-surface px-5 py-8 text-center text-[13px] text-ink-secondary">Nenhuma ação com estes filtros.</p>
           )}
 
-          {visualizacao === 'lista' && grupos.map((g) => {
-            const aberto = !recolhidos.has(g.id)
-            const atrasadas = g.acoes.filter(vencida).length
-            const concluidas = g.acoes.filter((a) => a.status === 'concluida').length
-            return (
-              <div key={g.id} className="overflow-hidden rounded-lg border border-border bg-surface">
-                <button
-                  type="button"
-                  onClick={() => alternar(g.id)}
-                  aria-expanded={aberto}
-                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-surface-hover"
-                >
-                  <Icon icon="ph:caret-down-bold" width={15} className={`shrink-0 text-ink-muted transition-transform ${aberto ? '' : '-rotate-90'}`} aria-hidden />
-                  <span className="min-w-0 flex-1">
-                    <span className="font-heading text-[15px] font-semibold text-ink">{g.nome}</span>
-                    <span className="ml-2 text-[12px] text-ink-muted">
-                      {g.acoes.length} {g.acoes.length === 1 ? 'ação' : 'ações'} · {concluidas} {concluidas === 1 ? 'concluída' : 'concluídas'}
-                    </span>
-                  </span>
-                  {atrasadas > 0
-                    ? <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-danger/15 px-2.5 py-1 text-[11.5px] font-semibold text-danger-ink"><Icon icon="ph:alarm-bold" width={12} aria-hidden />{atrasadas} {atrasadas === 1 ? 'vencida' : 'vencidas'}</span>
-                    : <span className="inline-flex shrink-0 items-center gap-1 text-[11.5px] font-semibold text-success-ink"><Icon icon="ph:check-circle-fill" width={14} aria-hidden />Em dia</span>}
-                </button>
-                {aberto && (
-                  <div className="border-t border-border">
-                    <div className={`hidden items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 lg:grid ${PLANOS_GRID_COLS}`}>
-                      {['Ação', 'Prazo', 'Responsável', 'Status', ''].map((c, i) => (
-                        <span key={i} className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">{c}</span>
-                      ))}
-                    </div>
-                    <ul className="divide-y divide-border">
-                      {g.acoes.map((a) => {
-                        const r = riscoDe(a)
-                        const o = origem(a)
-                        const st = ACAO_STATUS[a.status]
-                        const dias = nr1DiasEntre(NR1_TODAY, a.quando)
-                        const prazo = (
-                          <div className="text-[12.5px]">
-                            <p className="font-mono font-semibold text-ink">{fmtData(a.quando)}</p>
-                            {a.status === 'concluida' && a.concluidaEm && (
-                              <p className="mt-0.5 flex items-center gap-1 text-[11.5px] font-medium text-success-ink"><Icon icon="ph:check-circle-bold" width={12} aria-hidden />Concluída em {fmtData(a.concluidaEm)}</p>
-                            )}
-                            {vencida(a) && (
-                              <p className="mt-0.5 flex items-center gap-1 text-[11.5px] font-semibold text-danger-ink"><Icon icon="ph:warning-bold" width={12} aria-hidden />Vencida há {-dias} {-dias === 1 ? 'dia' : 'dias'}</p>
-                            )}
-                          </div>
-                        )
-                        const titulo = (
-                          <div className="min-w-0">
-                            <p className="font-heading text-[13.5px] font-semibold leading-snug text-ink">{a.oQue}</p>
-                            {r && <p className="mt-0.5 truncate text-[11.5px] text-ink-secondary"><span className="font-medium text-ink">{r.fator}</span> · {r.grupoExposto}</p>}
-                            <span className={`mt-1.5 inline-flex w-fit items-center gap-1 rounded-pill px-2 py-0.5 text-[10.5px] font-medium ${o.cls}`}>
-                              <Icon icon={o.icon} width={11} aria-hidden />{o.label}
-                            </span>
-                          </div>
-                        )
-                        /* `quem` é gravado como "Nome · Departamento". */
-                        const [nomeResp, depResp] = a.quem.split(' · ')
-                        const quem = (
-                          <div className="flex min-w-0 items-start gap-1.5">
-                            <Icon icon="ph:user-bold" width={12} className="mt-0.5 shrink-0 text-ink-muted" aria-hidden />
-                            <div className="min-w-0">
-                              <p className="truncate text-[12.5px] font-medium text-ink" title={nomeResp}>{nomeResp}</p>
-                              {depResp && <p className="truncate text-[11.5px] text-ink-muted" title={depResp}>{depResp}</p>}
-                            </div>
-                          </div>
-                        )
-                        const editar = a.status !== 'concluida' ? (
-                          <Button size="sm" variant="ghost" iconLeft="ph:pencil-simple-bold" onClick={(e) => { e.stopPropagation(); onAbrir(a, true) }}>Editar</Button>
-                        ) : <span />
-                        return (
-                          <li
-                            key={a.id}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => onAbrir(a)}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAbrir(a) } }}
-                            className={`relative cursor-pointer px-4 py-3.5 transition-colors hover:bg-surface-hover ${vencida(a) ? 'bg-danger/[0.05]' : ''}`}
-                          >
-                            {vencida(a) && <span className="absolute inset-y-0 left-0 w-1 bg-danger" aria-hidden />}
-                            <div className={`hidden items-center gap-3 lg:grid ${PLANOS_GRID_COLS}`}>
-                              {titulo}
-                              {prazo}
-                              {quem}
-                              <Badge tone={st.tone} className="w-fit">{st.label}</Badge>
-                              <div className="flex justify-end">{editar}</div>
-                            </div>
-                            <div className="flex flex-col gap-2 lg:hidden">
-                              {titulo}
-                              <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
-                                {prazo}
-                                {quem}
-                                <Badge tone={st.tone} className="w-fit">{st.label}</Badge>
-                              </div>
-                              {a.status !== 'concluida' && <div>{editar}</div>}
-                            </div>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                )}
+          {visualizacao === 'lista' && filtradas.length > 0 && (
+            <div className="rounded-lg border border-border bg-surface">
+              <div className={`hidden items-center gap-3 rounded-t-lg border-b border-border bg-surface-2 px-4 py-2.5 lg:grid ${PLANOS_GRID_COLS}`}>
+                {['Ação', 'Departamentos', 'Prazo', 'Responsável', 'Status', ''].map((c, i) => (
+                  <span key={i} className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">{c}</span>
+                ))}
               </div>
-            )
-          })}
+              <ul className="divide-y divide-border">
+                {filtradas.map((a) => {
+                  const r = riscoDe(a)
+                  const o = origem(a)
+                  const st = ACAO_STATUS[a.status]
+                  const dias = nr1DiasEntre(NR1_TODAY, a.quando)
+                  const prazo = (
+                    <div className="text-[12.5px]">
+                      <p className="font-mono font-semibold text-ink">{fmtData(a.quando)}</p>
+                      {a.status === 'concluida' && a.concluidaEm && (
+                        <p className="mt-0.5 flex items-center gap-1 text-[11.5px] font-medium text-success-ink"><Icon icon="ph:check-circle-bold" width={12} aria-hidden />Concluída em {fmtData(a.concluidaEm)}</p>
+                      )}
+                      {vencida(a) && (
+                        <p className="mt-0.5 flex items-center gap-1 text-[11.5px] font-semibold text-danger-ink"><Icon icon="ph:warning-bold" width={12} aria-hidden />Vencida há {-dias} {-dias === 1 ? 'dia' : 'dias'}</p>
+                      )}
+                    </div>
+                  )
+                  const titulo = (
+                    <div className="min-w-0">
+                      <p className="font-heading text-[13.5px] font-semibold leading-snug text-ink">{a.oQue}</p>
+                      {r && <p className="mt-0.5 truncate text-[11.5px] font-medium text-ink-secondary">{r.fator}</p>}
+                      <span className={`mt-1.5 inline-flex w-fit items-center gap-1 rounded-pill px-2 py-0.5 text-[10.5px] font-medium ${o.cls}`}>
+                        <Icon icon={o.icon} width={11} aria-hidden />{o.label}
+                      </span>
+                    </div>
+                  )
+                  /* `quem` é gravado como "Nome · Departamento". */
+                  const [nomeResp, depResp] = a.quem.split(' · ')
+                  const quem = (
+                    <div className="flex min-w-0 items-start gap-1.5">
+                      <Icon icon="ph:user-bold" width={12} className="mt-0.5 shrink-0 text-ink-muted" aria-hidden />
+                      <div className="min-w-0">
+                        <p className="truncate text-[12.5px] font-medium text-ink" title={nomeResp}>{nomeResp}</p>
+                        {depResp && <p className="truncate text-[11.5px] text-ink-muted" title={depResp}>{depResp}</p>}
+                      </div>
+                    </div>
+                  )
+                  /* Dentro da linha clicável: o hover/foco do selo não abre a ação. */
+                  const departamentos = (
+                    <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                      <DepartamentosAfetados nomes={departamentosDaAcao(a)} />
+                    </div>
+                  )
+                  const editar = a.status !== 'concluida' ? (
+                    <Button size="sm" variant="ghost" iconLeft="ph:pencil-simple-bold" onClick={(e) => { e.stopPropagation(); onAbrir(a, true) }}>Editar</Button>
+                  ) : <span />
+                  return (
+                    <li
+                      key={a.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => onAbrir(a)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAbrir(a) } }}
+                      className={`relative cursor-pointer px-4 py-3.5 transition-colors last:rounded-b-lg hover:bg-surface-hover ${vencida(a) ? 'bg-danger/[0.05]' : ''}`}
+                    >
+                      {vencida(a) && <span className="absolute inset-y-0 left-0 w-1 bg-danger" aria-hidden />}
+                      <div className={`hidden items-center gap-3 lg:grid ${PLANOS_GRID_COLS}`}>
+                        {titulo}
+                        {departamentos}
+                        {prazo}
+                        {quem}
+                        <Badge tone={st.tone} className="w-fit">{st.label}</Badge>
+                        <div className="flex justify-end">{editar}</div>
+                      </div>
+                      <div className="flex flex-col gap-2 lg:hidden">
+                        {titulo}
+                        <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+                          {departamentos}
+                          {prazo}
+                          {quem}
+                          <Badge tone={st.tone} className="w-fit">{st.label}</Badge>
+                        </div>
+                        {a.status !== 'concluida' && <div>{editar}</div>}
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
@@ -640,7 +560,7 @@ export function ResumoPgrBloco({ campanha, recorte, recorteNome }: { campanha: N
   const riscos = useService(() => nr1ResultadoService.inventario(campanha.id), [campanha.id])
   const [aberto, setAberto] = useState(false)
   const total = riscos.status === 'success'
-    ? riscos.data.filter((r) => recorte === 'empresa' || (r.departamentoIds[0] ?? 'empresa') === recorte).length
+    ? riscos.data.filter((r) => nr1RiscoNoRecorte(r, recorte)).length
     : 0
   return (
     <>
@@ -652,60 +572,6 @@ export function ResumoPgrBloco({ campanha, recorte, recorteNome }: { campanha: N
       <Nr1ResumoPgrChamada total={total} onAbrir={() => setAberto(true)} />
       <Nr1ResumoPgrModal aberto={aberto} campanha={campanha} recorte={recorte} recorteNome={recorteNome} onClose={() => setAberto(false)} />
     </>
-  )
-}
-
-/** Ignorar um fator apontado: sai da lista e do inventário, com a
-   justificativa registrada. Bloqueado se o fator já tiver ações. */
-function IgnorarFatorModal({ risco, onClose, onIgnorado }: {
-  risco: Nr1RiscoInventario | null
-  onClose: () => void
-  onIgnorado: () => void
-}) {
-  const [justificativa, setJustificativa] = useState('')
-  const [salvando, setSalvando] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
-  useEffect(() => { if (risco) { setJustificativa(''); setErro(null); setSalvando(false) } }, [risco])
-
-  const confirmar = async () => {
-    if (!risco?.fatorRiscoId) return
-    setSalvando(true)
-    const r = risco.origem === 'manual'
-      ? await nr1ResultadoService.reconsiderarFator(risco.id)
-      : await nr1ResultadoService.dispensarFator({ campanhaId: risco.campanhaId, fatorId: risco.fatorRiscoId, departamentoId: risco.departamentoIds[0] ?? null, justificativa })
-    setSalvando(false)
-    if (!r.ok) { setErro(r.message ?? 'Não foi possível ignorar o fator.'); return }
-    onIgnorado()
-  }
-
-  return (
-    <Modal open={risco !== null} title="Ignorar fator de risco?" onClose={onClose}>
-      {risco && (
-        <div className="flex flex-col gap-4">
-          <p className="text-[13.5px] leading-relaxed text-ink-secondary">
-            <strong className="font-semibold text-ink">{risco.fator}</strong> em {risco.grupoExposto} sai da lista de fatores identificados e do inventário.
-            A justificativa fica registrada e pode ser verificada numa fiscalização.
-          </p>
-          <label className="block">
-            <span className="mb-1.5 block text-[13px] font-semibold text-ink">Por que este fator será ignorado</span>
-            <textarea
-              className="w-full rounded border-[1.5px] border-border bg-surface px-3.5 py-2.5 text-sm text-ink outline-none focus:border-primary"
-              rows={3}
-              value={justificativa}
-              onChange={(e) => setJustificativa(e.target.value)}
-              placeholder="Ex.: Situação pontual já resolvida, confirmada com a liderança da área."
-            />
-          </label>
-          {erro && <p className="rounded-lg bg-danger-bg px-3.5 py-2.5 text-[12.5px] text-danger-ink">{erro}</p>}
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-            <Button fullWidth variant="secondary" iconLeft="ph:eye-slash-bold" disabled={salvando || justificativa.trim().length < 10} onClick={confirmar}>
-              {salvando ? 'Salvando…' : 'Ignorar fator'}
-            </Button>
-          </div>
-        </div>
-      )}
-    </Modal>
   )
 }
 
@@ -726,7 +592,7 @@ function AdicionarRiscoModal({ aberto, campanhaId, areas, fatores, riscos, onClo
   const [salvando, setSalvando] = useState(false)
   useEffect(() => { if (aberto) { setArea('empresa'); setFatorId(''); setJustificativa(''); setSalvando(false) } }, [aberto])
 
-  const jaNaArea = (fId: string) => riscos.some((r) => r.fatorRiscoId === fId && (r.departamentoIds[0] ?? 'empresa') === area)
+  const jaNaArea = (fId: string) => riscos.some((r) => r.fatorRiscoId === fId && r.grupos.some((g) => (g.departamentoId ?? 'empresa') === area))
   const valido = !!fatorId && justificativa.trim().length >= 10
 
   return (

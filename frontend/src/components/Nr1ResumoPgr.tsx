@@ -7,7 +7,7 @@ import { useService } from '../hooks/useService'
 import { useRh } from '../contexts/RhContext'
 import { nr1ResultadoService, nr1FatorService } from '../services/nr1'
 import { NIVEL_RISCO, NR1_PROBABILIDADE_ROTULOS, NR1_SEVERIDADE_ROTULOS, fmtData } from '../lib/nr1'
-import { NR1_TODAY, NR1_RECORTE_OUTROS } from '../data/nr1Mock'
+import { NR1_TODAY, NR1_RECORTE_OUTROS, nr1RiscoNoRecorte } from '../data/nr1Mock'
 import type { Nr1Campanha, Nr1Cid, Nr1FatorRisco, Nr1RiscoInventario } from '../types'
 
 /* Resumo para o PGR — o inventário de riscos psicossociais do ciclo num
@@ -30,14 +30,23 @@ function useDadosPgr(campanhaId: string, recorte: string) {
   const cids = useService(() => nr1FatorService.cids(), [])
   const carregado = [riscos, recortes, catalogo, cids].every((x) => x.status === 'success')
 
-  const lista = (riscos.status === 'success' ? riscos.data : [])
-    .filter((r) => recorte === 'empresa' || (r.departamentoIds[0] ?? 'empresa') === recorte)
+  const lista = (riscos.status === 'success' ? riscos.data : []).filter((r) => nr1RiscoNoRecorte(r, recorte))
   const visiveis = recortes.status === 'success' ? recortes.data.visiveis : []
+  /* O PGR lista o inventário por grupo exposto: um fator aparece em cada
+     departamento em que foi apontado, com a probabilidade e o nível daquela
+     área. Fator apontado só na empresa inteira fica no grupo geral. */
   const grupos: GrupoPgr[] = [
     ...visiveis.map((d) => ({ id: d.id, nome: d.nome, respondentes: d.respondentes as number | undefined })),
     { id: 'empresa', nome: 'Toda a empresa (geral)', respondentes: undefined as number | undefined },
   ]
-    .map((g) => ({ ...g, riscos: lista.filter((r) => (r.departamentoIds[0] ?? 'empresa') === g.id).sort((a, b) => b.nivelNum - a.nivelNum) }))
+    .filter((g) => recorte === 'empresa' || g.id === recorte)
+    .map((g) => ({
+      ...g,
+      riscos: (g.id === 'empresa'
+        ? lista.filter((r) => r.departamentoIds.length === 0)
+        : lista.map((r) => nr1RiscoNoRecorte(r, g.id)).filter((r): r is Nr1RiscoInventario => !!r)
+      ).sort((a, b) => b.nivelNum - a.nivelNum),
+    }))
     .filter((g) => g.riscos.length > 0)
 
   const lesoes = (r: Nr1RiscoInventario): Nr1Cid[] => {

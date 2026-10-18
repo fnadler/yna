@@ -4,7 +4,7 @@ import type {
   Nr1RiscoInventario, Nr1Acao, Nr1Relato, Nr1Ciclo, Nr1ResponsavelTecnico,
   Nr1MinhaAvaliacao, Nr1Severidade, Nr1RiscoStatus,
   Nr1FatorRisco, Nr1FonteGeradora, Nr1EscalaId, Nr1Cid,
-  Nr1FatorAvaliado, Nr1FatorSituacao, Nr1FatorEvolucao, Nr1AcaoRecomendada,
+  Nr1FatorAvaliado, Nr1FatorSituacao, Nr1FatorEvolucao, Nr1AcaoRecomendada, Nr1GrupoExposto,
 } from '../types'
 import { rhDepartamentos, rhEmpresa } from './rhMock'
 import { nr1DistribuirPorItem, LIMIAR_TENDENCIA } from '../lib/nr1'
@@ -309,7 +309,7 @@ export const nr1FatoresRisco: Nr1FatorRisco[] = FATOR_SEEDS.map((f) => {
   const id = `fator-${slugificar(f.nome)}`
   return {
     id, nome: f.nome, dimensaoId: f.dimensaoId, descricao: f.descricao, severidade: f.severidade,
-    cidIds: f.cids, itemIds: f.itens,
+    cidIds: f.cids,
     fontesGeradorasIds: idsPorNome(nr1FontesGeradoras, f.fontes),
     acoesSugeridas: f.acoes.map(([oQue, porQue, como], i) => ({ id: `${id}-acao-${i + 1}`, oQue, porQue, como })),
   }
@@ -400,10 +400,17 @@ export function nr1NivelPorMedia(media: number): Nr1NivelRisco {
 
 type ItemSeed = [id: string, texto: string, referencia: string, escala: Nr1EscalaId, direcao: 'positivo' | 'reverso', nucleo: boolean, extra?: { condicional?: boolean; sensivel?: boolean }]
 
+/* Vínculo pergunta → fatores de risco. Semeado a partir dos fatores do
+   catálogo (`FATOR_SEEDS.itens`), mas guardado na pergunta: é ela que diz
+   quais fatores indica, e o Manager edita isso no cadastro da pergunta. */
+const fatoresDoItem = (itemId: string) =>
+  FATOR_SEEDS.filter((f) => f.itens.includes(itemId)).map((f) => `fator-${slugificar(f.nome)}`)
+
 const item = ([id, texto, referencia, escala, direcao, nucleo, extra]: ItemSeed): Nr1Item => ({
   id, texto, referencia, escala, direcao,
   tipoCampo: 'select',
   obrigatorioNucleo: nucleo,
+  fatoresRiscoIds: fatoresDoItem(id),
   ...extra,
 })
 
@@ -714,9 +721,9 @@ const MEDIAS_2024_2S: Record<string, number[]> = {
 }
 
 const MEDIAS_2025_1S: Record<string, number[]> = {
-  'd-trading': [2.3, 3.8, 3.7, 3.0, 2.7, 3.8, 3.2, 3.9],
-  'd-tech': [3.9, 4.0, 4.1, 3.9, 3.0, 4.0, 3.8, 4.3],
-  'd-ops': [3.8, 2.9, 3.1, 3.8, 4.0, 3.9, 3.7, 4.1],
+  'd-trading': [2.3, 3.4, 3.7, 3.0, 2.7, 3.3, 3.2, 3.7],
+  'd-tech': [3.3, 4.0, 4.1, 3.4, 3.0, 4.0, 3.6, 3.8],
+  'd-ops': [3.3, 2.9, 3.1, 3.3, 4.0, 3.3, 3.5, 3.7],
   'd-compliance': [4.0, 4.1, 4.2, 4.1, 4.0, 4.0, 3.9, 4.4],
   'd-rh': [4.1, 4.2, 4.4, 4.3, 4.2, 4.2, 4.1, 4.6],
   'd-diretoria': [3.7, 4.1, 4.2, 4.1, 3.8, 4.0, 3.6, 4.5],
@@ -724,9 +731,9 @@ const MEDIAS_2025_1S: Record<string, number[]> = {
 }
 
 const MEDIAS_2025_2S: Record<string, number[]> = {
-  'd-trading': [2.7, 3.9, 3.8, 3.1, 3.3, 3.8, 3.4, 4.0],
-  'd-tech': [4.0, 4.1, 4.2, 4.0, 3.8, 4.1, 3.9, 4.3],
-  'd-ops': [3.8, 2.6, 3.0, 3.8, 4.0, 3.9, 3.6, 4.1],
+  'd-trading': [2.7, 3.4, 3.8, 3.1, 3.3, 3.3, 3.4, 3.7],
+  'd-tech': [3.3, 4.1, 4.2, 3.4, 3.4, 4.1, 3.6, 3.8],
+  'd-ops': [3.3, 2.6, 3.0, 3.3, 4.0, 3.3, 3.5, 3.7],
   'd-compliance': [4.0, 4.1, 4.2, 4.1, 4.0, 4.1, 4.0, 4.4],
   'd-rh': [4.2, 4.3, 4.4, 4.3, 4.2, 4.3, 4.2, 4.6],
   'd-diretoria': [3.8, 4.1, 4.2, 4.1, 3.9, 4.1, 3.7, 4.5],
@@ -884,15 +891,15 @@ function dimensoesDaCampanha(campanhaId: string): Nr1Dimensao[] {
 /** Nota de cada pergunta num recorte — o mesmo espalhamento determinístico
    que a pontuação por pergunta das telas usa (`nr1DistribuirPorItem`, com
    a mesma semente), para os números nunca discordarem. `null` = empresa. */
-export function nr1MediasPorItem(campanhaId: string, departamentoId: string | null): Map<string, { texto: string; media: number }> {
+export function nr1MediasPorItem(campanhaId: string, departamentoId: string | null): Map<string, { texto: string; media: number; fatores: string[] }> {
   const tabela = MEDIAS_POR_CAMPANHA[campanhaId] ?? MEDIAS_2026_1S
-  const mapa = new Map<string, { texto: string; media: number }>()
+  const mapa = new Map<string, { texto: string; media: number; fatores: string[] }>()
   for (const dim of dimensoesDaCampanha(campanhaId)) {
     const idx = NR1_DIMENSOES.findIndex((d) => d.id === dim.id)
     const media = departamentoId ? (tabela[departamentoId]?.[idx] ?? 0) : nr1MediaDimensaoEmpresa(campanhaId, idx)
     if (!media) continue
     const distrib = nr1DistribuirPorItem(dim.itens.map((i) => i.id), media, `${campanhaId}-${dim.id}-${departamentoId ?? 'empresa'}`)
-    for (const it of dim.itens) mapa.set(it.id, { texto: it.texto, media: distrib.find((x) => x.itemId === it.id)!.media })
+    for (const it of dim.itens) mapa.set(it.id, { texto: it.texto, media: distrib.find((x) => x.itemId === it.id)!.media, fatores: it.fatoresRiscoIds ?? [] })
   }
   return mapa
 }
@@ -912,9 +919,10 @@ export function nr1AvaliarFatores(campanhaId: string): Nr1FatorAvaliado[] {
   for (const r of recortes) {
     const itens = nr1MediasPorItem(campanhaId, r.id)
     for (const f of nr1FatoresRisco) {
-      const perguntas = f.itemIds
-        .filter((id) => itens.has(id))
-        .map((id) => ({ itemId: id, texto: itens.get(id)!.texto, media: itens.get(id)!.media, nivel: nr1NivelPorMedia(itens.get(id)!.media) }))
+      /* Perguntas da versão aplicada no ciclo que indicam este fator. */
+      const perguntas = [...itens.entries()]
+        .filter(([, v]) => v.fatores.includes(f.id))
+        .map(([id]) => ({ itemId: id, texto: itens.get(id)!.texto, media: itens.get(id)!.media, nivel: nr1NivelPorMedia(itens.get(id)!.media) }))
         .sort((a, b) => a.media - b.media)
       if (perguntas.length === 0) continue
       const media = Number((perguntas.reduce((s, p) => s + p.media, 0) / perguntas.length).toFixed(1))
@@ -955,22 +963,22 @@ export function nr1CampanhaAnterior(campanhaId: string): string | undefined {
 
 /* ------------------------------------------------------------------
    Riscos gerados (nova estrutura). Cada risco do inventário é um fator do
-   catálogo num recorte (departamento ou empresa) de um ciclo encerrado,
-   gerado pelo motor (`nr1AvaliarFatores`) — o RH não cadastra P × S. O que
-   o RH decide fica registrado à parte: dispensar um fator apontado (com
-   justificativa) ou incluir um fator que o questionário não apontou.
+   catálogo num ciclo encerrado, com os departamentos em que as respostas o
+   apontaram (o grupo exposto) — gerado pelo motor (`nr1AvaliarFatores`), o
+   RH não cadastra P × S. O RH pode incluir um fator numa área que o
+   questionário não apontou; essa decisão fica registrada à parte.
    ------------------------------------------------------------------ */
 
 /** Ordem cronológica das campanhas — a mesma base do heatmap por campanha. */
 const CAMPANHAS_CRONOLOGICAS = ['camp-2024-1s', 'camp-2024-2s', 'camp-2025-1s', 'camp-2025-2s', 'camp-2026-1s']
 
-/** Decisão do RH sobre um fator num recorte de um ciclo. Mutável. */
+/** Inclusão, pelo RH, de um fator numa área de um ciclo. Mutável. */
 export interface Nr1DecisaoFator {
   riscoId: string
   campanhaId: string
   fatorId: string
   departamentoId: string | null
-  tipo: 'dispensado' | 'incluido'
+  tipo: 'incluido'
   justificativa: string
   autor: string
   em: string
@@ -995,9 +1003,8 @@ export const nr1Reavaliacoes: Nr1Reavaliacao[] = []
 /** Conclusão manual ("Concluir risco") — vence o status calculado. */
 export const nr1StatusManual = new Map<string, Nr1RiscoStatus>()
 
-/** Id estável do risco gerado: ciclo + fator + recorte. */
-export const nr1RiscoIdGerado = (campanhaId: string, fatorId: string, departamentoId: string | null) =>
-  `rg-${campanhaId}-${fatorId}-${departamentoId ?? 'empresa'}`
+/** Id estável do risco gerado: ciclo + fator. */
+export const nr1RiscoIdGerado = (campanhaId: string, fatorId: string) => `rg-${campanhaId}-${fatorId}`
 
 /** Ciclos encerrados, do mais antigo para o mais recente. */
 export const nr1CampanhasEncerradas = () =>
@@ -1020,19 +1027,49 @@ const RECOMENDACAO_POR_EVOLUCAO: Partial<Record<Nr1FatorEvolucao, Nr1AcaoRecomen
   piorou: 'revisar-plano',
 }
 
-/** Monta o risco do inventário a partir de um fator avaliado. */
-function riscoDeAvaliacao(av: Nr1FatorAvaliado, anterior: Nr1FatorAvaliado | undefined, origem: 'questionario' | 'manual'): Nr1RiscoInventario {
-  const f = nr1FatoresRisco.find((x) => x.id === av.fatorId)!
-  const id = nr1RiscoIdGerado(av.campanhaId, av.fatorId, av.departamentoId)
-  const dep = av.departamentoId ? rhDepartamentos.find((d) => d.id === av.departamentoId) : undefined
+const nomeDoRecorte = (departamentoId: string | null) =>
+  departamentoId ? (rhDepartamentos.find((d) => d.id === departamentoId)?.nome ?? departamentoId) : 'Toda a empresa'
+
+const grupoDeAvaliacao = (av: Nr1FatorAvaliado, incluido: boolean): Nr1GrupoExposto => ({
+  departamentoId: av.departamentoId,
+  departamento: nomeDoRecorte(av.departamentoId),
+  respondentes: av.respondentes,
+  media: av.media,
+  probabilidade: av.probabilidade,
+  nivelNum: av.nivelNum,
+  nivel: av.nivel,
+  incluido: incluido || undefined,
+})
+
+/** Monta o risco de um fator num ciclo a partir das avaliações do fator.
+   O grupo exposto são as áreas visíveis em que o fator requer plano (mais
+   as incluídas pelo RH); se nenhuma área chega ao gatilho mas a empresa
+   inteira sim, o grupo é a empresa. Sem grupo, não há risco. */
+function riscoDoFator(campanhaId: string, f: Nr1FatorRisco, avs: Nr1FatorAvaliado[], anteriores: Nr1FatorAvaliado[]): Nr1RiscoInventario | undefined {
+  const id = nr1RiscoIdGerado(campanhaId, f.id)
+  const incluidas = nr1DecisoesFator.filter((d) => d.riscoId === id && d.tipo === 'incluido')
+  const incluida = (dep: string | null) => incluidas.some((d) => d.departamentoId === dep)
+  const apontada = (av: Nr1FatorAvaliado) => av.situacao === 'requer-plano'
+
+  const areas = avs.filter((av) => av.departamentoId !== null && (apontada(av) || incluida(av.departamentoId)))
+  const empresa = avs.find((av) => av.departamentoId === null)
+  const selecionadas = areas.length > 0 ? areas : empresa && (apontada(empresa) || incluida(null)) ? [empresa] : []
+  if (selecionadas.length === 0) return undefined
+
+  const ordenadas = [...selecionadas].sort((x, y) => y.nivelNum - x.nivelNum || x.media - y.media)
+  const grupos = ordenadas.map((av) => grupoDeAvaliacao(av, !apontada(av)))
+  const av = ordenadas[0]!
+  const origem: 'questionario' | 'manual' = ordenadas.some(apontada) ? 'questionario' : 'manual'
+
+  const anterior = anteriores.find((x) => x.fatorId === f.id && x.departamentoId === av.departamentoId)
   const evolucao = nr1EvolucaoFator(anterior, av)
   const variacao = anterior ? Number((av.media - anterior.media).toFixed(1)) : undefined
-  const decisao = nr1DecisoesFator.find((d) => d.riscoId === id && d.tipo === 'incluido')
   /* Status e sugestão só falam de plano quando houve plano no ciclo
      anterior — fator que segue apontado sem nunca ter tido ação é, para
      todos os efeitos, um risco identificado que ainda espera o primeiro. */
-  const tinhaPlano = !!anterior && nr1Acoes.some((a) => a.riscoId === nr1RiscoIdGerado(anterior.campanhaId, anterior.fatorId, anterior.departamentoId))
+  const tinhaPlano = !!anterior && nr1Acoes.some((a) => a.riscoId === nr1RiscoIdGerado(anterior.campanhaId, f.id))
   const leitura: Nr1FatorEvolucao = origem === 'manual' ? 'novo' : !tinhaPlano && evolucao !== 'piorou' ? 'novo' : evolucao
+  const departamentoIds = grupos.map((g) => g.departamentoId).filter((d): d is string => d !== null)
   return {
     id,
     dimensaoId: f.dimensaoId,
@@ -1041,16 +1078,17 @@ function riscoDeAvaliacao(av: Nr1FatorAvaliado, anterior: Nr1FatorAvaliado | und
     fatorRiscoId: f.id,
     fontesGeradorasIds: f.fontesGeradorasIds,
     danos: f.cidIds.map((c) => nr1Cids.find((x) => x.id === c)).filter(Boolean).map((c) => `${c!.nome} (${c!.codigo})`).join('; '),
-    grupoExposto: dep?.nome ?? 'Toda a empresa',
-    departamentoIds: dep ? [dep.id] : [],
-    respondentes: av.respondentes,
+    grupoExposto: grupos.map((g) => g.departamento).join(', '),
+    departamentoIds,
+    grupos,
+    respondentes: grupos.reduce((soma, g) => soma + g.respondentes, 0),
     probabilidade: av.probabilidade,
     severidade: av.severidade,
     nivelNum: av.nivelNum,
     nivel: av.nivel,
     /* Ações vigentes do risco (versão já substituída por outra não conta). */
     controles: nr1Acoes.filter((a) => a.riscoId === id && !nr1Acoes.some((b) => b.versaoAnteriorId === a.id)).map((a) => a.oQue),
-    campanhaId: av.campanhaId,
+    campanhaId,
     status: nr1StatusManual.get(id) ?? STATUS_POR_EVOLUCAO[leitura],
     tendencia: variacao === undefined ? undefined : variacao > LIMIAR_TENDENCIA ? 'melhorando' : variacao < -LIMIAR_TENDENCIA ? 'piorando' : 'estavel',
     variacaoPontos: variacao,
@@ -1058,22 +1096,28 @@ function riscoDeAvaliacao(av: Nr1FatorAvaliado, anterior: Nr1FatorAvaliado | und
     acaoRecomendada: leitura === 'piorou' && !tinhaPlano ? 'escalar' : RECOMENDACAO_POR_EVOLUCAO[leitura],
     avaliacao: av,
     origem,
-    justificativaInclusao: decisao?.justificativa,
+    justificativaInclusao: incluidas[0]?.justificativa,
   }
 }
 
-/** Riscos de um ciclo: fatores que requerem plano (menos os dispensados)
-   mais os incluídos manualmente pelo RH. */
+/** Riscos de um ciclo: um por fator apontado (ou incluído pelo RH). */
 export function nr1RiscosGerados(campanhaId: string): Nr1RiscoInventario[] {
   const atuais = nr1AvaliarFatores(campanhaId)
   const idAnterior = nr1CampanhaAnterior(campanhaId)
   const anteriores = idAnterior ? nr1AvaliarFatores(idAnterior) : []
-  const ant = (av: Nr1FatorAvaliado) => anteriores.find((x) => x.fatorId === av.fatorId && x.departamentoId === av.departamentoId)
-  const decisao = (av: Nr1FatorAvaliado, tipo: Nr1DecisaoFator['tipo']) =>
-    nr1DecisoesFator.some((d) => d.tipo === tipo && d.riscoId === nr1RiscoIdGerado(av.campanhaId, av.fatorId, av.departamentoId))
-  return atuais
-    .filter((av) => (av.situacao === 'requer-plano' && !decisao(av, 'dispensado')) || decisao(av, 'incluido'))
-    .map((av) => riscoDeAvaliacao(av, ant(av), av.situacao === 'requer-plano' ? 'questionario' : 'manual'))
+  return nr1FatoresRisco
+    .map((f) => riscoDoFator(campanhaId, f, atuais.filter((av) => av.fatorId === f.id), anteriores))
+    .filter((r): r is Nr1RiscoInventario => !!r)
+}
+
+/** O risco visto de um recorte: com um departamento, probabilidade e nível
+   passam a ser os daquela área (sem a área no grupo exposto, `undefined`);
+   com 'empresa', o risco como está (o maior nível entre as áreas). */
+export function nr1RiscoNoRecorte(r: Nr1RiscoInventario, recorte: string): Nr1RiscoInventario | undefined {
+  if (recorte === 'empresa') return r
+  const g = r.grupos.find((x) => x.departamentoId === recorte)
+  if (!g) return undefined
+  return { ...r, probabilidade: g.probabilidade, nivelNum: g.nivelNum, nivel: g.nivel, respondentes: g.respondentes, grupoExposto: g.departamento }
 }
 
 /** Inventário atual — os riscos do último ciclo encerrado. */
@@ -1108,17 +1152,16 @@ export function nr1NivelPorProduto(n: number): Nr1NivelRisco {
    há fatores apontados sem plano (recompensas e eventos em Trading, assédio
    em Operações), que é o trabalho do RH no Inventário de riscos. */
 const FATOR_SOBRECARGA = 'fator-excesso-de-demandas-no-trabalho-sobrecarga'
-const RG_TRADING_SOBRECARGA_25_1 = nr1RiscoIdGerado('camp-2025-1s', FATOR_SOBRECARGA, 'd-trading')
-const RG_EMPRESA_SOBRECARGA_25_1 = nr1RiscoIdGerado('camp-2025-1s', FATOR_SOBRECARGA, null)
-const RG_TRADING_SOBRECARGA_25_2 = nr1RiscoIdGerado('camp-2025-2s', FATOR_SOBRECARGA, 'd-trading')
-const RG_TRADING_SUPORTE_25_2 = nr1RiscoIdGerado('camp-2025-2s', 'fator-falta-de-suporte-apoio-no-trabalho', 'd-trading')
-const RG_OPS_AUTONOMIA_25_2 = nr1RiscoIdGerado('camp-2025-2s', 'fator-baixo-controle-no-trabalho-falta-de-autonomia', 'd-ops')
-const RG_OPS_CLAREZA_25_2 = nr1RiscoIdGerado('camp-2025-2s', 'fator-baixa-clareza-de-papel-funcao', 'd-ops')
-const RG_TRADING_SUPORTE_25_1 = nr1RiscoIdGerado('camp-2025-1s', 'fator-falta-de-suporte-apoio-no-trabalho', 'd-trading')
+const RG_SOBRECARGA_25_1 = nr1RiscoIdGerado('camp-2025-1s', FATOR_SOBRECARGA)
+const RG_SOBRECARGA_25_2 = nr1RiscoIdGerado('camp-2025-2s', FATOR_SOBRECARGA)
+const RG_SUPORTE_25_2 = nr1RiscoIdGerado('camp-2025-2s', 'fator-falta-de-suporte-apoio-no-trabalho')
+const RG_AUTONOMIA_25_2 = nr1RiscoIdGerado('camp-2025-2s', 'fator-baixo-controle-no-trabalho-falta-de-autonomia')
+const RG_CLAREZA_25_2 = nr1RiscoIdGerado('camp-2025-2s', 'fator-baixa-clareza-de-papel-funcao')
+const RG_SUPORTE_25_1 = nr1RiscoIdGerado('camp-2025-1s', 'fator-falta-de-suporte-apoio-no-trabalho')
 
 export const nr1Acoes: Nr1Acao[] = [
   {
-    id: 'a-01', riscoId: RG_TRADING_SOBRECARGA_25_1,
+    id: 'a-01', riscoId: RG_SOBRECARGA_25_1,
     oQue: 'Instituir janela de pausa obrigatória escalonada durante o pregão',
     porQue: 'Reduzir a exposição ao ritmo acelerado sem pausa, principal fator de risco da mesa.',
     quem: 'Ricardo Alencar · Trading & Mercados',
@@ -1136,7 +1179,7 @@ export const nr1Acoes: Nr1Acao[] = [
     efetividade: 'parcialmente-efetiva',
   },
   {
-    id: 'a-01-v2', riscoId: RG_TRADING_SOBRECARGA_25_2,
+    id: 'a-01-v2', riscoId: RG_SOBRECARGA_25_2,
     oQue: 'Instituir pausa obrigatória escalonada + limitar concorrência de posições por trader',
     porQue: 'A escala de pausas ajudou (crítico → risco no último ciclo), mas o risco ainda está na faixa grave — o ritmo em si segue alto.',
     quem: 'Ricardo Alencar · Trading & Mercados',
@@ -1150,11 +1193,11 @@ export const nr1Acoes: Nr1Acao[] = [
     motivoRevisao: 'Risco seguiu na faixa grave no ciclo mais recente (recomendação: revisar plano) — a v1 reduziu a intensidade, mas não o suficiente sozinha.',
   },
   {
-    id: 'a-02', riscoId: RG_TRADING_SOBRECARGA_25_2,
+    id: 'a-02', riscoId: RG_SOBRECARGA_25_2,
     oQue: 'Revisar o dimensionamento da equipe nos horários de pico',
     porQue: 'A carga concentrada excede a capacidade da equipe atual.',
     quem: 'Camila Risi · Pessoas & DHO',
-    quando: '2026-08-15', onde: 'Trading & Mercados',
+    quando: '2026-08-15', onde: 'Trading & Mercados, Tecnologia',
     como: 'Estudo de carga por faixa horária e proposta de duas contratações.',
     quanto: 'R$ 28.000/mês (estimativa)',
     status: 'planejada',
@@ -1162,7 +1205,7 @@ export const nr1Acoes: Nr1Acao[] = [
     versao: 1,
   },
   {
-    id: 'a-03', riscoId: RG_EMPRESA_SOBRECARGA_25_1,
+    id: 'a-03', riscoId: RG_SOBRECARGA_25_1,
     oQue: 'Publicar política de desconexão com regras por área',
     porQue: 'Formalizar o limite de disponibilidade fora do horário e reduzir a hiperconexão.',
     quem: 'Camila Risi · Pessoas & DHO',
@@ -1177,11 +1220,11 @@ export const nr1Acoes: Nr1Acao[] = [
     versao: 1,
   },
   {
-    id: 'a-04', riscoId: RG_OPS_AUTONOMIA_25_2,
+    id: 'a-04', riscoId: RG_AUTONOMIA_25_2,
     oQue: 'Definir alçadas de decisão da equipe de Operações',
     porQue: 'Dar autonomia real sobre o próprio trabalho — o controle caiu de um ciclo para o outro.',
     quem: 'Paula Mendes · Pessoas & DHO',
-    quando: '2026-09-30', onde: 'Operações',
+    quando: '2026-09-30', onde: 'Operações, Tecnologia',
     como: 'Listar as decisões do dia a dia e combinar com a equipe o que ela decide sem aprovação.',
     quanto: 'Sem custo direto',
     status: 'planejada',
@@ -1189,11 +1232,11 @@ export const nr1Acoes: Nr1Acao[] = [
     versao: 1,
   },
   {
-    id: 'a-05', riscoId: RG_TRADING_SUPORTE_25_2,
+    id: 'a-05', riscoId: RG_SUPORTE_25_2,
     oQue: 'Formalizar rotina de 1:1 quinzenal com a liderança',
     porQue: 'Garantir espaço regular de escuta e apoio da liderança.',
     quem: 'Marcos Tavares · Tecnologia',
-    quando: '2026-06-15', onde: 'Trading & Mercados',
+    quando: '2026-06-15', onde: 'Trading & Mercados, Operações, Tecnologia',
     como: 'Agenda recorrente com pauta mínima e registro de acordos.',
     quanto: 'Sem custo direto',
     status: 'concluida',
@@ -1205,7 +1248,7 @@ export const nr1Acoes: Nr1Acao[] = [
     versao: 1,
   },
   {
-    id: 'a-06', riscoId: RG_OPS_CLAREZA_25_2,
+    id: 'a-06', riscoId: RG_CLAREZA_25_2,
     oQue: 'Publicar o desenho de papéis e responsabilidades de Operações',
     porQue: 'As pessoas da área não sabem exatamente o que se espera delas.',
     quem: 'Marcos Tavares · Tecnologia',
@@ -1217,11 +1260,11 @@ export const nr1Acoes: Nr1Acao[] = [
     comentarios: [],
   },
   {
-    id: 'a-07', riscoId: RG_TRADING_SUPORTE_25_1,
+    id: 'a-07', riscoId: RG_SUPORTE_25_1,
     oQue: 'Capacitar líderes da mesa em escuta e feedback',
     porQue: 'Líderes precisam de preparo para apoiar a equipe no dia a dia do pregão.',
     quem: 'Paula Mendes · Pessoas & DHO',
-    quando: '2025-10-31', onde: 'Trading & Mercados',
+    quando: '2025-10-31', onde: 'Trading & Mercados, Operações',
     como: 'Dois encontros práticos com os coordenadores da mesa, com roteiro de 1:1.',
     quanto: 'R$ 9.800',
     status: 'concluida',

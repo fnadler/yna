@@ -327,6 +327,10 @@ export interface Nr1Item {
   origemCliente?: boolean
   /** Opções — quando `tipoCampo` for select/multiselect. */
   opcoes?: string[]
+  /** Fatores de risco (`Nr1FatorRisco`) que esta pergunta indica — o
+     vínculo mora na pergunta, então vale por versão do modelo. Uma pergunta
+     pode indicar mais de um fator. */
+  fatoresRiscoIds?: string[]
 }
 
 /** Fator de risco — cadastro à parte (RF-A05), reutilizável entre dimensões
@@ -364,9 +368,6 @@ export interface Nr1FatorRisco {
   severidade: Nr1Severidade
   /** Até 3 lesões/agravos à saúde (`Nr1Cid`). */
   cidIds: string[]
-  /** Perguntas (`Nr1Item.id`) cujo resultado indica o fator — uma pergunta
-     pode indicar mais de um fator. */
-  itemIds: string[]
   /** Fontes geradoras típicas (`Nr1FonteGeradora`). */
   fontesGeradorasIds: string[]
   acoesSugeridas: Nr1AcaoSugerida[]
@@ -565,6 +566,23 @@ export type Nr1Tendencia = 'melhorando' | 'estavel' | 'piorando'
    aprova nem fecha um risco sozinha. */
 export type Nr1AcaoRecomendada = 'manter' | 'manter-com-monitoramento' | 'investigar' | 'revisar-plano' | 'escalar' | 'encerrar'
 
+/** Um departamento exposto a um fator de risco num ciclo, com a
+   probabilidade e o nível calculados com as respostas daquela área.
+   `departamentoId: null` = a empresa inteira (fator apontado só no geral). */
+export interface Nr1GrupoExposto {
+  departamentoId: string | null
+  departamento: string
+  respondentes: number
+  /** Nota média (1–5) das perguntas que indicam o fator, nesta área. */
+  media: number
+  probabilidade: number
+  /** probabilidade × severidade do fator. */
+  nivelNum: number
+  nivel: Nr1NivelRisco
+  /** Incluído pelo RH (o questionário não apontou o fator nesta área). */
+  incluido?: boolean
+}
+
 export interface Nr1RiscoInventario {
   id: string
   dimensaoId: Nr1DimensaoId
@@ -581,10 +599,13 @@ export interface Nr1RiscoInventario {
   /** Grupo de trabalhadores exposto (departamento/GHE) — nomes de
      `departamentoIds` já resolvidos e juntos, para exibição direta. */
   grupoExposto: string
-  /** Um risco pode atravessar mais de uma área (ex.: hiperconectividade que
-     afeta tanto Trading quanto Tecnologia) — por isso é uma lista, não um
-     único departamento. */
+  /** O risco é o fator no ciclo: atravessa todas as áreas em que foi
+     apontado — por isso é uma lista, não um único departamento. Vazia =
+     apontado só na empresa inteira. */
   departamentoIds: string[]
+  /** Cada área exposta, do maior para o menor nível. Probabilidade e nível
+     do risco (`probabilidade`, `nivelNum`, `nivel`) são os da primeira. */
+  grupos: Nr1GrupoExposto[]
   /** Soma dos respondentes de todos os departamentos em `departamentoIds`. */
   respondentes: number
   probabilidade: number
@@ -604,8 +625,8 @@ export interface Nr1RiscoInventario {
   tendencia?: Nr1Tendencia
   variacaoPontos?: number
   acaoRecomendada?: Nr1AcaoRecomendada
-  /** Avaliação do motor que gerou o risco (nova estrutura): nota média, P,
-     S e as perguntas que sustentam o resultado. */
+  /** Avaliação do motor na área de maior nível (a primeira de `grupos`):
+     nota média, P, S e as perguntas que sustentam o resultado. */
   avaliacao?: Nr1FatorAvaliado
   /** `questionario`: apontado pelo resultado; `manual`: incluído pelo RH. */
   origem?: 'questionario' | 'manual'

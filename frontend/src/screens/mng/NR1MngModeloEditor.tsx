@@ -8,6 +8,7 @@ import { Badge } from '../../components/Badge'
 import { Sheet } from '../../components/Sheet'
 import { Modal } from '../../components/Modal'
 import { Select } from '../../components/Select'
+import { MultiSelect } from '../../components/MultiSelect'
 import { Skeleton } from '../../components/Skeleton'
 import { ErrorState } from '../../components/ErrorState'
 import { Toast } from '../../components/Toast'
@@ -122,13 +123,13 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso, onF
   const [dimensaoForm, setDimensaoForm] = useState<{ dimensao?: Nr1Dimensao } | null>(null)
   const [removerDim, setRemoverDim] = useState<Nr1Dimensao | null>(null)
 
-  /* Catálogo de fatores de risco — só leitura aqui: cada fator aponta o
-     domínio e as perguntas que o indicam, e é editado em "Fatores de risco"
-     (`NR1MngFatores`). */
+  /* Catálogo de fatores de risco (editado em "Fatores de risco",
+     `NR1MngFatores`). O vínculo com as perguntas mora na própria pergunta
+     (`fatoresRiscoIds`), definido aqui no formulário do item. */
   const [fatores, setFatores] = useState<Nr1FatorRisco[]>([])
   useEffect(() => { void nr1FatorService.catalogo().then((f) => setFatores([...f])) }, [])
   const fatoresDoDominio = (id: string) => fatores.filter((f) => f.dimensaoId === id)
-  const fatoresDaPergunta = (id: string) => fatores.filter((f) => f.itemIds.includes(id))
+  const fatoresDaPergunta = (item: Nr1Item) => fatores.filter((f) => (item.fatoresRiscoIds ?? []).includes(f.id))
 
   const totalItens = versao.dimensoes.reduce((s, d) => s + d.itens.length, 0)
   const totalNucleo = versao.dimensoes.reduce((s, d) => s + d.itens.filter((i) => i.obrigatorioNucleo).length, 0)
@@ -368,10 +369,10 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso, onF
                               Escala {i.escala} · {i.direcao === 'reverso' ? 'reverso' : 'positivo'} · {i.referencia}
                             </span>
                           </div>
-                          {fatoresDaPergunta(i.id).length > 0 && (
+                          {fatoresDaPergunta(i).length > 0 && (
                             <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-ink-secondary">
                               <Icon icon="ph:warning-diamond-bold" width={11} className="text-ink-muted" aria-hidden />
-                              Indica: {fatoresDaPergunta(i.id).map((f) => f.nome).join(' · ')}
+                              Indica: {fatoresDaPergunta(i).map((f) => f.nome).join(' · ')}
                             </p>
                           )}
                         </div>
@@ -437,6 +438,7 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso, onF
             inicial={itemForm.item}
             dimensaoId={itemForm.dimensaoId}
             escopo={modelo.escopo}
+            fatores={fatores}
             onClose={() => setItemForm(null)}
             onSave={(item, novo) => salvarItem(itemForm.dimensaoId, item, novo)}
           />
@@ -503,10 +505,11 @@ function EditorConteudo({ modelo, versaoSel, onVersaoSel, onReload, onAviso, onF
 }
 
 /* Formulário do item — mesmos tipos de campo do formulário flexível. */
-function ItemForm({ inicial, dimensaoId, escopo, onClose, onSave }: {
+function ItemForm({ inicial, dimensaoId, escopo, fatores, onClose, onSave }: {
   inicial?: Nr1Item
   dimensaoId: string
   escopo: Nr1QuestionarioModelo['escopo']
+  fatores: Nr1FatorRisco[]
   onClose: () => void
   onSave: (item: Nr1Item, novo: boolean) => void
 }) {
@@ -519,11 +522,17 @@ function ItemForm({ inicial, dimensaoId, escopo, onClose, onSave }: {
   const [nucleo, setNucleo] = useState(inicial?.obrigatorioNucleo ?? false)
   const [condicional, setCondicional] = useState(inicial?.condicional ?? false)
   const [sensivel, setSensivel] = useState(inicial?.sensivel ?? false)
+  const [fatoresIds, setFatoresIds] = useState<string[]>(inicial?.fatoresRiscoIds ?? [])
   const [salvando, setSalvando] = useState(false)
 
   /* Só o Modelo YNA define núcleo. Num derivado de cliente o núcleo é herdado
      e a marcação fica travada — o cliente acrescenta, nunca redefine o mínimo. */
   const podeMarcarNucleo = escopo === 'yna'
+  /* Fatores do domínio do item primeiro; os demais depois, com o domínio no rótulo. */
+  const nomeDominio = (id: string) => NR1_DIMENSOES.find((d) => d.id === id)?.curto ?? id
+  const opcoesFatores = [...fatores]
+    .sort((a, b) => Number(b.dimensaoId === dimensaoId) - Number(a.dimensaoId === dimensaoId) || a.nome.localeCompare(b.nome, 'pt-BR'))
+    .map((f) => ({ value: f.id, label: f.dimensaoId === dimensaoId ? f.nome : `${f.nome} · ${nomeDominio(f.dimensaoId)}` }))
   const valido = texto.trim().length >= 10
 
   const salvar = () => {
@@ -545,6 +554,7 @@ function ItemForm({ inicial, dimensaoId, escopo, onClose, onSave }: {
          Só item NOVO num modelo derivado nasce como item do cliente. */
       origemCliente: inicial ? inicial.origemCliente : (escopo === 'cliente' ? true : undefined),
       opcoes: inicial?.opcoes,
+      fatoresRiscoIds: fatoresIds,
     }, novo)
   }
 
@@ -593,6 +603,22 @@ function ItemForm({ inicial, dimensaoId, escopo, onClose, onSave }: {
         <span className="mb-1.5 block text-[13px] font-semibold text-ink">Referência <span className="font-normal text-ink-muted">(instrumento-fonte)</span></span>
         <input className={inputCls} value={referencia} onChange={(e) => setReferencia(e.target.value)} placeholder="Ex.: HSE · Controle" />
       </label>
+
+      <div>
+        <p className="mb-1.5 text-[13px] font-semibold text-ink">Fatores de risco que esta pergunta indica</p>
+        <MultiSelect
+          values={fatoresIds}
+          onChange={setFatoresIds}
+          ariaLabel="Fatores de risco que esta pergunta indica"
+          placeholder="Selecionar fatores de risco"
+          searchable
+          searchPlaceholder="Buscar fator de risco…"
+          options={opcoesFatores}
+        />
+        <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-muted">
+          A nota média desta pergunta entra no cálculo da probabilidade de cada fator selecionado. Os fatores do mesmo domínio aparecem primeiro.
+        </p>
+      </div>
 
       <div className="flex flex-col gap-2">
         <Toggle

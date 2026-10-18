@@ -13,7 +13,7 @@ import { rhColaboradorService, rhDepartamentoService } from '../services/rh'
 import type { Nr1Acao, Nr1RiscoInventario, Nr1AcaoStatus } from '../types'
 
 /** "Onde" de uma ação que vale para todas as áreas. */
-const TODA_EMPRESA = 'Toda a empresa'
+export const TODA_EMPRESA = 'Toda a empresa'
 
 /** Valor sentinela para "o responsável atual não corresponde a nenhum
    colaborador da lista" (ação antiga, texto livre de antes deste campo virar
@@ -55,8 +55,9 @@ function useResponsavelField(quemAtual?: string) {
 
 /** Rótulo de um risco em seletores e listas: domínio · fator — o mesmo par
    que a análise de risco usa para registrar. */
-/** Rótulo de um risco: o fator e onde ele foi apontado (área ou empresa). */
-export const nr1RotuloRisco = (r: Nr1RiscoInventario) => `${r.fator} · ${r.grupoExposto}`
+/** Rótulo de um risco: o fator e quantas áreas ele expõe (ou a empresa). */
+export const nr1RotuloRisco = (r: Nr1RiscoInventario) =>
+  `${r.fator} · ${r.departamentoIds.length === 0 ? 'Toda a empresa' : `${r.departamentoIds.length} ${r.departamentoIds.length === 1 ? 'departamento' : 'departamentos'}`}`
 
 /** Formulário 5W2H — o único da plataforma: usado na análise de risco
    (`Nr1AnaliseRisco`, `layout="inline"`, risco fixo), no Plano de ação e em

@@ -63,7 +63,7 @@ function CicloCard({ campanha, onVisualizar }: { campanha: Nr1Campanha; onVisual
   const nome = (campanha.nome.split('·').pop() ?? campanha.nome).trim()
   const respostas = campanha.participacao.reduce((s, p) => s + p.respostas, 0)
   const lista = riscos.status === 'success' ? riscos.data : []
-  const areas = new Set(lista.map((r) => r.departamentoIds[0] ?? 'empresa')).size
+  const areas = new Set(lista.flatMap((r) => (r.departamentoIds.length ? r.departamentoIds : ['empresa']))).size
 
   return (
     <li className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5 sm:flex-row sm:items-center">

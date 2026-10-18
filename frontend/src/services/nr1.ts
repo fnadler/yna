@@ -215,11 +215,11 @@ export const nr1FatorService = {
 
   /** Perguntas que podem ser vinculadas a um fator — as do Modelo YNA
      publicado (a matriz COPSOQ), com o domínio de cada uma. */
-  perguntas: async (): Promise<{ id: string; texto: string; dimensaoId: Nr1DimensaoId }[]> => {
+  perguntas: async (): Promise<{ id: string; texto: string; dimensaoId: Nr1DimensaoId; fatoresRiscoIds: string[] }[]> => {
     await delay(rand(150, 350))
     const yna = nr1Modelos.find((m) => m.escopo === 'yna')
     const v = yna?.versoes.find((x) => x.status === 'publicada') ?? yna?.versoes[0]
-    return (v?.dimensoes ?? []).flatMap((d) => d.itens.map((i) => ({ id: i.id, texto: i.texto, dimensaoId: d.id })))
+    return (v?.dimensoes ?? []).flatMap((d) => d.itens.map((i) => ({ id: i.id, texto: i.texto, dimensaoId: d.id, fatoresRiscoIds: i.fatoresRiscoIds ?? [] })))
   },
 
   /** Ações sugeridas que o RH descartou para um risco (síncrono: estado de
@@ -247,12 +247,12 @@ export const nr1FatorService = {
       const acoes = nr1Acoes.filter((a) => a.riscoId === r.id && !superadas.has(a.id))
       const versoesAnteriores = nr1Acoes.filter((a) => a.riscoId === r.id && superadas.has(a.id))
       if (acoes.length === 0 && versoesAnteriores.length === 0) return []
-      const dep = r.departamentoIds[0] ?? null
       const anterior = r.avaliacao!
+      const dep = anterior.departamentoId
       const atual = atuais.find((a) => a.fatorId === r.fatorRiscoId && a.departamentoId === dep)
       const lida = atual ? nr1EvolucaoFator(anterior.situacao === 'requer-plano' ? anterior : { ...anterior, situacao: 'requer-plano' }, atual) : 'sem-mudanca'
       const evolucao: Nr1FatorEvolucao = lida === 'novo' ? 'sem-mudanca' : lida
-      const riscoAtual = riscosAtuais.find((x) => x.fatorRiscoId === r.fatorRiscoId && (x.departamentoIds[0] ?? null) === dep)
+      const riscoAtual = riscosAtuais.find((x) => x.fatorRiscoId === r.fatorRiscoId)
       const abertas = acoes.filter((a) => a.status !== 'concluida')
       const efetividadeSugerida: Nr1Efetividade = evolucao === 'saiu-do-gatilho' ? 'muito-efetiva' : evolucao === 'melhorou' ? 'parcialmente-efetiva' : 'inefetiva'
       const decisaoSugerida: Nr1DecisaoReavaliacao = evolucao === 'saiu-do-gatilho' ? 'encerrar' : evolucao === 'melhorou' && abertas.length > 0 ? 'manter' : 'revisar'
@@ -318,7 +318,10 @@ export const nr1FatorService = {
   /** Exclui um fator do catálogo (e o vínculo dele nos domínios dos modelos). */
   excluir: async (id: string): Promise<{ ok: boolean }> => {
     await delay(rand(250, 500))
-    for (const m of nr1Modelos) for (const v of m.versoes) for (const d of v.dimensoes) d.fatoresRiscoIds = d.fatoresRiscoIds.filter((x) => x !== id)
+    for (const m of nr1Modelos) for (const v of m.versoes) for (const d of v.dimensoes) {
+      d.fatoresRiscoIds = d.fatoresRiscoIds.filter((x) => x !== id)
+      for (const it of d.itens) if (it.fatoresRiscoIds) it.fatoresRiscoIds = it.fatoresRiscoIds.filter((x) => x !== id)
+    }
     const i = nr1FatoresRisco.findIndex((x) => x.id === id)
     if (i >= 0) nr1FatoresRisco.splice(i, 1)
     return { ok: i >= 0 }
@@ -576,59 +579,36 @@ export const nr1ResultadoService = {
     return { ids: nr1CampanhasEncerradas(), vigente: nr1CampanhaVigente() }
   },
 
-  /** Decisões do RH (dispensas e inclusões) de um ciclo. */
+  /** Inclusões de fatores feitas pelo RH num ciclo. */
   decisoes: async (campanhaId: string): Promise<Nr1DecisaoFator[]> => {
     await delay(rand(150, 300))
     return nr1DecisoesFator.filter((d) => d.campanhaId === campanhaId)
   },
 
-  /** Dispensa um fator apontado num recorte — sai da lista de "requer plano"
-     e do inventário, com a justificativa registrada (fica para a
-     fiscalização). Bloqueado se já houver ação no plano. */
-  dispensarFator: async (p: { campanhaId: string; fatorId: string; departamentoId: string | null; justificativa: string }): Promise<{ ok: boolean; message?: string }> => {
-    await delay(rand(300, 600))
-    const riscoId = nr1RiscoIdGerado(p.campanhaId, p.fatorId, p.departamentoId)
-    if (nr1Acoes.some((a) => a.riscoId === riscoId)) {
-      return { ok: false, message: 'Este fator já tem ações no plano. Exclua as ações antes de dispensá-lo.' }
-    }
-    removerDecisoes(riscoId)
-    nr1DecisoesFator.push({ ...p, riscoId, tipo: 'dispensado', justificativa: p.justificativa.trim(), autor: rhUsuarioAtual.nome, em: NR1_TODAY })
-    return { ok: true }
-  },
-
-  /** Inclui um fator que o questionário não apontou (ex.: auditoria,
-     observação do SESMT) — entra no inventário com a justificativa. */
+  /** Inclui um fator numa área em que o questionário não o apontou (ex.:
+     auditoria, observação do SESMT) — a área entra no grupo exposto do
+     risco, com a justificativa registrada. */
   incluirFator: async (p: { campanhaId: string; fatorId: string; departamentoId: string | null; justificativa: string }): Promise<Nr1RiscoInventario | undefined> => {
     await delay(rand(300, 600))
-    const riscoId = nr1RiscoIdGerado(p.campanhaId, p.fatorId, p.departamentoId)
-    removerDecisoes(riscoId)
+    const riscoId = nr1RiscoIdGerado(p.campanhaId, p.fatorId)
+    for (let i = nr1DecisoesFator.length - 1; i >= 0; i--) {
+      const d = nr1DecisoesFator[i]!
+      if (d.riscoId === riscoId && d.departamentoId === p.departamentoId) nr1DecisoesFator.splice(i, 1)
+    }
     nr1DecisoesFator.push({ ...p, riscoId, tipo: 'incluido', justificativa: p.justificativa.trim(), autor: rhUsuarioAtual.nome, em: NR1_TODAY })
     return nr1RiscosGerados(p.campanhaId).find((r) => r.id === riscoId)
   },
 
-  /** Desfaz uma dispensa ou inclusão — o fator volta a seguir o resultado. */
+  /** Desfaz as inclusões do RH num risco — o fator volta a seguir só o
+     resultado do questionário. Bloqueado se o risco, só incluído, já tem ações. */
   reconsiderarFator: async (riscoId: string): Promise<{ ok: boolean; message?: string }> => {
     await delay(rand(250, 500))
-    if (nr1DecisoesFator.some((d) => d.riscoId === riscoId && d.tipo === 'incluido') && nr1Acoes.some((a) => a.riscoId === riscoId)) {
+    const r = nr1RiscosTodos().find((x) => x.id === riscoId)
+    if (r?.origem === 'manual' && nr1Acoes.some((a) => a.riscoId === riscoId)) {
       return { ok: false, message: 'Este fator já tem ações no plano. Exclua as ações antes de removê-lo.' }
     }
     removerDecisoes(riscoId)
     return { ok: true }
-  },
-
-  /** Compatibilidade com a análise de risco antiga (fases seguintes a
-     substituem): registrar um risco vira incluir o fator em cada área. */
-  adicionarRisco: async (p: { dimensaoId: Nr1DimensaoId; departamentoIds: string[]; fatorRiscoId?: string; campanhaId?: string } & Record<string, unknown>): Promise<Nr1RiscoInventario | undefined> => {
-    await delay(rand(400, 700))
-    const campanhaId = p.campanhaId ?? nr1CampanhaVigente()
-    if (!campanhaId || !p.fatorRiscoId) return undefined
-    const deps = p.departamentoIds.length ? p.departamentoIds : [null]
-    for (const dep of deps) {
-      const riscoId = nr1RiscoIdGerado(campanhaId, p.fatorRiscoId, dep)
-      removerDecisoes(riscoId)
-      nr1DecisoesFator.push({ riscoId, campanhaId, fatorId: p.fatorRiscoId, departamentoId: dep, tipo: 'incluido', justificativa: 'Identificado na análise do resultado.', autor: rhUsuarioAtual.nome, em: NR1_TODAY })
-    }
-    return nr1RiscosGerados(campanhaId).find((r) => r.id === nr1RiscoIdGerado(campanhaId, p.fatorRiscoId!, deps[0]!))
   },
 
   /** Probabilidade, severidade e dados do fator vêm do motor e do catálogo —
@@ -637,24 +617,6 @@ export const nr1ResultadoService = {
     await delay(rand(300, 600))
     if (p.status) nr1StatusManual.set(id, p.status)
     return nr1RiscosTodos().find((x) => x.id === id)
-  },
-
-  /** Tira um risco do inventário (registra como dispensado) — bloqueado se
-     houver ações vinculadas. */
-  excluirRisco: async (id: string): Promise<{ ok: boolean; message?: string }> => {
-    await delay(rand(300, 600))
-    const vinculadas = nr1Acoes.filter((a) => a.riscoId === id)
-    if (vinculadas.length > 0) {
-      return {
-        ok: false,
-        message: `Este risco tem ${vinculadas.length} ${vinculadas.length === 1 ? 'ação vinculada' : 'ações vinculadas'} no plano de ação. Não é possível excluir um risco com ações registradas.`,
-      }
-    }
-    const r = nr1RiscosTodos().find((x) => x.id === id)
-    if (!r?.fatorRiscoId) return { ok: false }
-    removerDecisoes(id)
-    nr1DecisoesFator.push({ riscoId: id, campanhaId: r.campanhaId, fatorId: r.fatorRiscoId, departamentoId: r.departamentoIds[0] ?? null, tipo: 'dispensado', justificativa: 'Removido do inventário.', autor: rhUsuarioAtual.nome, em: NR1_TODAY })
-    return { ok: true }
   },
 
   /** "Concluir risco" — julgamento do RH/SST de que o risco foi resolvido,

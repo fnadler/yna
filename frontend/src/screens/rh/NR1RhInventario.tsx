@@ -7,8 +7,8 @@ import { nr1ResultadoService } from '../../services/nr1'
 import type { Nr1RiscoInventario } from '../../types'
 
 /* NR1-RH-03 — Inventário de riscos: o mesmo bloco "Fatores de risco
-   identificados" da aba Resultado do ciclo (matriz P × S e fatores por
-   departamento, com plano, editar e ignorar), com escolha de ciclo.
+   identificados" da aba Resultado do ciclo (matriz P × S e a lista dos
+   fatores, com os departamentos expostos e o plano), com escolha de ciclo.
    `?detalhe=<risco>` abre direto o detalhe de um risco. */
 export function NR1RhInventario() {
   const [params] = useSearchParams()

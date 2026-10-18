@@ -4,7 +4,6 @@ import { Icon } from '@iconify/react'
 import { Link } from 'react-router-dom'
 import { Button } from './Button'
 import { Badge } from './Badge'
-import { Textarea } from './Textarea'
 import { Skeleton } from './Skeleton'
 import { ErrorState } from './ErrorState'
 import { Modal } from './Modal'
@@ -15,7 +14,7 @@ import { Nr1DepartamentosPopover } from './Nr1DepartamentosPopover'
 import { useService } from '../hooks/useService'
 import { nr1ResultadoService, nr1AcaoService, nr1FatorService } from '../services/nr1'
 import { NR1_DIMENSOES, nr1NivelPorMedia } from '../data/nr1Mock'
-import { NIVEL_RISCO, ACAO_STATUS, ACAO_RECOMENDADA, STATUS_RISCO, NR1_PROBABILIDADE_ROTULOS, NR1_SEVERIDADE_ROTULOS } from '../lib/nr1'
+import { NIVEL_RISCO, ACAO_STATUS, ACAO_RECOMENDADA, STATUS_RISCO, NR1_PROBABILIDADE_ROTULOS, NR1_SEVERIDADE_ROTULOS, NR1_SEVERIDADE_CLS } from '../lib/nr1'
 import type {
   Nr1Acao, Nr1DimensaoId, Nr1FatorSituacao, Nr1LinhaMapa, Nr1NivelRisco, Nr1RiscoInventario, Nr1Tendencia, Nr1AcaoSugerida,
 } from '../types'
@@ -126,7 +125,7 @@ function Analise({ escopo, onClose, onRiscosAlterados }: {
       .sort((a, b) => (b.av?.nivelNum ?? 0) - (a.av?.nivelNum ?? 0))
     : []
   const riscoDe = (fatorId: string) =>
-    riscos.status === 'success' ? riscos.data.find((r) => r.fatorRiscoId === fatorId && (r.departamentoIds[0] ?? null) === recorte) : undefined
+    riscos.status === 'success' ? riscos.data.find((r) => r.fatorRiscoId === fatorId && (recorte === null || r.departamentoIds.includes(recorte))) : undefined
   const acoesDe = (riscoId: string) => {
     if (acoes.status !== 'success') return []
     const superadas = new Set(acoes.data.map((a) => a.versaoAnteriorId).filter(Boolean))
@@ -399,10 +398,13 @@ function OpcaoContexto({ nome, detalhe, media, nivel, ativo, onClick }: {
 }
 
 /** Estado vazio do lado direito — explica os dois passos antes de começar. */
-function Bloco({ titulo, hint, children }: { titulo: string; hint?: string; children: React.ReactNode }) {
+function Bloco({ titulo, hint, extra, children }: { titulo: string; hint?: string; extra?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[13px] font-semibold text-ink">{titulo}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-[13px] font-semibold text-ink">{titulo}</p>
+        {extra}
+      </div>
       {hint && <p className="mt-0.5 text-[11.5px] text-ink-muted">{hint}</p>}
       <div className="mt-2">{children}</div>
     </div>
@@ -442,16 +444,16 @@ function NotaPill({ media, nivel }: { media: number | null; nivel: Nr1NivelRisco
 /* ------------------------------------------------------------------
    Detalhe de um risco — mesma diagramação em tela cheia da análise de
    risco. À esquerda, o fator como o sistema o apontou: nível (P × S) com a
-   explicação de onde vem cada número, o que é o fator, as perguntas que o
-   sustentam, as lesões/agravos (CID) e as fontes típicas — nada disso é
-   editável pelo RH. À direita, o plano de ação, que começa pelas ações
+   explicação de onde vem cada número, o grupo exposto (cada departamento
+   com a sua probabilidade e o seu nível), o que é o fator, as lesões/agravos
+   (CID) e as fontes típicas — nada disso é editável pelo RH. À direita, o plano de ação, que começa pelas ações
    sugeridas do catálogo.
    ------------------------------------------------------------------ */
 
 export function Nr1RiscoDetalheModal({ risco, onClose, onAlterado }: {
   risco: Nr1RiscoInventario | null
   onClose: () => void
-  /** Risco ou ações mudaram (dispensado, concluído, ação salva). */
+  /** Risco ou ações mudaram (inclusão removida, concluído, ação salva). */
   onAlterado?: () => void
 }) {
   if (!risco) return null
@@ -485,14 +487,12 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
   const [confirmarSaida, setConfirmarSaida] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [excluirAcao, setExcluirAcao] = useState<Nr1Acao | null>(null)
-  const [dispensar, setDispensar] = useState(false)
-  const [justificativa, setJustificativa] = useState('')
+  const [removerInclusao, setRemoverInclusao] = useState(false)
   const [concluirRisco, setConcluirRisco] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [processando, setProcessando] = useState(false)
 
   const fator = catalogo.status === 'success' ? catalogo.data.find((f) => f.id === risco.fatorRiscoId) : undefined
-  const av = risco.avaliacao
   const empresa = risco.departamentoIds.length === 0
 
   /* Ações vigentes do risco — versão substituída por outra não conta. */
@@ -503,7 +503,7 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
   })()
 
   const pedirFechar = () => (editor && editor.tipo !== 'escolher' && sujo ? setConfirmarSaida(true) : onClose())
-  const algumModal = confirmarSaida || excluirAcao !== null || dispensar || concluirRisco || erro !== null
+  const algumModal = confirmarSaida || excluirAcao !== null || removerInclusao || concluirRisco || erro !== null
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !algumModal) pedirFechar() }
@@ -534,16 +534,14 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
     onAlterado?.()
   }
 
-  /* Dispensar (fator apontado) ou remover a inclusão (fator incluído pelo
-     RH) — os dois tiram o risco do inventário; a dispensa exige justificativa. */
-  const confirmarDispensa = async () => {
-    if (!risco.fatorRiscoId) return
+  /* Fator só incluído pelo RH (o questionário não o apontou): dá para
+     desfazer a inclusão, que tira o risco do inventário. Fator apontado pelo
+     resultado não sai do inventário. */
+  const confirmarRemocaoInclusao = async () => {
     setProcessando(true)
-    const r = risco.origem === 'manual'
-      ? await nr1ResultadoService.reconsiderarFator(risco.id)
-      : await nr1ResultadoService.dispensarFator({ campanhaId: risco.campanhaId, fatorId: risco.fatorRiscoId, departamentoId: risco.departamentoIds[0] ?? null, justificativa })
+    const r = await nr1ResultadoService.reconsiderarFator(risco.id)
     setProcessando(false)
-    setDispensar(false)
+    setRemoverInclusao(false)
     if (!r.ok) { setErro(r.message ?? 'Não foi possível concluir.'); return }
     onAlterado?.()
     onClose()
@@ -559,7 +557,6 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
     onAlterado?.()
   }
 
-  const st = NIVEL_RISCO[risco.nivel]
   const status = STATUS_RISCO[risco.status]
   const nomeCid = (id: string) => (cids.status === 'success' ? cids.data.find((c) => c.id === id) : undefined)
   const usadas = new Set(lista.map((a) => a.oQue.trim().toLowerCase()))
@@ -572,7 +569,7 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
     setDescartadas(nr1FatorService.sugestoesDescartadas(risco.id))
   }
   const sugestoes = (fator?.acoesSugeridas ?? []).filter((sg) => verDescartadas || !descartadas.includes(sg.id))
-  const ondePadrao = empresa ? ['Toda a empresa'] : [risco.grupoExposto]
+  const ondePadrao = empresa ? ['Toda a empresa'] : risco.grupos.map((g) => g.departamento)
   /* Sugestões ainda não usadas nem descartadas — continuam à vista depois
      que o plano já tem ações, para o RH seguir completando o plano. */
   const restantes = sugestoes.filter((sg) => !usadas.has(sg.oQue.trim().toLowerCase()) && !descartadas.includes(sg.id))
@@ -613,14 +610,14 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-ink-muted">
-            {risco.grupoExposto} · {risco.dimensao}
+            {empresa ? 'Toda a empresa' : `${risco.grupos.length} ${risco.grupos.length === 1 ? 'departamento exposto' : 'departamentos expostos'}`} · {risco.dimensao}
           </p>
           <h2 className="truncate font-heading text-[17px] font-semibold text-ink">{risco.fator}</h2>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {lista.length === 0 && acoes.status === 'success' && (
-            <Button size="sm" variant="ghost" iconLeft={risco.origem === 'manual' ? 'ph:minus-circle-bold' : 'ph:prohibit-bold'} disabled={editor !== null && editor.tipo !== 'escolher'} onClick={() => { setJustificativa(''); setDispensar(true) }}>
-              <span className="hidden sm:inline">{risco.origem === 'manual' ? 'Remover inclusão' : 'Dispensar'}</span>
+          {risco.origem === 'manual' && lista.length === 0 && acoes.status === 'success' && (
+            <Button size="sm" variant="ghost" iconLeft="ph:minus-circle-bold" disabled={editor !== null && editor.tipo !== 'escolher'} onClick={() => setRemoverInclusao(true)}>
+              <span className="hidden sm:inline">Remover inclusão</span>
             </Button>
           )}
           {risco.status !== 'eliminado' && (
@@ -656,45 +653,25 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
             </div>
 
             <Bloco titulo="Nível do risco">
-              <div className="flex items-start gap-3 rounded-lg bg-surface-2 p-3.5">
-                <span className={`flex shrink-0 flex-col items-center gap-0.5 rounded-lg px-4 py-2 ${st.cls}`}>
-                  <span className="font-mono text-[20px] font-bold leading-none">{risco.nivelNum}</span>
-                  <span className="text-[10.5px] font-semibold leading-none">{st.label}</span>
-                </span>
-                <div className="min-w-0 text-[12.5px] leading-relaxed text-ink-secondary">
-                  <p>
-                    <span className="font-semibold text-ink">Probabilidade {risco.probabilidade} · {NR1_PROBABILIDADE_ROTULOS[risco.probabilidade - 1]}</span>
-                    {av && <> — nota média {av.media.toFixed(1)} nas perguntas abaixo</>}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-ink">Severidade {risco.severidade} · {NR1_SEVERIDADE_ROTULOS[risco.severidade - 1]}</span> — definida pela YNA para este fator
-                  </p>
-                  <p className="mt-1 font-medium text-ink">{st.acao}.</p>
-                </div>
-              </div>
+              <NivelDoRisco risco={risco} />
             </Bloco>
 
-            <Bloco titulo="O que é este fator">
+            <Bloco
+              titulo="O que é este fator"
+              extra={(
+                <span className={`inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-[11px] font-semibold ${NR1_SEVERIDADE_CLS[risco.severidade]}`}>
+                  Severidade <span className="font-mono">{risco.severidade}</span> · {NR1_SEVERIDADE_ROTULOS[risco.severidade - 1]}
+                </span>
+              )}
+            >
               {catalogo.status === 'success'
                 ? <p className="text-[13.5px] leading-relaxed text-ink">{fator?.descricao || '—'}</p>
                 : <Skeleton className="h-12 w-full rounded-lg" />}
             </Bloco>
 
-            {av && av.perguntas.length > 0 && (
-              <Bloco titulo={`Por que foi apontado ${empresa ? 'na empresa' : `em ${risco.grupoExposto}`}`} hint="Nota de 1 a 5 em cada pergunta, onde 5 é a situação desejável. Da pior para a melhor.">
-                <ul className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface">
-                  {av.perguntas.map((p) => (
-                    <li key={p.itemId} className="flex items-start gap-3 px-3.5 py-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[13px] leading-snug text-ink">{p.texto}</p>
-                        <p className="mt-0.5 font-mono text-[10.5px] text-ink-muted">{p.itemId}</p>
-                      </div>
-                      <NotaPill media={p.media} nivel={p.nivel} />
-                    </li>
-                  ))}
-                </ul>
-              </Bloco>
-            )}
+            <Bloco titulo="Grupo exposto" hint="Departamentos em que as respostas apontaram o fator. Nível = probabilidade da área × severidade do fator.">
+              <GrupoExposto risco={risco} />
+            </Bloco>
 
             {fator && fator.cidIds.length > 0 && (
               <Bloco titulo="Possíveis lesões ou agravos à saúde">
@@ -724,9 +701,6 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
               </Bloco>
             )}
 
-            <Bloco titulo="Grupo exposto">
-              <p className="text-[13.5px] text-ink">{risco.grupoExposto} <span className="text-ink-secondary">· {risco.respondentes} respondentes</span></p>
-            </Bloco>
           </div>
         </section>
 
@@ -915,28 +889,15 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
         )}
       </Modal>
 
-      <Modal open={dispensar} title={risco.origem === 'manual' ? 'Remover a inclusão?' : 'Dispensar este fator?'} onClose={() => setDispensar(false)}>
+      <Modal open={removerInclusao} title="Remover a inclusão?" onClose={() => setRemoverInclusao(false)}>
         <div className="flex flex-col gap-4">
-          {risco.origem === 'manual' ? (
-            <p className="text-[13.5px] leading-relaxed text-ink-secondary">
-              O fator <strong className="font-semibold text-ink">{risco.fator}</strong> foi incluído pelo RH em {risco.grupoExposto}. Removendo a inclusão, ele sai do inventário.
-            </p>
-          ) : (
-            <>
-              <p className="text-[13.5px] leading-relaxed text-ink-secondary">
-                O resultado do questionário apontou <strong className="font-semibold text-ink">{risco.fator}</strong> em {risco.grupoExposto}.
-                Dispensando, ele sai da lista de fatores que requerem plano e do inventário. A justificativa fica registrada e pode ser verificada numa fiscalização.
-              </p>
-              <label className="block">
-                <span className="mb-1.5 block text-[13px] font-semibold text-ink">Justificativa</span>
-                <Textarea rows={3} value={justificativa} onChange={(e) => setJustificativa(e.target.value)} placeholder="Ex.: Situação pontual já resolvida, confirmada com a liderança da área em entrevista." />
-              </label>
-            </>
-          )}
+          <p className="text-[13.5px] leading-relaxed text-ink-secondary">
+            O fator <strong className="font-semibold text-ink">{risco.fator}</strong> foi incluído pelo RH em {risco.grupoExposto}. Removendo a inclusão, ele sai do inventário.
+          </p>
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => setDispensar(false)}>Cancelar</Button>
-            <Button fullWidth variant="secondary" iconLeft="ph:prohibit-bold" disabled={processando || (risco.origem !== 'manual' && justificativa.trim().length < 10)} onClick={confirmarDispensa}>
-              {processando ? 'Salvando…' : risco.origem === 'manual' ? 'Remover inclusão' : 'Dispensar fator'}
+            <Button variant="ghost" onClick={() => setRemoverInclusao(false)}>Cancelar</Button>
+            <Button fullWidth variant="secondary" iconLeft="ph:minus-circle-bold" disabled={processando} onClick={confirmarRemocaoInclusao}>
+              {processando ? 'Salvando…' : 'Remover inclusão'}
             </Button>
           </div>
         </div>
@@ -974,6 +935,92 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
    partir da evolução do fator entre ciclos (ver nr1EvolucaoFator), nunca uma
    conclusão. O card mostra a sugestão; quem decide o que fazer com ela é o
    SST/RH. */
+const ICONE_NIVEL: Record<Nr1NivelRisco, string> = {
+  baixo: 'ph:eye-bold',
+  atencao: 'ph:shield-warning-bold',
+  risco: 'ph:warning-bold',
+  critico: 'ph:siren-bold',
+}
+
+/** Card do nível do risco. Em cima, o veredito na cor do nível: o que o
+   nível exige (a informação que orienta o RH) e o nível em si. Embaixo, de
+   onde ele vem: probabilidade × severidade, cada uma com a sua origem. */
+function NivelDoRisco({ risco }: { risco: Nr1RiscoInventario }) {
+  const st = NIVEL_RISCO[risco.nivel]
+  const av = risco.avaliacao
+  const origemP = !av
+    ? 'Incluído pelo RH'
+    : risco.grupos.length > 1
+      ? `A maior entre os departamentos expostos: ${risco.grupos[0]!.departamento} (nota ${av.media.toFixed(1)})`
+      : `Nota média ${av.media.toFixed(1)} nas perguntas que indicam o fator`
+  return (
+    <div className="overflow-hidden rounded-lg border border-border">
+      <div className={`flex items-center gap-4 px-4 py-3.5 ${st.cls}`}>
+        <span className={`flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-lg ${risco.nivel === 'critico' ? 'bg-white/15' : 'bg-white/60 dark:bg-black/15'}`}>
+          <span className="font-mono text-[22px] font-bold leading-none">{risco.nivelNum}</span>
+          <span className="mt-1 text-[10px] font-semibold uppercase leading-none tracking-[0.06em]">{st.label}</span>
+        </span>
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] opacity-80">Conduta exigida</p>
+          <p className="mt-0.5 flex items-center gap-1.5 font-heading text-[17px] font-bold leading-tight">
+            <Icon icon={ICONE_NIVEL[risco.nivel]} width={18} className="shrink-0" aria-hidden />
+            {st.acao}
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 bg-surface px-4 py-3.5">
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Probabilidade</p>
+          <p className="mt-1 text-[14px] font-semibold text-ink"><span className="font-mono">{risco.probabilidade}</span> · {NR1_PROBABILIDADE_ROTULOS[risco.probabilidade - 1]}</p>
+          <p className="mt-0.5 text-[11.5px] leading-snug text-ink-muted">{origemP}</p>
+        </div>
+        <span className="pt-5 font-mono text-[15px] font-semibold text-ink-muted" aria-hidden>×</span>
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Severidade</p>
+          <p className="mt-1 text-[14px] font-semibold text-ink"><span className="font-mono">{risco.severidade}</span> · {NR1_SEVERIDADE_ROTULOS[risco.severidade - 1]}</p>
+          <p className="mt-0.5 text-[11.5px] leading-snug text-ink-muted">Definida pela YNA para este fator</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Departamentos expostos ao fator, do maior para o menor nível: cada um
+   com os respondentes, a probabilidade e o nível (P × S). */
+function GrupoExposto({ risco }: { risco: Nr1RiscoInventario }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="grid grid-cols-[minmax(0,1fr)_112px_80px] items-center gap-3 border-b border-border bg-surface-2 px-3.5 py-2">
+        {['Departamento', 'Probabilidade', 'Nível'].map((c) => (
+          <span key={c} className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted">{c}</span>
+        ))}
+      </div>
+      <ul className="divide-y divide-border">
+        {risco.grupos.map((g) => {
+          const st = NIVEL_RISCO[g.nivel]
+          return (
+            <li key={g.departamentoId ?? 'empresa'} className="grid grid-cols-[minmax(0,1fr)_112px_80px] items-center gap-3 px-3.5 py-2.5">
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-medium text-ink">{g.departamento}</p>
+                <p className="mt-0.5 text-[11px] text-ink-muted">
+                  {g.respondentes} respondentes · nota {g.media.toFixed(1)}{g.incluido ? ' · incluído pelo RH' : ''}
+                </p>
+              </div>
+              <p className="text-[12px] leading-snug text-ink-secondary">
+                <span className="font-mono font-semibold text-ink">{g.probabilidade}</span> · {NR1_PROBABILIDADE_ROTULOS[g.probabilidade - 1]}
+              </p>
+              <span className={`flex w-fit min-w-[64px] flex-col items-center gap-0.5 rounded-lg px-2 py-1 ${st.cls}`} title={`Probabilidade ${g.probabilidade} × severidade ${risco.severidade} = ${g.nivelNum}`}>
+                <span className="font-heading text-[11.5px] font-bold leading-none">{st.label}</span>
+                <span className="font-mono text-[10px] font-medium leading-none opacity-80">{g.nivelNum}</span>
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 function EvolucaoBadges({ risco }: { risco: Nr1RiscoInventario }) {
   return (
     <>
