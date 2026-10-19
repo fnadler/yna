@@ -3,9 +3,23 @@
    estrutura visual (destaque + grid filtrável + artigos), conteúdo
    totalmente diferente: materiais curtos sobre saúde mental no trabalho,
    não formação clínica. Rascunho: pendente de curadoria clínica antes de
-   qualquer piloto real (ver README). */
+   qualquer piloto real (ver README).
 
-export type CategoriaConteudo = 'Sobrecarga' | 'Sono' | 'Limites' | 'Ansiedade' | 'Relações' | 'Autoconhecimento'
+   Também guarda os conteúdos da landing pós-avaliação (`/conhecer-yna`,
+   `VIDEOS_LANDING`/`ARTIGOS_LANDING` no fim do arquivo), separados por
+   público (`publico`) e com foto de capa (`imagem`). Ficam em arrays
+   próprios para não mudar o que `/apoio` e `/meu-espaco` mostram. Mesmo
+   status: rascunho editorial, pendente de curadoria clínica. */
+
+export type CategoriaConteudo =
+  | 'Sobrecarga' | 'Sono' | 'Limites' | 'Ansiedade' | 'Relações' | 'Autoconhecimento'
+  /* Só na landing pós-avaliação — fora de `CATEGORIAS`, então não viram
+     filtro em `/apoio`. */
+  | 'Pedir ajuda' | 'Terapia' | 'Acolhimento' | 'NR-1' | 'Segurança psicológica' | 'Rotina'
+
+/** Para quem o conteúdo foi escrito — separa as abas "Para você" / "Para
+   quem lidera" da landing. Ausente = biblioteca geral (`/apoio`). */
+export type PublicoConteudo = 'colaborador' | 'lideranca'
 
 export const CATEGORIAS: { id: CategoriaConteudo; icon: string }[] = [
   { id: 'Sobrecarga', icon: 'ph:stack-bold' },
@@ -26,6 +40,11 @@ export interface VideoApoio {
   destaque?: boolean
   /** Quanto do vídeo a pessoa já assistiu (0-100). Ausente = nunca começou. */
   assistidoPct?: number
+  publico?: PublicoConteudo
+  /** Foto de capa. Ausente = vale o gradiente de `capa`. */
+  imagem?: string
+  /** `background-position` da foto de capa (enquadramento). */
+  imagemPosicao?: string
 }
 
 /* Gradientes de capa — mesma ideia da Academia YNA (sem imagem real, cada
@@ -78,6 +97,11 @@ export interface ArtigoApoio {
   resumo: string
   capa: string
   corpo: ArtigoBloco[]
+  publico?: PublicoConteudo
+  /** Foto de capa. Ausente = vale o gradiente de `capa`. */
+  imagem?: string
+  /** Ícone Phosphor do item na lista da landing. */
+  icone?: string
 }
 
 export const ARTIGOS: ArtigoApoio[] = [
@@ -168,6 +192,143 @@ export const ARTIGOS: ArtigoApoio[] = [
         'Se pudesse mudar uma coisa pequena na semana, qual seria?',
       ] },
       { tipo: 'paragrafo', texto: 'Não precisa responder as três todo dia. Escolher uma, de vez em quando, já é o suficiente para começar a notar o próprio padrão.' },
+    ],
+  },
+]
+
+/* ============================================================
+   Landing pós-avaliação (`/conhecer-yna`) — mesma copy do protótipo
+   aprovado (`landing-nr1/index.html`): títulos, categorias, durações e
+   resumos idênticos. O `corpo` dos artigos é curto de propósito (só para
+   o `ArtigoModal` não abrir vazio) e, como o resto, pendente de curadoria
+   clínica.
+   ============================================================ */
+
+const IMG = '/images/landing'
+
+export const LANDING_INTROS: Record<PublicoConteudo, string> = {
+  colaborador: 'Para entender o que você está sentindo e cuidar disso no dia a dia, no trabalho e fora dele.',
+  lideranca: 'Para quem cuida de pessoas: como perceber, acolher e agir quando alguém da equipe não está bem.',
+}
+
+export const VIDEOS_LANDING: VideoApoio[] = [
+  { id: 'lv1', publico: 'colaborador', destaque: true, titulo: 'Como perceber os sinais de sobrecarga antes do esgotamento', categoria: 'Sobrecarga', duracaoMin: 8,
+    capa: CAPAS[0], imagem: `${IMG}/c-pausa.jpg`, imagemPosicao: '50% 35%',
+    resumo: 'Sobrecarga raramente chega de uma vez: ela se acumula. Este vídeo mostra três sinais comuns que aparecem antes do esgotamento e o que fazer quando você reconhece algum deles em você.' },
+  { id: 'lv2', publico: 'colaborador', titulo: 'Respiração para momentos de tensão', categoria: 'Ansiedade', duracaoMin: 5,
+    capa: CAPAS[1], imagem: `${IMG}/c-respiracao.jpg`, imagemPosicao: '50% 60%',
+    resumo: 'Um exercício guiado de três minutos para usar antes de uma reunião difícil, depois de uma conversa pesada ou sempre que a cabeça acelerar.' },
+  { id: 'lv3', publico: 'colaborador', titulo: 'Quando conversar com alguém faz diferença', categoria: 'Pedir ajuda', duracaoMin: 7,
+    capa: CAPAS[2], imagem: `${IMG}/c-sono.jpg`, imagemPosicao: '50% 30%',
+    resumo: 'Pedir ajuda cedo custa menos do que parece. Sinais de que vale a pena conversar com um profissional agora, e como é essa primeira conversa.' },
+  { id: 'lv4', publico: 'lideranca', destaque: true, titulo: 'Como conversar com alguém da equipe que não está bem', categoria: 'Acolhimento', duracaoMin: 11,
+    capa: CAPAS[1], imagem: `${IMG}/l-equipe.jpg`, imagemPosicao: '50% 35%',
+    resumo: 'Um roteiro simples para abrir a conversa, escutar sem tentar resolver tudo na hora e saber para onde encaminhar. Inclui o que evitar dizer.' },
+  { id: 'lv5', publico: 'lideranca', titulo: 'NR-1 na prática: o que muda para quem lidera', categoria: 'NR-1', duracaoMin: 9,
+    capa: CAPAS[3], imagem: `${IMG}/l-lideranca.jpg`, imagemPosicao: '50% 30%',
+    resumo: 'Riscos psicossociais agora fazem parte do gerenciamento de riscos da empresa. O que isso significa no dia a dia da liderança e como transformar o resultado coletivo da avaliação em ações concretas.' },
+  { id: 'lv6', publico: 'lideranca', titulo: 'Segurança psicológica no dia a dia da equipe', categoria: 'Segurança psicológica', duracaoMin: 10,
+    capa: CAPAS[0], imagem: `${IMG}/c-conversa.jpg`, imagemPosicao: '50% 35%',
+    resumo: 'Equipes que se sentem seguras para errar e discordar adoecem menos e entregam mais. Atitudes pequenas e repetidas que constroem esse ambiente.' },
+]
+
+export const ARTIGOS_LANDING: ArtigoApoio[] = [
+  {
+    id: 'la1', publico: 'colaborador', icone: 'ph:pause-circle-bold', titulo: '5 sinais de que você precisa de uma pausa', categoria: 'Sobrecarga',
+    autor: 'Equipe YNA', publicadoEm: '12 fev 2026', tempoLeituraMin: 4, capa: CAPAS[0],
+    resumo: 'Cansaço que o fim de semana não resolve é o primeiro sinal, mas não o único. Irritação, esquecimento e vontade de adiar tudo também contam. Saiba reconhecer cada um e o que fazer a respeito.',
+    corpo: [
+      { tipo: 'paragrafo', texto: 'Sobrecarga nem sempre parece sobrecarga. Ela se acumula devagar, e por isso é fácil só perceber quando já dói.' },
+      { tipo: 'lista', itens: [
+        'Cansaço que o fim de semana não resolve mais',
+        'Irritação com coisas pequenas',
+        'Esquecimentos que não são do seu feitio',
+        'Vontade de adiar tarefas simples',
+        'Sono que não descansa',
+      ] },
+      { tipo: 'paragrafo', texto: 'Se você reconhece três ou mais desses sinais nas últimas semanas, vale conversar com alguém. Não é preciso esperar o ponto de ruptura para pedir uma pausa.' },
+    ],
+  },
+  {
+    id: 'la2', publico: 'colaborador', icone: 'ph:moon-stars-bold', titulo: 'Sono ruim muda tudo: por onde começar', categoria: 'Sono',
+    autor: 'Equipe YNA', publicadoEm: '3 mar 2026', tempoLeituraMin: 5, capa: CAPAS[1],
+    resumo: 'Sono afeta humor, memória e paciência. Antes de tentar resolver só com força de vontade, entenda o que está por trás e quais ajustes simples costumam funcionar.',
+    corpo: [
+      { tipo: 'paragrafo', texto: 'Manter o mesmo horário para dormir e acordar, inclusive no fim de semana, é o ajuste com mais impacto. O corpo aprende a esperar o sono num horário fixo.' },
+      { tipo: 'lista', itens: [
+        'Evite telas na última meia hora antes de deitar',
+        'Se acordar no meio da noite, não olhe as horas',
+        'Cafeína depois do meio da tarde cobra a conta à noite',
+      ] },
+    ],
+  },
+  {
+    id: 'la3', publico: 'colaborador', icone: 'ph:hand-palm-bold', titulo: 'Como colocar limites sem parecer difícil', categoria: 'Limites',
+    autor: 'Equipe YNA', publicadoEm: '20 mar 2026', tempoLeituraMin: 6, capa: CAPAS[2],
+    resumo: 'Limites não são muros, são combinados. Frases e situações práticas para dizer "agora não consigo" sem culpa e sem conflito.',
+    corpo: [
+      { tipo: 'paragrafo', texto: 'Dizer não a uma tarefa não é dizer não à pessoa que pediu. Você pode reconhecer a importância do pedido e, ainda assim, dizer que ele não cabe agora.' },
+      { tipo: 'citacao', texto: 'Um limite dito com antecedência custa muito menos do que um limite estourado depois.' },
+      { tipo: 'paragrafo', texto: 'Frases como "não vou conseguir entregar isso com qualidade até [data]" abrem negociação sem esconder o limite.' },
+    ],
+  },
+  {
+    id: 'la4', publico: 'colaborador', icone: 'ph:chats-circle-bold', titulo: 'O que esperar da primeira sessão com um psicólogo', categoria: 'Terapia',
+    autor: 'Equipe YNA', publicadoEm: '2 abr 2026', tempoLeituraMin: 5, capa: CAPAS[3],
+    resumo: 'Muita gente adia a terapia por não saber como ela começa. O que acontece na primeira conversa, o que você pode perguntar e como saber se combinou com o profissional.',
+    corpo: [
+      { tipo: 'paragrafo', texto: 'A primeira sessão é, antes de tudo, uma conversa para se conhecer. Você não precisa chegar com nada pronto nem saber exatamente o que quer tratar.' },
+      { tipo: 'lista', itens: [
+        'Pergunte como o profissional trabalha e com que frequência',
+        'Fale sobre o que te trouxe, no seu ritmo',
+        'Observe se você se sentiu à vontade para falar',
+      ] },
+    ],
+  },
+  {
+    id: 'la5', publico: 'lideranca', icone: 'ph:stack-bold', titulo: 'Sinais de sobrecarga na equipe que passam despercebidos', categoria: 'Sobrecarga',
+    autor: 'Equipe YNA', publicadoEm: '18 abr 2026', tempoLeituraMin: 5, capa: CAPAS[0],
+    resumo: 'Prazos sempre "quase" cumpridos, câmeras desligadas, silêncio nas reuniões. Como ler esses sinais coletivos sem expor ninguém individualmente.',
+    corpo: [
+      { tipo: 'paragrafo', texto: 'Sobrecarga na equipe raramente aparece como reclamação. Ela aparece no ritmo: entregas no limite, menos perguntas, menos discordância.' },
+      { tipo: 'paragrafo', texto: 'Trate o que você observa como sinal do grupo, não de uma pessoa. A conversa começa pela carga e pelos combinados, nunca por quem "parece mal".' },
+    ],
+  },
+  {
+    id: 'la6', publico: 'lideranca', icone: 'ph:chat-centered-text-bold', titulo: 'O que dizer, e o que evitar, quando alguém se abre com você', categoria: 'Acolhimento',
+    autor: 'Equipe YNA', publicadoEm: '5 mai 2026', tempoLeituraMin: 4, capa: CAPAS[1],
+    resumo: 'Frases que acolhem e frases que fecham a conversa. Um guia rápido para os primeiros minutos, que costumam ser os mais importantes.',
+    corpo: [
+      { tipo: 'lista', itens: [
+        'Acolhe: "Obrigado por me contar." / "Quer me falar mais sobre isso?"',
+        'Fecha: "Todo mundo passa por isso." / "Você precisa ser mais forte."',
+      ] },
+      { tipo: 'paragrafo', texto: 'Você não precisa resolver tudo na hora. Escutar, agradecer a confiança e combinar um próximo passo já é muito.' },
+    ],
+  },
+  {
+    id: 'la7', publico: 'lideranca', icone: 'ph:calendar-check-bold', titulo: 'Reuniões que não esgotam: 6 ajustes simples', categoria: 'Rotina',
+    autor: 'Equipe YNA', publicadoEm: '19 mai 2026', tempoLeituraMin: 4, capa: CAPAS[2],
+    resumo: 'Pauta clara, horário de fim respeitado, intervalos entre reuniões. Mudanças pequenas que devolvem tempo e energia para a equipe.',
+    corpo: [
+      { tipo: 'lista', itens: [
+        'Pauta enviada antes, com o objetivo da reunião',
+        'Horário de fim respeitado',
+        'Cinco minutos de intervalo entre uma reunião e outra',
+        'Quem não precisa decidir pode receber o resumo',
+        'Câmera opcional',
+        'Um dia da semana com menos reuniões',
+      ] },
+      { tipo: 'paragrafo', texto: 'Comece por um ajuste só e combine com a equipe por quanto tempo vão testar.' },
+    ],
+  },
+  {
+    id: 'la8', publico: 'lideranca', icone: 'ph:clipboard-text-bold', titulo: 'Do resultado da avaliação ao plano de ação', categoria: 'NR-1',
+    autor: 'Equipe YNA', publicadoEm: '2 jun 2026', tempoLeituraMin: 6, capa: CAPAS[3],
+    resumo: 'O resultado da avaliação é sempre coletivo, nunca individual. Como ler os indicadores da sua área, priorizar o que mais pesa e envolver a equipe nas soluções.',
+    corpo: [
+      { tipo: 'paragrafo', texto: 'O resultado mostra como o grupo percebe o trabalho, nunca o que uma pessoa respondeu. Comece pelos fatores que mais pesam na sua área.' },
+      { tipo: 'paragrafo', texto: 'Leve o resultado para a equipe e pergunte o que ajudaria. Ações construídas junto com quem vive o problema costumam durar mais.' },
     ],
   },
 ]

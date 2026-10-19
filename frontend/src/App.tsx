@@ -55,6 +55,7 @@ import { ColTransicaoAvaliacao } from './screens/ColTransicaoAvaliacao'
 import { ColRetomarAvaliacao } from './screens/ColRetomarAvaliacao'
 import { ColConviteConta } from './screens/ColConviteConta'
 import { ColContaCriada } from './screens/ColContaCriada'
+import { ColConhecerYna } from './screens/ColConhecerYna'
 
 /* Raiz do fluxo do RH/Empresa: provê o RhContext (isolado dos demais perfis). */
 function RhRoot() {
@@ -136,6 +137,15 @@ export function App() {
                 da despedida/criação de conta, mesma família visual do
                 restante da avaliação. */}
             <Route path="/avaliacao/conta" element={<ColConviteConta />} />
+
+            {/* "Conhecer a YNA" — landing pós-avaliação, destino do convite
+                da tela de sucesso (NR1BenConclusao) e de ColConviteConta.
+                Standalone, fora do `AppLayout` (sem sidebar/bottom-nav):
+                é uma página pública, com topo/rodapé próprios, que também
+                recebe gente por link de e-mail/QR code (`?empresa=`). Sem
+                guarda de rota e sem depender do estado `nr1` do AppContext:
+                não exige conta nem login, e não sabe quem respondeu o quê. */}
+            <Route path="/conhecer-yna" element={<ColConhecerYna />} />
 
             {/* Criação de conta leve — só depois da avaliação já enviada.
                 Standalone, sem `FocusLayout`: mesma composição do

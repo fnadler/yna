@@ -24,6 +24,9 @@ export default {
         danger: { DEFAULT: '#D75A6E', bg: 'var(--danger-bg)', ink: 'var(--danger-ink)' },
         /* Nível crítico de risco — roxo, para não se confundir com o "Risco" (danger). */
         critico: { DEFAULT: '#7E3FA6' },
+        /* Primeira parada de `yna-gradient-dark` — esmaece fotos para o card
+           escuro de ajuda imediata e as miniaturas de vídeo (`/conhecer-yna`). */
+        'yna-night': '#0F0E1B',
         info: { DEFAULT: '#4749A8', bg: 'var(--info-bg)' },
         page: 'var(--page-bg)',
         surface: {
@@ -81,6 +84,13 @@ export default {
           'linear-gradient(120deg, #4749A8 0%, #6A6CC0 50%, #F2A8C5 100%)',
         'yna-gradient-dark':
           'linear-gradient(135deg, #0F0E1B 0%, #151225 50%, #090812 100%)',
+        /* Landing pós-avaliação (`/conhecer-yna`): fundo da seção "Em breve"
+           e os preenchimentos das pedras decorativas (`components/Pedra`). */
+        'yna-gradient-servicos':
+          'radial-gradient(ellipse at 96% 94%, #fcd151 0%, transparent 48%), linear-gradient(158deg, #e6dcf0 0%, #f2b3cb 62%, #fcd151 100%)',
+        'yna-pedra-sunset': 'linear-gradient(135deg, #DCD4F0 0%, #F2A8C5 55%, #FBC85E 100%)',
+        'yna-pedra-cool': 'linear-gradient(135deg, #DCD4F0 0%, #6C6FC2 100%)',
+        'yna-pedra-warm': 'linear-gradient(135deg, #B8B9E5 0%, #9395D6 50%, #F2A8C5 100%)',
       },
       transitionTimingFunction: {
         organic: 'cubic-bezier(.34, 1.2, .64, 1)',

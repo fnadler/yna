@@ -10,18 +10,26 @@ import type { VideoApoio } from '../data/conteudoApoioMock'
    histórico real por trás disso, ver README). O que sobrevive da referência
    é a hierarquia: barra superior com trilha + fechar, vídeo em destaque, e
    uma lista de outros vídeos para continuar navegando sem sair do modo
-   imersivo. */
-export function VideoImersivo({
-  video,
-  videos,
-  onClose,
-  onSelecionar,
-}: {
+   imersivo.
+
+   `trilha` e `aviso` são opcionais e servem à landing pós-avaliação
+   (`/conhecer-yna`): trilha "Conteúdos" em vez de "Apoio" e o aviso de que
+   aquilo é uma prévia. Sem eles, comportamento igual ao de `/apoio`. */
+
+/** Fundo da capa: a foto (`imagem`) quando existe, senão o gradiente. */
+export const capaVideo = (v: VideoApoio) =>
+  v.imagem ? `url(${v.imagem}) ${v.imagemPosicao ?? 'center'} / cover` : v.capa
+
+interface VideoImersivoProps {
   video: VideoApoio | null
   videos: VideoApoio[]
   onClose: () => void
   onSelecionar: (v: VideoApoio) => void
-}) {
+  trilha?: string
+  aviso?: string
+}
+
+export function VideoImersivo({ video, videos, onClose, onSelecionar, trilha = 'Apoio', aviso }: VideoImersivoProps) {
   useEffect(() => {
     if (!video) return
     const prev = document.body.style.overflow
@@ -40,7 +48,7 @@ export function VideoImersivo({
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col bg-page">
-      <VideoImersivoBody video={video} videos={videos} onClose={onClose} onSelecionar={onSelecionar} />
+      <VideoImersivoBody video={video} videos={videos} onClose={onClose} onSelecionar={onSelecionar} trilha={trilha} aviso={aviso} />
     </div>,
     document.body,
   )
@@ -51,12 +59,9 @@ function VideoImersivoBody({
   videos,
   onClose,
   onSelecionar,
-}: {
-  video: VideoApoio
-  videos: VideoApoio[]
-  onClose: () => void
-  onSelecionar: (v: VideoApoio) => void
-}) {
+  trilha,
+  aviso,
+}: Omit<VideoImersivoProps, 'video'> & { video: VideoApoio }) {
   const idx = videos.findIndex((v) => v.id === video.id)
   const proximo = idx >= 0 && idx < videos.length - 1 ? videos[idx + 1] : undefined
   const outros = videos.filter((v) => v.id !== video.id)
@@ -65,7 +70,7 @@ function VideoImersivoBody({
     <>
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3 lg:px-6">
         <div className="flex min-w-0 items-center gap-2 text-[13px] text-ink-secondary">
-          <span className="hidden font-medium text-ink-muted sm:inline">Apoio</span>
+          <span className="hidden font-medium text-ink-muted sm:inline">{trilha}</span>
           <Icon icon="ph:caret-right-bold" width={11} className="hidden shrink-0 text-ink-muted sm:inline" aria-hidden />
           <span className="truncate font-heading font-semibold text-ink">{video.titulo}</span>
         </div>
@@ -81,7 +86,7 @@ function VideoImersivoBody({
       <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
         <div className="min-w-0 flex-1 lg:overflow-y-auto">
           {/* Vídeo — mock, sem player real */}
-          <div className="relative flex aspect-video w-full items-center justify-center" style={{ background: video.capa }}>
+          <div className="relative flex aspect-video w-full items-center justify-center" style={{ background: capaVideo(video) }}>
             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/85">
               <Icon icon="ph:play-fill" width={30} className="text-ink" aria-hidden />
             </span>
@@ -114,6 +119,13 @@ function VideoImersivoBody({
 
               <h2 className="mt-6 text-[15px] font-semibold text-ink">Sobre o vídeo</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-ink-secondary">{video.resumo}</p>
+
+              {aviso && (
+                <p className="mt-5 flex items-center gap-2.5 rounded bg-surface-2 px-3.5 py-3 text-[13px] text-ink-secondary">
+                  <Icon icon="ph:sparkle-bold" width={18} className="shrink-0 text-primary dark:text-primary-300" aria-hidden />
+                  {aviso}
+                </p>
+              )}
             </div>
           </div>
 
@@ -151,7 +163,7 @@ function OutrosVideos({ videos, onSelecionar }: { videos: VideoApoio[]; onSeleci
           >
             <span
               className="flex h-10 w-14 shrink-0 items-center justify-center rounded-md"
-              style={{ background: v.capa }}
+              style={{ background: capaVideo(v) }}
             >
               <Icon icon="ph:play-fill" width={14} className="text-white" aria-hidden />
             </span>

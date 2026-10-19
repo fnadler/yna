@@ -187,3 +187,101 @@
 
 }
 
+
+/* ============================================================
+   LANDING PÓS-AVALIAÇÃO (`/conhecer-yna`, ver ColConhecerYna)
+   ============================================================ */
+
+/* Máscaras orgânicas — as formas da marca (`public/images/forma-*.svg`)
+   como data URI, para recortar fotos e pintar as pedras decorativas
+   (`components/Pedra`). `100% 100%`: a forma estica para o box, então a
+   proporção vem de quem usa (aspect-ratio ou inset). */
+.mask-pedrinha,
+.mask-seixo,
+.mask-pedra,
+.mask-oblongo {
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+/* forma-1 */
+.mask-pedrinha {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 109 101'%3E%3Cpath fill='white' d='M30.5034 17.5701C21.9734 23.1901 13.4434 29.2001 7.39343 37.4201C1.34343 45.6501 -1.92657 56.5501 1.21343 66.2601C4.64343 76.8901 14.7334 83.8701 24.7934 88.7101C34.9834 93.6001 45.8234 97.1401 56.9334 99.2101C68.4534 101.34 81.2734 101.63 90.8634 94.9001C99.2134 89.0401 103.513 78.9601 105.993 69.0701C108.783 57.9201 109.783 46.1401 107.293 34.9101C104.813 23.6901 98.6134 13.0501 89.1134 6.57012C78.1634 -0.909876 63.2134 -2.10988 51.2034 3.52012C50.1134 4.04012 32.5034 15.9701 30.5034 17.5701Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 109 101'%3E%3Cpath fill='white' d='M30.5034 17.5701C21.9734 23.1901 13.4434 29.2001 7.39343 37.4201C1.34343 45.6501 -1.92657 56.5501 1.21343 66.2601C4.64343 76.8901 14.7334 83.8701 24.7934 88.7101C34.9834 93.6001 45.8234 97.1401 56.9334 99.2101C68.4534 101.34 81.2734 101.63 90.8634 94.9001C99.2134 89.0401 103.513 78.9601 105.993 69.0701C108.783 57.9201 109.783 46.1401 107.293 34.9101C104.813 23.6901 98.6134 13.0501 89.1134 6.57012C78.1634 -0.909876 63.2134 -2.10988 51.2034 3.52012C50.1134 4.04012 32.5034 15.9701 30.5034 17.5701Z'/%3E%3C/svg%3E");
+}
+
+/* forma-2 */
+.mask-seixo {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 83 28'%3E%3Cpath fill='white' d='M35.9442 0.893403C23.9542 2.1734 13.8842 2.6934 4.05416 9.6834C1.64416 11.4034 -0.855837 14.2234 0.284163 16.9534C0.804163 18.1934 1.96416 19.0334 3.10416 19.7434C11.8342 25.1734 22.3642 27.1834 32.6442 27.0534C42.9242 26.9234 53.0642 24.7834 63.0842 22.4634C67.5142 21.4334 71.9442 20.3634 76.1642 18.6634C79.1442 17.4634 82.4042 15.3934 82.5842 12.1734C82.7942 8.5334 79.0042 6.0734 75.6542 4.6134C63.1642 -0.816597 49.4942 -0.556597 35.9442 0.893403Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 83 28'%3E%3Cpath fill='white' d='M35.9442 0.893403C23.9542 2.1734 13.8842 2.6934 4.05416 9.6834C1.64416 11.4034 -0.855837 14.2234 0.284163 16.9534C0.804163 18.1934 1.96416 19.0334 3.10416 19.7434C11.8342 25.1734 22.3642 27.1834 32.6442 27.0534C42.9242 26.9234 53.0642 24.7834 63.0842 22.4634C67.5142 21.4334 71.9442 20.3634 76.1642 18.6634C79.1442 17.4634 82.4042 15.3934 82.5842 12.1734C82.7942 8.5334 79.0042 6.0734 75.6542 4.6134C63.1642 -0.816597 49.4942 -0.556597 35.9442 0.893403Z'/%3E%3C/svg%3E");
+}
+
+/* forma-3 */
+.mask-pedra {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 139 74'%3E%3Cpath fill='white' d='M79.9678 0.0166456C57.7278 -0.203354 34.6878 1.62665 15.4078 13.3966C9.6478 16.9066 3.7478 21.6966 1.3078 28.0266C-1.1422 34.2366 0.0378034 40.9066 3.2878 46.8866C12.7678 63.6166 32.7978 70.9366 51.0378 72.8466C73.1178 74.9766 95.0278 69.0766 115.498 61.0966C120.758 58.9566 126.048 56.4966 130.298 52.7166C139.288 45.1066 140.858 31.6166 135.608 21.3066C129.888 9.74664 117.518 3.55665 105.078 1.44665C96.8378 0.0266455 88.3878 0.0766456 80.0278 0.0166456H79.9678Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 139 74'%3E%3Cpath fill='white' d='M79.9678 0.0166456C57.7278 -0.203354 34.6878 1.62665 15.4078 13.3966C9.6478 16.9066 3.7478 21.6966 1.3078 28.0266C-1.1422 34.2366 0.0378034 40.9066 3.2878 46.8866C12.7678 63.6166 32.7978 70.9366 51.0378 72.8466C73.1178 74.9766 95.0278 69.0766 115.498 61.0966C120.758 58.9566 126.048 56.4966 130.298 52.7166C139.288 45.1066 140.858 31.6166 135.608 21.3066C129.888 9.74664 117.518 3.55665 105.078 1.44665C96.8378 0.0266455 88.3878 0.0766456 80.0278 0.0166456H79.9678Z'/%3E%3C/svg%3E");
+}
+
+/* forma-4 */
+.mask-oblongo {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 49 55'%3E%3Cpath fill='white' d='M0 23.2817C1 20.1417 3.25 17.5717 5.59 15.2617C9.48 11.4117 13.8 8.01173 18.45 5.14173C22.33 2.74173 26.53 0.681729 31.06 0.131729C35.58 -0.418271 40.49 0.731729 43.67 4.00173C46.52 6.92173 47.65 11.1017 48.21 15.1417C49.21 22.3917 48.73 29.7617 48.8 37.0817C48.83 40.4817 48.92 44.1017 47.12 46.9817C45.15 50.1217 41.4 51.6017 37.85 52.6617C35.27 53.4417 32.62 54.1117 29.93 54.0717C21.73 53.9317 15.18 47.3717 10.16 40.8817C8.1 38.2151 6.13 35.4851 4.25 32.6917C1.95 29.2817 0.11 27.3917 0 23.2817Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 49 55'%3E%3Cpath fill='white' d='M0 23.2817C1 20.1417 3.25 17.5717 5.59 15.2617C9.48 11.4117 13.8 8.01173 18.45 5.14173C22.33 2.74173 26.53 0.681729 31.06 0.131729C35.58 -0.418271 40.49 0.731729 43.67 4.00173C46.52 6.92173 47.65 11.1017 48.21 15.1417C49.21 22.3917 48.73 29.7617 48.8 37.0817C48.83 40.4817 48.92 44.1017 47.12 46.9817C45.15 50.1217 41.4 51.6017 37.85 52.6617C35.27 53.4417 32.62 54.1117 29.93 54.0717C21.73 53.9317 15.18 47.3717 10.16 40.8817C8.1 38.2151 6.13 35.4851 4.25 32.6917C1.95 29.2817 0.11 27.3917 0 23.2817Z'/%3E%3C/svg%3E");
+}
+
+/* Flutuação lenta das pedras decorativas. */
+@keyframes ynaFloat {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-10px) rotate(1.5deg); }
+}
+
+.animate-yna-float {
+  animation: ynaFloat 8s ease-in-out infinite;
+}
+
+/* Revelação por scroll: o IntersectionObserver da tela adiciona `.is-in`. */
+.yna-reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  /* Sem o atalho `transition`, para não zerar os `delay-*` do Tailwind. */
+  transition-property: opacity, transform;
+  transition-duration: 0.9s;
+  transition-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.yna-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes ynaPop {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-yna-pop {
+  animation: ynaPop 0.6s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-yna-float,
+  .animate-yna-pop {
+    animation: none;
+  }
+
+  /* Escopado à landing para não mudar as entradas das demais telas. */
+  .yna-landing .animate-yna-slide-up,
+  .yna-landing .animate-yna-image {
+    opacity: 1;
+    animation: none;
+  }
+
+  .yna-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

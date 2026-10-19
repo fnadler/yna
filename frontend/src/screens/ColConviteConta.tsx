@@ -10,10 +10,13 @@ import { TopoSaida } from '../components/TopoSaida'
    Antes esta tela pedia pra criar conta (ver histórico do arquivo). Trocado
    por pedido explícito: nada de criação de conta neste ponto do fluxo —
    só o convite a explorar conteúdo de apoio (vídeos e artigos por tema,
-   contato do CVV/SAMU e uma apresentação institucional da YNA), numa
-   página estática que ainda não existe. O botão abaixo fica sem destino
-   por enquanto — de propósito, até essa página ser construída — e "Agora
-   não" continua levando pra despedida, sem qualquer conta de por meio.
+   contato do CVV/SAMU e uma apresentação institucional da YNA). "Conhecer
+   a YNA" abre essa página, `/conhecer-yna` (ColConhecerYna); "Agora não"
+   continua levando pra despedida, sem qualquer conta de por meio.
+
+   Fora do caminho principal: a tela de sucesso (NR1BenConclusao) já faz
+   esse convite e leva direto a `/conhecer-yna`. A rota continua
+   funcionando para quem chegar por aqui.
 
    Mesma composição do questionário (`NR1BenQuestionario.tsx`): fundo em
    gradiente, um único card branco centralizado, `TopoSaida` (logo + Sair)
@@ -48,7 +51,7 @@ export function ColConviteConta() {
         </p>
 
         <div className="mt-8 flex flex-col gap-2">
-          <Button size="lg" fullWidth iconRight="ph:arrow-right-bold">
+          <Button size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/conhecer-yna')}>
             Conhecer a YNA
           </Button>
           <Button variant="ghost" fullWidth onClick={() => navigate('/despedida')}>

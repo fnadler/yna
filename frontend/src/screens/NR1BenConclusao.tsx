@@ -12,9 +12,15 @@ import { nr1ColaboradorService } from '../services/nr1'
    A avaliação já foi enviada de forma anônima, antes de existir qualquer
    conta — isso é o que sustenta a diferença entre cuidado e vigilância: o
    RH não recebe nome, não recebe resposta, e não tem como pedir
-   acompanhamento de ninguém. O convite para criar conta é uma tela própria
-   (ver ColConviteConta), para não misturar "encerrar o ciclo" com "decidir
-   se quer voltar". */
+   acompanhamento de ninguém.
+
+   A tela faz três coisas, nesta ordem: confirma o envio, reforça a
+   confidencialidade e convida a conhecer a YNA (conteúdos sobre saúde
+   mental, ajuda imediata e quem é a YNA) em `/conhecer-yna`. Antes o
+   convite era uma tela própria no meio do caminho (ColConviteConta, via
+   "Continuar"); agora o próximo passo sai direto daqui, e "Agora não" leva
+   à despedida. Nada da avaliação (campanha, protocolo) segue para a
+   landing: ela é pública e não sabe quem respondeu. */
 
 export function NR1BenConclusao() {
   const navigate = useNavigate()
@@ -60,7 +66,7 @@ export function NR1BenConclusao() {
   }, [phase, enviando])
 
   return (
-    <div className="relative flex h-dvh flex-col items-center justify-center overflow-hidden px-7 text-center bg-yna-gradient">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-x-hidden px-5 py-10 text-center bg-yna-gradient">
       {(phase === 'celebrating' || phase === 'leaving') && (
         <div className={`relative flex h-28 w-28 items-center justify-center transition-opacity duration-500 ${phase === 'leaving' ? 'opacity-0' : 'opacity-100'}`}>
           <div className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
@@ -72,7 +78,7 @@ export function NR1BenConclusao() {
       )}
 
       {phase === 'content' && (
-        <div className="flex w-full max-w-xs md:max-w-md flex-col items-center gap-5">
+        <div className="flex w-full max-w-sm md:max-w-md flex-col items-center gap-5">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/20 animate-yna-logo">
             <Icon icon="ph:check-bold" width={28} className="text-primary" aria-hidden />
           </div>
@@ -103,10 +109,27 @@ export function NR1BenConclusao() {
               </p>
             </div>
 
-            <div className="w-full animate-yna-slide-up animate-yna-delay-250">
-              <Button variant="gradient" size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/avaliacao/conta')}>
-                Continuar
-              </Button>
+            <div className="flex w-full flex-col gap-4 border-t border-border pt-6 text-left animate-yna-slide-up animate-yna-delay-250">
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary dark:text-primary-300">
+                  <Icon icon="ph:heart-bold" width={20} aria-hidden />
+                </span>
+                <div>
+                  <h2 className="text-[17px] font-semibold leading-snug text-ink">E agora, cuide de você também</h2>
+                  <p className="mt-1 text-[13.5px] leading-relaxed text-ink-secondary">
+                    A YNA separou vídeos e artigos curtos sobre saúde mental no trabalho, o contato do CVV e do
+                    SAMU para quando precisar, e um pouco sobre quem ela é. Sem criar conta.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button variant="gradient" size="lg" fullWidth iconRight="ph:arrow-right-bold" onClick={() => navigate('/conhecer-yna')}>
+                  Conhecer a YNA
+                </Button>
+                <Button variant="ghost" fullWidth onClick={() => navigate('/despedida')}>
+                  Agora não
+                </Button>
+              </div>
             </div>
           </div>
         </div>

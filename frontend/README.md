@@ -112,8 +112,9 @@ a própria evolução.
 | `/comecar` | Transição "tudo certo" — fecha o consentimento, abre a avaliação | — |
 | `/avaliacao` | COL-06 Portão: segue para `/avaliacao/1` se há campanha ativa e não respondida, senão mostra estado vazio | RF-A02 |
 | `/avaliacao/:passo` | NR1-BEN-03 ★ Questionário (render dinâmico) | RF-A01 |
-| `/avaliacao/conclusao` | NR1-BEN-04 Conclusão — tela de sucesso, encerra o ciclo da avaliação | RF-J04 |
-| `/avaliacao/conta` | Ponte para a conta: "E você, como está?" + convite para criar conta | RF-J01 |
+| `/avaliacao/conclusao` | NR1-BEN-04 Conclusão — tela de sucesso: confirma o envio, reforça o sigilo e convida a conhecer a YNA (`/conhecer-yna`) | RF-J04 |
+| `/avaliacao/conta` | Ponte "E você, como está?" + convite a conhecer a YNA (fora do caminho principal desde o item 58) | RF-J01 |
+| `/conhecer-yna` | Landing pós-avaliação "Conhecer a YNA" — pública, sem conta; ajuda imediata (CVV/SAMU), quem é a YNA, serviços "em breve", conteúdos por público e lista de interesse. White-label por `?empresa=` | — |
 | `/criar-conta` | Criação de conta em 3 passos (dados, senha, perguntas opcionais de interesse) | RF-B01 |
 | `/conta-criada` | Transição "conta criada" — tela de sucesso, encerra o cadastro | — |
 | `/despedida` | Saída sem conta (LGPD recusado ou conta não criada agora) | — |
@@ -1603,6 +1604,32 @@ para converter.
       Sheet-sobre-Sheet que a tela completa já usa); cancelar ou salvar volta pro detalhe, não fecha
       tudo. "Concluir" sem evidência anexada continua desabilitado, mesma regra de sempre.
 
+58. **Fim da avaliação → landing "Conhecer a YNA" (`/conhecer-yna`, `ColConhecerYna.tsx`), construída a
+    partir do protótipo aprovado `landing-nr1/index.html`.**
+    - **Tela de sucesso** (`NR1BenConclusao`): além de confirmar o envio e reforçar o sigilo, agora
+      convida a conhecer conteúdos de saúde mental e a YNA. "Conhecer a YNA" leva direto à landing;
+      "Agora não" vai à despedida. Antes, "Continuar" passava por `ColConviteConta`, que fica fora
+      do caminho principal (o botão "Conhecer a YNA" de lá também leva à landing).
+    - **Rota standalone e pública**, fora do `AppLayout`, sem guarda e sem ler `AppContext.nr1`. Nada
+      da avaliação (campanha, protocolo, respostas) é passado à landing.
+    - **White-label**: só o nome da empresa varia — `?empresa=` (sanitizado: espaços colapsados, até 60
+      caracteres, sempre texto) → `nr1ColaboradorService.empresaDaCampanha()` → "sua empresa". Título
+      da aba: `YNA · Cuidado oferecido por {empresa}`.
+    - **Seções**, na ordem do HTML: topo sticky (âncoras a partir de 1140px, "Precisa de ajuda
+      agora?"/"Ajuda agora"), hero, ajuda imediata (CVV 188 / SAMU 192 em `tel:`, chat do CVV), quem é
+      a YNA, "Em breve" (só anuncia teleatendimento e acompanhamento), conteúdos em abas acessíveis
+      (Para você / Para quem lidera) abrindo `VideoImersivo`/`ArtigoModal`, lista de interesse e rodapé.
+    - **Conteúdo**: `conteudoApoioMock.ts` ganhou `publico`, `imagem` (+ `imagemPosicao` e, nos artigos,
+      `icone`) opcionais e os arrays `VIDEOS_LANDING`/`ARTIGOS_LANDING`, servidos por
+      `conteudoService.landing()`. `/apoio` e `/meu-espaco` não mudam. `VideoImersivo`/`ArtigoModal`
+      aceitam `aviso` (nota de "Prévia") e usam a foto de capa quando existe.
+    - **Formulário de interesse** → `interesseService.registrar()`: payload só com os campos do
+      formulário + nome da empresa; nada de `localStorage` nem `console`. A regra está escrita no serviço.
+    - **Visual**: máscaras `.mask-pedrinha`/`.mask-seixo`/`.mask-pedra`/`.mask-oblongo` em `index.css`,
+      componente `Pedra`, gradientes `yna-gradient-servicos` e `yna-pedra-*` e a cor `yna-night` no
+      `tailwind.config.ts`, fotos em `public/images/landing/`. Revelação por `IntersectionObserver`,
+      tudo desligado com `prefers-reduced-motion`. Funciona nos dois temas.
+
 ---
 
 ## O que está mockado e como trocar
@@ -1628,6 +1655,9 @@ para converter.
 | "Login" do colaborador em `/bem-vindo` (CPF + data de nascimento) | `nr1ColaboradorService.entrar` sempre retorna sucesso, sem checar nada | Validar CPF + nascimento contra a matrícula de colaboradores da empresa (ligada ao link único do ciclo), sem nunca vincular isso às respostas da avaliação em si |
 | Interesse em cuidado futuro (agregado comercial) | Capturado no Passo 3 de `/criar-conta`, guardado em `AppContext.perfilInteresse`; `MngCockpit.interesseCuidado` ainda é mock estático, não lê essa captura | Persistir a resposta do Passo 3 no cadastro da conta, depois agregar server-side para alimentar o cockpit, nunca por pessoa |
 | Vídeos e artigos de apoio da home (`/meu-espaco`) | `data/conteudoApoioMock.ts` (estático, sem player real; artigo em blocos tipados `ArtigoBloco`) | CMS/endpoint de conteúdo, com upload de vídeo real |
+| Conteúdos da landing `/conhecer-yna` (por público) | `conteudoService.landing()`, arrays `VIDEOS_LANDING`/`ARTIGOS_LANDING` em `data/conteudoApoioMock.ts` | `GET /conteudos?publico=` do mesmo CMS |
+| Nome da empresa na landing `/conhecer-yna` (quando não vem `?empresa=`) | `nr1ColaboradorService.empresaDaCampanha()` devolve o `nomeFantasia` da empresa-piloto (`rhMock.ts`) | `GET` público que resolva o nome a partir do link do ciclo — só o nome, nunca campanha/protocolo |
+| Lista de interesse da landing `/conhecer-yna` | `interesseService.registrar()` (`services/interesse.ts`) não envia nem guarda nada | `POST /interesse`, guardado só pela YNA, **sem** vínculo com a avaliação e sem repasse à empresa |
 
 ---
 
@@ -1659,6 +1689,12 @@ Sem botão de pânico/emergência em nenhuma jornada — não há mais camada de
   no tom da marca, pendentes de jurídico/LGPD.
 - **Conteúdo de apoio (`/apoio` e a biblioteca de vídeos/artigos de `/meu-espaco`)**: rascunho,
   pendente de curadoria clínica antes de qualquer piloto real.
+- **Conteúdos da landing `/conhecer-yna`** (6 vídeos, 8 artigos e seus resumos): rascunho editorial,
+  pendente de curadoria clínica — mesmo status da biblioteca de `/apoio`.
+- **Lista de interesse x empresa contratante**: confirmar com o negócio que a empresa **não** recebe
+  os contatos da lista de interesse de `/conhecer-yna`. A copy da página promete isso ("a sua empresa
+  não recebe seus dados de contato. Eles ficam só com a YNA"); se o modelo comercial previr repasse
+  de leads ao RH, a copy precisa mudar antes.
 - **Governança interna da YNA**: quem cria e aprova modelos derivados de cliente — decisão de
   produto, não de código.
 - **Integração eSocial S-2240, white-label e benchmarks setoriais**: fora de escopo (eram Could).

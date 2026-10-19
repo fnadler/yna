@@ -984,6 +984,15 @@ export const nr1ColaboradorService = {
     return { ok: true }
   },
 
+  /** Nome da empresa da campanha, para a landing pós-avaliação
+     (`/conhecer-yna`) dizer "Cuidado oferecido por X". Só o nome fantasia:
+     nada de campanha, protocolo ou qualquer outra coisa que ligue quem está
+     na página à avaliação. No mock, a empresa-piloto. */
+  empresaDaCampanha: async (): Promise<string> => {
+    await delay(rand(150, 300))
+    return rhEmpresa.nomeFantasia
+  },
+
   /** Instrumento que o colaborador vai responder: a versão registrada na
      campanha ativa — nunca um formulário fixo no código (RF-CO-NR1-01). */
   instrumentoDaCampanha: async (): Promise<{ campanha: Nr1Campanha; versao: Nr1QuestionarioVersao } | undefined> => {

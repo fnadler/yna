@@ -6,23 +6,26 @@ import type { ArtigoApoio, ArtigoBloco } from '../data/conteudoApoioMock'
 /* Detalhe do artigo de apoio — em Sheet, mesma interação da antiga Academia
    YNA (Pro30Artigo): imagem de destaque, meta (autor/data/leitura) e corpo
    em blocos (parágrafo, subtítulo, lista, citação, imagem, vídeo), não só
-   texto corrido. */
-export function ArtigoModal({ artigo, onClose }: { artigo: ArtigoApoio | null; onClose: () => void }) {
+   texto corrido.
+
+   `aviso` é opcional e serve à landing pós-avaliação (`/conhecer-yna`):
+   uma nota no fim do artigo dizendo que aquilo é uma prévia. */
+export function ArtigoModal({ artigo, onClose, aviso }: { artigo: ArtigoApoio | null; onClose: () => void; aviso?: string }) {
   return (
     <Sheet open={artigo !== null} onClose={onClose} title="Artigo" icon="ph:article-bold" size="lg">
-      {artigo && <ArtigoConteudo artigo={artigo} />}
+      {artigo && <ArtigoConteudo artigo={artigo} aviso={aviso} />}
     </Sheet>
   )
 }
 
-function ArtigoConteudo({ artigo }: { artigo: ArtigoApoio }) {
+function ArtigoConteudo({ artigo, aviso }: { artigo: ArtigoApoio; aviso?: string }) {
   return (
     <article className="px-5 py-6 lg:px-6">
       <div
         className="-mx-5 -mt-6 mb-5 flex aspect-[21/9] items-center justify-center lg:-mx-6"
-        style={{ background: artigo.capa }}
+        style={{ background: artigo.imagem ? `url(${artigo.imagem}) center / cover` : artigo.capa }}
       >
-        <Icon icon="ph:article-medium-bold" width={44} className="text-white/85" aria-hidden />
+        {!artigo.imagem && <Icon icon="ph:article-medium-bold" width={44} className="text-white/85" aria-hidden />}
       </div>
 
       <Badge tone="neutral">{artigo.categoria}</Badge>
@@ -43,6 +46,13 @@ function ArtigoConteudo({ artigo }: { artigo: ArtigoApoio }) {
           <ArtigoBlocoView key={i} bloco={bloco} />
         ))}
       </div>
+
+      {aviso && (
+        <p className="mt-6 flex items-center gap-2.5 rounded bg-surface-2 px-3.5 py-3 text-[13px] text-ink-secondary">
+          <Icon icon="ph:sparkle-bold" width={18} className="shrink-0 text-primary dark:text-primary-300" aria-hidden />
+          {aviso}
+        </p>
+      )}
     </article>
   )
 }
