@@ -474,7 +474,7 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
   onClose: () => void
   onAlterado?: () => void
 }) {
-  const [risco, setRisco] = useState(inicial)
+  const risco = inicial
   const meta = NR1_DIMENSOES.find((d) => d.id === risco.dimensaoId)
   const catalogo = useService(() => nr1FatorService.catalogo(), [])
   const cids = useService(() => nr1FatorService.cids(), [])
@@ -488,7 +488,6 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
   const [feedback, setFeedback] = useState<string | null>(null)
   const [excluirAcao, setExcluirAcao] = useState<Nr1Acao | null>(null)
   const [removerInclusao, setRemoverInclusao] = useState(false)
-  const [concluirRisco, setConcluirRisco] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [processando, setProcessando] = useState(false)
 
@@ -503,7 +502,7 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
   })()
 
   const pedirFechar = () => (editor && editor.tipo !== 'escolher' && sujo ? setConfirmarSaida(true) : onClose())
-  const algumModal = confirmarSaida || excluirAcao !== null || removerInclusao || concluirRisco || erro !== null
+  const algumModal = confirmarSaida || excluirAcao !== null || removerInclusao || erro !== null
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !algumModal) pedirFechar() }
@@ -545,16 +544,6 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
     if (!r.ok) { setErro(r.message ?? 'Não foi possível concluir.'); return }
     onAlterado?.()
     onClose()
-  }
-
-  const confirmarConclusaoRisco = async () => {
-    setProcessando(true)
-    await nr1ResultadoService.concluirRisco(risco.id)
-    setProcessando(false)
-    setConcluirRisco(false)
-    setRisco((r) => ({ ...r, status: 'eliminado' }))
-    setFeedback('Risco concluído.')
-    onAlterado?.()
   }
 
   const status = STATUS_RISCO[risco.status]
@@ -618,11 +607,6 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
           {risco.origem === 'manual' && lista.length === 0 && acoes.status === 'success' && (
             <Button size="sm" variant="ghost" iconLeft="ph:minus-circle-bold" disabled={editor !== null && editor.tipo !== 'escolher'} onClick={() => setRemoverInclusao(true)}>
               <span className="hidden sm:inline">Remover inclusão</span>
-            </Button>
-          )}
-          {risco.status !== 'eliminado' && (
-            <Button size="sm" variant="secondary" iconLeft="ph:check-bold" disabled={editor !== null && editor.tipo !== 'escolher'} onClick={() => setConcluirRisco(true)}>
-              <span className="hidden sm:inline">Concluir risco</span>
             </Button>
           )}
           <button
@@ -907,22 +891,6 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
         <div className="flex flex-col gap-4">
           <p className="text-[13.5px] leading-relaxed text-ink-secondary">{erro}</p>
           <Button fullWidth onClick={() => setErro(null)}>Entendi</Button>
-        </div>
-      </Modal>
-
-      <Modal open={concluirRisco} title="Concluir risco" onClose={() => setConcluirRisco(false)}>
-        <div className="flex flex-col gap-4">
-          <p className="text-[13.5px] leading-relaxed text-ink-secondary">
-            Concluir marca este risco como <span className="font-medium text-ink">Eliminado</span>,
-            indicando que ele foi resolvido, independente do que o próximo ciclo da pesquisa
-            mostrar. Use quando o RH/SST já confirmou que o risco não existe mais.
-          </p>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="ghost" onClick={() => setConcluirRisco(false)}>Cancelar</Button>
-            <Button iconLeft="ph:check-bold" disabled={processando} onClick={confirmarConclusaoRisco}>
-              {processando ? 'Concluindo…' : 'Concluir risco'}
-            </Button>
-          </div>
         </div>
       </Modal>
 

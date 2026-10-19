@@ -149,7 +149,7 @@ export function FatoresBloco({ campanhaId, recorte, onAbrir, semCabecalho = fals
 
 /* Todas as colunas com largura definida (nenhuma `auto`): cabeçalho e linhas
    são grades separadas e só alinham se as trilhas forem idênticas. */
-const FATORES_GRID_COLS = 'grid-cols-[minmax(0,1fr)_150px_200px_170px]'
+const FATORES_GRID_COLS = 'grid-cols-[minmax(0,1fr)_150px_minmax(0,300px)_170px]'
 
 function ListaFatores({ riscos, acoesDe, onAbrir, onNovaAcao }: {
   riscos: Nr1RiscoInventario[]
@@ -224,16 +224,36 @@ function ListaFatores({ riscos, acoesDe, onAbrir, onNovaAcao }: {
   )
 }
 
-/** Departamentos expostos a um fator (vazio = só a empresa inteira). */
+/** Departamentos expostos a um fator, do pior para o melhor (a ordem de
+   `grupos`). Vazio = só a empresa inteira. */
 const departamentosDoRisco = (r: Nr1RiscoInventario) =>
   r.grupos.filter((g) => g.departamentoId !== null).map((g) => g.departamento)
 
-/** Departamentos do "Onde" de uma ação (vazio = toda a empresa). */
-const departamentosDaAcao = (a: Nr1Acao) =>
-  a.onde.split(',').map((x) => x.trim()).filter((x) => x && x !== TODA_EMPRESA)
+/** Departamentos do "Onde" de uma ação (vazio = toda a empresa), na ordem
+   do pior para o melhor no fator que ela responde; os que o fator não
+   aponta vêm por último. */
+const departamentosDaAcao = (a: Nr1Acao, r?: Nr1RiscoInventario) => {
+  const ordem = r ? departamentosDoRisco(r) : []
+  const pos = (n: string) => (ordem.includes(n) ? ordem.indexOf(n) : ordem.length)
+  return a.onde.split(',').map((x) => x.trim()).filter((x) => x && x !== TODA_EMPRESA).sort((x, y) => pos(x) - pos(y))
+}
 
-/** Número de departamentos (de um fator ou de uma ação); passar o mouse
-   (ou focar) mostra o nome de cada um. Sem nenhum, "Toda a empresa". */
+/** Quantas tags de departamento ficam à vista; o resto vai para o "+N". */
+const MAX_TAGS_DEPARTAMENTO = 3
+
+/** Tag de departamento — a mesma do card de um risco na matriz P × S. */
+function TagDepartamento({ nome }: { nome: string }) {
+  return (
+    <span className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-pill bg-primary-50 px-2 py-0.5 text-[11.5px] font-medium text-primary dark:text-primary-300" title={nome}>
+      <Icon icon="ph:buildings-bold" width={11} className="shrink-0" aria-hidden />
+      <span className="truncate">{nome}</span>
+    </span>
+  )
+}
+
+/** Tags dos departamentos (de um fator ou de uma ação), já ordenados do pior
+   para o melhor: as 3 primeiras à vista e, havendo mais, um "+N" que mostra
+   as demais ao passar o mouse (ou focar). Sem nenhum, "Toda a empresa". */
 function DepartamentosAfetados({ nomes }: { nomes: string[] }) {
   if (nomes.length === 0) {
     return (
@@ -243,32 +263,38 @@ function DepartamentosAfetados({ nomes }: { nomes: string[] }) {
       </span>
     )
   }
+  const visiveis = nomes.slice(0, MAX_TAGS_DEPARTAMENTO)
+  const demais = nomes.slice(MAX_TAGS_DEPARTAMENTO)
   return (
-    <span className="group relative inline-flex w-fit">
-      <span
-        tabIndex={0}
-        aria-label={`${nomes.length} ${nomes.length === 1 ? 'departamento' : 'departamentos'}: ${nomes.join(', ')}`}
-        className="inline-flex cursor-default items-center gap-1.5 rounded-pill border border-border bg-surface px-2.5 py-1 text-[12.5px] font-medium text-ink outline-none transition-colors hover:border-border-strong focus-visible:border-primary"
-      >
-        <Icon icon="ph:users-three-bold" width={14} className="text-ink-muted" aria-hidden />
-        {nomes.length} {nomes.length === 1 ? 'departamento' : 'departamentos'}
-      </span>
-      <span role="tooltip" className="pointer-events-none invisible absolute left-0 top-full z-30 mt-1.5 w-max min-w-44 max-w-64 rounded-lg border border-border bg-surface p-2.5 opacity-0 shadow-lg transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
-        <span className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted">Departamentos</span>
-        <span className="flex flex-col gap-1">
-          {nomes.map((n) => (
-            <span key={n} className="text-[12.5px] leading-snug text-ink">{n}</span>
-          ))}
+    <div className="flex min-w-0 flex-wrap items-center gap-1">
+      {visiveis.map((n) => <TagDepartamento key={n} nome={n} />)}
+      {demais.length > 0 && (
+        <span className="group relative inline-flex">
+          <span
+            tabIndex={0}
+            aria-label={`Mais ${demais.length} ${demais.length === 1 ? 'departamento' : 'departamentos'}: ${demais.join(', ')}`}
+            className="cursor-default rounded-pill border border-primary/30 bg-surface px-2 py-0.5 font-mono text-[11px] font-semibold text-primary outline-none transition-colors hover:border-primary/60 focus-visible:border-primary dark:text-primary-300"
+          >
+            +{demais.length}
+          </span>
+          <span role="tooltip" className="pointer-events-none invisible absolute right-0 top-full z-30 mt-1.5 w-max min-w-40 max-w-64 rounded-lg border border-border bg-surface p-3 opacity-0 shadow-lg transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+            <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted">
+              {demais.length === 1 ? 'Mais 1 departamento' : `Mais ${demais.length} departamentos`}
+            </span>
+            <span className="mt-1.5 flex flex-wrap gap-1">
+              {demais.map((n) => <TagDepartamento key={n} nome={n} />)}
+            </span>
+          </span>
         </span>
-      </span>
-    </span>
+      )}
+    </div>
   )
 }
 
 /* Bloco 4 — Planos de ação do ciclo: as ações que respondem aos fatores
    deste ciclo — criadas nele ou mantidas/revisadas do ciclo anterior —
    numa lista só, com os departamentos onde cada ação acontece ("Onde"). */
-const PLANOS_GRID_COLS = 'grid-cols-[minmax(0,1fr)_170px_140px_190px_116px_88px]'
+const PLANOS_GRID_COLS = 'grid-cols-[minmax(0,1fr)_minmax(0,260px)_130px_180px_116px_88px]'
 
 export function PlanosBloco({ campanha, recorte: recorteExterno, onAbrir, semCabecalho = false, filtroDepartamento = false, novaAcaoAberta, onNovaAcaoChange }: {
   campanha: Nr1Campanha
@@ -480,7 +506,7 @@ export function PlanosBloco({ campanha, recorte: recorteExterno, onAbrir, semCab
                   /* Dentro da linha clicável: o hover/foco do selo não abre a ação. */
                   const departamentos = (
                     <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                      <DepartamentosAfetados nomes={departamentosDaAcao(a)} />
+                      <DepartamentosAfetados nomes={departamentosDaAcao(a, r)} />
                     </div>
                   )
                   const editar = a.status !== 'concluida' ? (
