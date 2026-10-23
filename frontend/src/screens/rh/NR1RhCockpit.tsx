@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Icon } from '@iconify/react'
 import { RhTopBar } from '../../components/RhTopBar'
 import { Skeleton } from '../../components/Skeleton'
@@ -17,6 +17,7 @@ import { NR1_TODAY } from '../../data/nr1Mock'
 import { useService } from '../../hooks/useService'
 import { useRh } from '../../contexts/RhContext'
 import { nr1ResultadoService, nr1AcaoService } from '../../services/nr1'
+import { rhColaboradorService, rhDepartamentoService, rhEquipeService } from '../../services/rh'
 import type { Nr1Acao, Nr1RiscoInventario } from '../../types'
 
 /* NR1-RH-06 — Visão geral da conformidade NR-1 (RF-I01).
@@ -24,9 +25,10 @@ import type { Nr1Acao, Nr1RiscoInventario } from '../../types'
    O primeiro item do menu. Os mesmos três cenários da Visão geral da
    Conformidade NR-1, lidos por `useNr1Cenario` (ver `Nr1PrimeiroCiclo.tsx`):
 
-   - sem ciclo: o convite para iniciar o primeiro;
-   - primeiro ciclo em campo: a participação, e um aviso de que os planos
-     de ação começam no resultado;
+   - sem ciclo: o convite para iniciar o primeiro e o acesso rápido à
+     configuração da empresa (colaboradores, departamentos, equipe RH);
+   - primeiro ciclo em campo: a participação, o mesmo acesso rápido e um
+     aviso de que os planos de ação começam no resultado;
    - com ciclo encerrado: no topo, as pendências da empresa no fluxo
      (fatores sem plano, ações atrasadas ou vencendo, cada uma com o atalho
      para onde se resolve); depois uma lista única de planos de ação (os da
@@ -126,11 +128,17 @@ export function NR1RhCockpit() {
 
         {!cenario && <Skeleton className="h-96 w-full rounded-lg" />}
 
-        {cenario === 'vazio' && <PrimeiroCicloConvite onIniciar={abrirNovoCiclo} />}
+        {cenario === 'vazio' && (
+          <div className="flex flex-col gap-6">
+            <PrimeiroCicloConvite onIniciar={abrirNovoCiclo} />
+            <AtalhosEmpresa />
+          </div>
+        )}
 
         {cenario === 'primeiro-ciclo' && emCampo && (
           <div className="flex flex-col gap-6">
             <PrimeiroCicloEmAndamento campanha={emCampo} />
+            <AtalhosEmpresa />
             <PlanosEmBreve />
           </div>
         )}
@@ -356,6 +364,87 @@ function Responsavel({ acao, minha }: { acao: Nr1Acao; minha: boolean }) {
       <Icon icon="ph:user-bold" width={11} className="shrink-0" aria-hidden />
       <span className="truncate">{acao.quem}</span>
     </span>
+  )
+}
+
+/* ------------------------------------------------------------------
+   Acesso rápido à configuração da empresa
+   ------------------------------------------------------------------ */
+
+/* Antes do primeiro resultado, o trabalho do RH é deixar a empresa pronta:
+   o time cadastrado e convidado, os departamentos certos (a base dos
+   recortes do resultado) e a equipe que vai cuidar da conformidade. Mesmo
+   formato dos atalhos do NR-1 (`Nr1Atalhos.tsx`), com um número que diz o
+   que há em cada lugar. */
+function AtalhosEmpresa() {
+  const colaboradores = useService(() => rhColaboradorService.list(), [])
+  const departamentos = useService(() => rhDepartamentoService.list(), [])
+  const equipe = useService(() => rhEquipeService.list(), [])
+
+  const nColab = colaboradores.status === 'success' ? colaboradores.data.length : null
+  const semConvite = colaboradores.status === 'success' ? colaboradores.data.filter((c) => c.status === 'nao_convidado').length : 0
+  const nDeps = departamentos.status === 'success' ? departamentos.data.length : null
+  const nEquipe = equipe.status === 'success' ? equipe.data.length : null
+  const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`
+
+  const cards = [
+    {
+      to: '/rh/colaboradores',
+      icon: 'ph:users-three-bold',
+      titulo: 'Colaboradores',
+      texto: 'Adicione, importe e edite o time, e envie convites para quem ainda não recebeu.',
+      info: nColab === null ? null : nColab === 0 ? 'Nenhum colaborador ainda' : semConvite > 0 ? plural(semConvite, 'colaborador sem convite', 'colaboradores sem convite') : plural(nColab, 'colaborador', 'colaboradores'),
+      alerta: nColab === 0 || semConvite > 0,
+    },
+    {
+      to: '/rh/departamentos',
+      icon: 'ph:tree-structure-bold',
+      titulo: 'Departamentos',
+      texto: 'Crie, edite e organize as áreas da empresa. É por elas que o resultado é recortado.',
+      info: nDeps === null ? null : nDeps === 0 ? 'Nenhum departamento ainda' : plural(nDeps, 'departamento', 'departamentos'),
+      alerta: nDeps === 0,
+    },
+    {
+      to: '/rh/equipe',
+      icon: 'ph:user-gear-bold',
+      titulo: 'Equipe RH',
+      texto: 'Convide outras pessoas da empresa para acessar a área administrativa.',
+      info: nEquipe === null ? null : plural(nEquipe, 'pessoa com acesso', 'pessoas com acesso'),
+      alerta: false,
+    },
+  ]
+
+  return (
+    <section>
+      <div className="mb-3">
+        <h2 className="text-[15px] font-semibold text-ink">Acesso rápido</h2>
+        <p className="mt-0.5 text-[12.5px] text-ink-secondary">Deixe a empresa pronta: o time, as áreas e quem cuida da conformidade com você.</p>
+      </div>
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {cards.map((c) => (
+          <li key={c.to}>
+            <Link to={c.to} className="group flex h-full flex-col rounded-lg border border-border bg-surface p-4 transition-colors hover:border-primary/40 hover:bg-surface-hover">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50 text-primary dark:text-primary-300">
+                <Icon icon={c.icon} width={20} aria-hidden />
+              </span>
+              <span className="mt-3 flex items-center justify-between gap-2">
+                <span className="font-heading text-[15px] font-semibold text-ink">{c.titulo}</span>
+                <Icon icon="ph:arrow-right-bold" width={14} className="shrink-0 text-ink-muted transition-transform group-hover:translate-x-0.5 group-hover:text-primary" aria-hidden />
+              </span>
+              <span className="mt-1 flex-1 text-[12.5px] leading-relaxed text-ink-secondary">{c.texto}</span>
+              {c.info === null ? (
+                <Skeleton className="mt-3 h-6 w-32 rounded-pill" />
+              ) : (
+                <span className={`mt-3 inline-flex w-fit items-center gap-1.5 rounded-pill px-2.5 py-1 text-[11.5px] font-semibold ${c.alerta ? 'bg-warning/25 text-warning-ink' : 'bg-surface-2 text-ink-secondary'}`}>
+                  {c.alerta && <span className="h-1.5 w-1.5 rounded-full bg-warning" aria-hidden />}
+                  {c.info}
+                </span>
+              )}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 
