@@ -24,10 +24,33 @@ import type { Nr1Campanha, Nr1CampanhaStatus } from '../types'
    variação visual para "encerrado abaixo da meta". */
 
 /** Meta de participação — abaixo disso, o ciclo entra no radar do RH. */
-const META_PARTICIPACAO_PCT = 75
+export const META_PARTICIPACAO_PCT = 75
 
 /** Dias entre a data mock de "hoje" (`NR1_TODAY`) e o prazo. */
-const diasRestantes = (prazoIso: string) => nr1DiasEntre(NR1_TODAY, prazoIso)
+export const diasRestantes = (prazoIso: string) => nr1DiasEntre(NR1_TODAY, prazoIso)
+
+/** Participação do ciclo em campo — exportada para a Visão geral (estado
+   "primeiro ciclo em andamento") mostrar o mesmo número deste card.
+
+   Valor fixo pedido para simular um cenário abaixo da meta: o real
+   (campanha.respostas) é 132/177 ≈ 75%, em cima da meta, o que não
+   demonstra o alerta. Só a contagem de respostas é simulada aqui —
+   elegíveis continua o headcount real, e nenhuma outra tela (lista de
+   Ciclos, Inventário, mapa de calor, "Participação por área" logo abaixo
+   deste card no detalhe) é afetada por este valor. */
+export function participacaoEmCampo(campanha: Nr1Campanha) {
+  const elegiveis = campanha.elegiveis
+  const respostas = Math.round(elegiveis * 0.63)
+  const pctAtual = Math.round((respostas / Math.max(1, elegiveis)) * 100)
+  const metaRespostas = Math.ceil((META_PARTICIPACAO_PCT / 100) * elegiveis)
+  return {
+    elegiveis,
+    respostas,
+    pctAtual,
+    faltamMeta: Math.max(0, metaRespostas - respostas),
+    abaixoDaMeta: pctAtual < META_PARTICIPACAO_PCT,
+  }
+}
 
 /** Status como badge, não mais um rótulo de texto solto — a cor já
    antecipa "isto ainda está rodando" antes mesmo de ler a palavra.
@@ -109,18 +132,7 @@ export function Nr1CicloStatusCard({ campanha, destaque, onClick, acoes }: {
 }
 
 function ConteudoEmCampo({ campanha }: { campanha: Nr1Campanha }) {
-  const elegiveis = campanha.elegiveis
-  /* Valor fixo pedido para simular um cenário abaixo da meta: o real
-     (campanha.respostas) é 132/177 ≈ 75%, em cima da meta, o que não
-     demonstra o alerta. Só a contagem de respostas é simulada aqui —
-     elegíveis continua o headcount real, e nenhuma outra tela (lista de
-     Ciclos, Inventário, mapa de calor, "Participação por área" logo abaixo
-     deste card no detalhe) é afetada por este valor. */
-  const respostas = Math.round(elegiveis * 0.63)
-  const pctAtual = Math.round((respostas / Math.max(1, elegiveis)) * 100)
-  const metaRespostas = Math.ceil((META_PARTICIPACAO_PCT / 100) * elegiveis)
-  const faltamMeta = Math.max(0, metaRespostas - respostas)
-  const abaixoDaMeta = pctAtual < META_PARTICIPACAO_PCT
+  const { elegiveis, respostas, pctAtual, faltamMeta, abaixoDaMeta } = participacaoEmCampo(campanha)
   const dias = diasRestantes(campanha.fim)
 
   return (

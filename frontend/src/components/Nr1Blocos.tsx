@@ -4,6 +4,7 @@ import { Select } from './Select'
 import { Skeleton } from './Skeleton'
 import { ErrorState } from './ErrorState'
 import { RadarChart } from './RadarChart'
+import { Nr1AnaliseRiscoModal, type Nr1AnaliseEscopo } from './Nr1AnaliseRisco'
 import { cicloLabelCurto } from './Nr1PainelRiscoMapa'
 import { useService } from '../hooks/useService'
 import { nr1CampanhaService, nr1ResultadoService } from '../services/nr1'
@@ -11,9 +12,10 @@ import { NIVEL_RISCO, LIMIAR_TENDENCIA } from '../lib/nr1'
 import { NR1_DIMENSOES, NR1_RECORTE_OUTROS } from '../data/nr1Mock'
 import type { Nr1Campanha, Nr1DimensaoId } from '../types'
 
-/* Peças compartilhadas das telas em blocos (aba Resultado do ciclo e a
-   Visão geral de Conformidade NR-1): menu de âncoras fixo com o filtro de
-   departamento, cabeçalho de bloco fixo e o bloco Visão geral. */
+/* Peças compartilhadas das telas em blocos (aba Resultado do ciclo e as
+   duas Visões gerais do RH): menu de âncoras fixo com o filtro de
+   departamento, cabeçalho de bloco fixo, o bloco Visão geral e a seção
+   "Resultado do ciclo" pronta (cabeçalho + filtro + bloco + análise). */
 
 export interface SecaoAncora { id: string; label: string; icon: string }
 
@@ -261,3 +263,49 @@ function DirecaoNota({ direcao, delta }: { direcao: 'melhorou' | 'piorou' | 'igu
   )
 }
 
+
+/** Filtro de departamento ao lado do título de um bloco. */
+export function FiltroDepartamento({ value, onChange, opcoes, rotulo }: {
+  value: string
+  onChange: (v: string) => void
+  opcoes: { value: string; label: string }[]
+  rotulo: string
+}) {
+  return (
+    <div className="flex w-full items-center gap-2 sm:w-60">
+      <Icon icon="ph:funnel-simple-bold" width={15} className="shrink-0 text-ink-muted" aria-hidden />
+      <Select size="sm" className="flex-1" value={value} onChange={onChange} ariaLabel={rotulo} options={opcoes} />
+    </div>
+  )
+}
+
+/* "Resultado do ciclo" completo: título, filtro de departamento, o radar
+   com a nota de cada domínio e os cards dos domínios. Clicar num domínio
+   abre a análise com os fatores apontados. Usado pelas duas Visões gerais
+   do RH (`NR1RhCockpit` e `NR1RhVisaoGeral`), para mostrarem o mesmo
+   resultado do mesmo jeito. */
+export function ResultadoCicloSecao({ campanha }: { campanha: Nr1Campanha }) {
+  const [recorte, setRecorte] = useState('empresa')
+  const opcoes = useOpcoesRecorte(campanha.id)
+  const mapa = useService(() => nr1ResultadoService.mapaCalor(campanha.id), [campanha.id])
+  const [analise, setAnalise] = useState<Nr1AnaliseEscopo | null>(null)
+
+  const abrirAnalise = (dimensaoId: Nr1DimensaoId, departamentoId?: string) => {
+    if (mapa.status !== 'success' || departamentoId === NR1_RECORTE_OUTROS) return
+    setAnalise({ campanhaId: campanha.id, cicloLabel: cicloLabelCurto(campanha), dimensaoId, departamentoId, linhas: mapa.data })
+  }
+
+  return (
+    <>
+      <CabecalhoBloco
+        simples
+        titulo={`Resultado do ciclo ${cicloLabelCurto(campanha)}`}
+        icon="ph:chart-polar-bold"
+        subtitulo="Nota de cada domínio, de 1 a 5 (5 é a situação desejável), comparada ao ciclo anterior."
+        acao={<FiltroDepartamento value={recorte} onChange={setRecorte} opcoes={opcoes} rotulo="Filtrar o resultado do ciclo por departamento" />}
+      />
+      <VisaoGeralBloco semCabecalho campanha={campanha} recorte={recorte} onAbrirDominio={abrirAnalise} />
+      <Nr1AnaliseRiscoModal escopo={analise} onClose={() => setAnalise(null)} />
+    </>
+  )
+}

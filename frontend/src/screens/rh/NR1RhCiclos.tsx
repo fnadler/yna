@@ -277,7 +277,8 @@ const mais21Dias = (iso: string) => {
   return d.toISOString().slice(0, 10)
 }
 
-function NovoCicloSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** Exportado para a Visão geral abrir o cadastro direto do estado vazio. */
+export function NovoCicloSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <Sheet open={open} onClose={onClose} title="Novo ciclo de avaliação" icon="ph:calendar-plus-bold" size="md">
       {open && <NovoCicloConteudo onClose={onClose} />}
