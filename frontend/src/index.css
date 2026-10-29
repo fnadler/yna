@@ -14,6 +14,22 @@
   --danger-ink: #ab3a4e;
   --info-bg: #ede8f7;
 
+  /* Matriz de risco (nível P × S do fator) — escala de calor, do frio ao
+     alarme: azul-céu (baixo), amarelo-limão (atenção), laranja (risco) e
+     carmim (crítico). Tons escolhidos para não repetir o semáforo do
+     questionário (verde/âmbar/rosado: laranja ≠ âmbar, carmim ≠ rosado) nem
+     o roxo dos botões e o lilás das etiquetas. Validada para protanopia,
+     deuteranopia e tritanopia (ΔE OKLab ≥ 15 entre quaisquer dois níveis;
+     ≥ 18 em visão normal) e com o texto de cada nível em AA (4,5:1). */
+  --matriz-baixo: #9ed3e6;
+  --matriz-baixo-ink: #1f1b2d;
+  --matriz-atencao: #eed65e;
+  --matriz-atencao-ink: #1f1b2d;
+  --matriz-risco: #ee7a30;
+  --matriz-risco-ink: #ffffff;
+  --matriz-critico: #b0153f;
+  --matriz-critico-ink: #ffffff;
+
   --page-bg: #f8f6fb;
   --surface: #ffffff;
   --surface-2: #f4f1f8;
@@ -44,6 +60,18 @@
   --danger-bg: rgba(215, 90, 110, 0.15);
   --danger-ink: #ef93a3;
   --info-bg: rgba(108, 111, 194, 0.15);
+
+  /* No escuro, a mesma escala; azul e carmim um pouco mais vivos para se
+     destacarem do fundo, sem chegar no rosado do semáforo. ΔE OKLab ≥ 15
+     nos três tipos de daltonismo. */
+  --matriz-baixo: #7cc3dc;
+  --matriz-baixo-ink: #14122a;
+  --matriz-atencao: #eed65e;
+  --matriz-atencao-ink: #14122a;
+  --matriz-risco: #ee7a30;
+  --matriz-risco-ink: #ffffff;
+  --matriz-critico: #c21a48;
+  --matriz-critico-ink: #ffffff;
 
   --yna-gradient-dark: linear-gradient(135deg, #0F0E1B 0%, #151225 50%, #090812 100%);
   --page-bg: #0E0D18;

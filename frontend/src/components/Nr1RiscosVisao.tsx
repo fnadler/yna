@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from '@iconify/react'
-import { NIVEL_RISCO, NR1_PROBABILIDADE_ROTULOS, NR1_SEVERIDADE_ROTULOS, NR1_SEVERIDADE_CLS } from '../lib/nr1'
+import { NIVEL_MATRIZ, NR1_PROBABILIDADE_ROTULOS, NR1_SEVERIDADE_ROTULOS, NR1_SEVERIDADE_CLS } from '../lib/nr1'
 import { nr1NivelPorProduto } from '../data/nr1Mock'
 import type { Nr1Acao, Nr1NivelRisco, Nr1RiscoInventario } from '../types'
 
@@ -13,9 +13,10 @@ import type { Nr1Acao, Nr1NivelRisco, Nr1RiscoInventario } from '../types'
    severidade e, por último, a nota. */
 const RISCOS_GRID_COLS = 'grid-cols-[1fr_150px_130px_56px_120px_120px_88px]'
 
-/** Nota do risco: o rótulo do nível em destaque e o valor (P × S) menor. */
+/** Nota do risco: o rótulo do nível em destaque e o valor (P × S) menor,
+   na cor do nível na matriz. */
 export function Nr1NotaRisco({ risco, compacta = false }: { risco: Nr1RiscoInventario; compacta?: boolean }) {
-  const nivel = NIVEL_RISCO[risco.nivel]
+  const nivel = NIVEL_MATRIZ[risco.nivel]
   return (
     <span className={`flex w-fit min-w-[72px] flex-col items-center gap-0.5 rounded-lg ${compacta ? 'px-2 py-1' : 'px-2.5 py-1.5'} ${nivel.cls}`} title={`Probabilidade ${risco.probabilidade} × severidade ${risco.severidade}`}>
       <span className={`font-heading font-bold leading-none ${compacta ? 'text-[11.5px]' : 'text-[12.5px]'}`}>{nivel.label}</span>
@@ -24,10 +25,19 @@ export function Nr1NotaRisco({ risco, compacta = false }: { risco: Nr1RiscoInven
   )
 }
 
-/** Severidade do fator em destaque visual — a cor sobe com o impacto. */
+/** Severidade do fator, sem cor de nível: a intensidade vai num medidor de
+   5 traços, para não competir com a cor do nível do fator (a matriz). */
 export function Nr1SeveridadeTag({ severidade }: { severidade: number }) {
   return (
-    <span className={`inline-flex w-fit items-center gap-1 rounded-pill px-2 py-0.5 text-[11.5px] font-semibold ${NR1_SEVERIDADE_CLS[severidade]}`}>
+    <span
+      className={`inline-flex w-fit items-center gap-1.5 rounded-pill px-2 py-0.5 text-[11.5px] font-semibold ${NR1_SEVERIDADE_CLS[severidade]}`}
+      title={`Severidade ${severidade} de 5`}
+    >
+      <span className="flex items-end gap-[2px]" aria-hidden>
+        {[1, 2, 3, 4, 5].map((i) => (
+          <span key={i} className={`w-[3px] rounded-[1px] ${i <= severidade ? 'bg-ink-secondary' : 'bg-border-strong'}`} style={{ height: 4 + i * 1.5 }} />
+        ))}
+      </span>
       <span className="font-mono">{severidade}</span>
       {NR1_SEVERIDADE_ROTULOS[severidade - 1]}
     </span>
@@ -117,18 +127,10 @@ function RiscoLinha({ risco, vinculadas, onClick }: {
    Visualização "Matriz de risco" — probabilidade (eixo Y, de 5 no topo a 1
    embaixo) × severidade (eixo X, de 1 a 5). Cada risco cai na célula da sua
    pontuação; a cor da célula é o nível do produto P × S (mesmos cortes de
-   `nr1NivelPorProduto`). Clicar num risco abre o mesmo detalhe da lista.
+   `nr1NivelPorProduto`), na paleta própria da matriz (`NIVEL_MATRIZ`), não
+   no semáforo do questionário. Clicar num risco abre o mesmo detalhe da
+   lista.
    ------------------------------------------------------------------ */
-
-
-/** Fundo de cada célula — tons suaves do nível, para os cards de risco
-   continuarem legíveis por cima. */
-const CELULA_NIVEL: Record<Nr1NivelRisco, string> = {
-  baixo: 'bg-success/20',
-  atencao: 'bg-warning/30',
-  risco: 'bg-danger/20',
-  critico: 'bg-critico/30',
-}
 
 /** Cards visíveis por célula antes do "+N". */
 const POR_CELULA = 2
@@ -190,8 +192,8 @@ export function Nr1MatrizRiscos({ riscos, onAbrir, titulo, acao }: {
         <span className="font-medium text-ink">Nível (P × S):</span>
         {(['baixo', 'atencao', 'risco', 'critico'] as Nr1NivelRisco[]).map((n) => (
           <span key={n} className="inline-flex items-center gap-1.5">
-            <span className={`h-3 w-3 rounded-[3px] ${CELULA_NIVEL[n]} ring-1 ring-inset ring-border`} aria-hidden />
-            {NIVEL_RISCO[n].label}
+            <span className={`h-3 w-3 rounded-[3px] ${NIVEL_MATRIZ[n].dot}`} aria-hidden />
+            {NIVEL_MATRIZ[n].label}
           </span>
         ))}
         <span className="text-ink-muted">· Clique num risco para ver o detalhe.</span>
@@ -227,10 +229,10 @@ function MatrizLinha({ p, riscos, expandida, onExpandir, onAbrir, onDica }: {
         return (
           <div
             key={sev}
-            className={`flex min-h-[64px] flex-col gap-1 rounded-none p-1 ${CELULA_NIVEL[nivel]}`}
-            aria-label={`Probabilidade ${p} × severidade ${sev}: ${aqui.length} ${aqui.length === 1 ? 'risco' : 'riscos'}`}
+            className={`flex min-h-[64px] flex-col gap-1 rounded-none p-1 ${NIVEL_MATRIZ[nivel].dot}`}
+            aria-label={`Probabilidade ${p} × severidade ${sev}, nível ${NIVEL_MATRIZ[nivel].label}: ${aqui.length} ${aqui.length === 1 ? 'risco' : 'riscos'}`}
           >
-            <span className="self-end font-mono text-[9.5px] font-semibold leading-none text-ink-muted">{produto}</span>
+            <span className={`self-end font-mono text-[9.5px] font-semibold leading-none opacity-85 ${NIVEL_MATRIZ[nivel].ink}`}>{produto}</span>
             {visiveis.map((r) => (
               <button
                 key={r.id}
@@ -250,7 +252,7 @@ function MatrizLinha({ p, riscos, expandida, onExpandir, onAbrir, onDica }: {
               <button
                 type="button"
                 onClick={() => onExpandir(aberta ? null : chave)}
-                className="rounded-md px-2 py-0.5 text-[10.5px] font-medium text-primary hover:underline dark:text-primary-300"
+                className="w-fit self-center rounded-pill bg-surface px-2 py-0.5 text-[10.5px] font-medium text-primary shadow-xs hover:underline dark:text-primary-300"
               >
                 {aberta ? 'Mostrar menos' : `+${aqui.length - POR_CELULA} ${aqui.length - POR_CELULA === 1 ? 'risco' : 'riscos'}`}
               </button>

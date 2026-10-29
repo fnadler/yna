@@ -24,6 +24,13 @@ export default {
         danger: { DEFAULT: '#D75A6E', bg: 'var(--danger-bg)', ink: 'var(--danger-ink)' },
         /* Nível crítico de risco — roxo, para não se confundir com o "Risco" (danger). */
         critico: { DEFAULT: '#7E3FA6' },
+        /* Matriz de risco — nível P × S do fator (ver `--matriz-*` em index.css). */
+        matriz: {
+          baixo: { DEFAULT: 'var(--matriz-baixo)', ink: 'var(--matriz-baixo-ink)' },
+          atencao: { DEFAULT: 'var(--matriz-atencao)', ink: 'var(--matriz-atencao-ink)' },
+          risco: { DEFAULT: 'var(--matriz-risco)', ink: 'var(--matriz-risco-ink)' },
+          critico: { DEFAULT: 'var(--matriz-critico)', ink: 'var(--matriz-critico-ink)' },
+        },
         /* Primeira parada de `yna-gradient-dark` — esmaece fotos para o card
            escuro de ajuda imediata e as miniaturas de vídeo (`/conhecer-yna`). */
         'yna-night': '#0F0E1B',

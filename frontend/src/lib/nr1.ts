@@ -28,6 +28,35 @@ export const NIVEL_RISCO: Record<Nr1NivelRisco, NivelStyle> = {
   critico: { label: 'Crítico', acao: 'Ação imediata', cls: 'bg-critico text-white', dot: 'bg-critico' },
 }
 
+/** Nível do fator de risco (P × S), na matriz e em tudo que mostra o nível
+   de um fator: lista de fatores, detalhe do risco, análise do domínio,
+   detalhe da ação e Resumo para o PGR. Paleta própria (`matriz-*`: escala
+   de calor, do azul-céu ao carmim), separada de `NIVEL_RISCO`, que fica só para a nota do
+   questionário (mapa de calor, radar, evolução) — antes as duas escalas
+   usavam o mesmo semáforo e uma se lia como a outra. */
+export interface NivelMatrizStyle extends NivelStyle {
+  /** Texto por cima do preenchimento sólido (`dot`), ex.: o número da célula. */
+  ink: string
+  /** Caixa translúcida por cima do preenchimento (o número no detalhe). */
+  caixa: string
+}
+
+export const NIVEL_MATRIZ: Record<Nr1NivelRisco, NivelMatrizStyle> = {
+  baixo: { label: 'Baixo', acao: 'Monitorar', cls: 'bg-matriz-baixo text-matriz-baixo-ink', dot: 'bg-matriz-baixo', ink: 'text-matriz-baixo-ink', caixa: 'bg-white/55' },
+  atencao: { label: 'Atenção', acao: 'Ação preventiva', cls: 'bg-matriz-atencao text-matriz-atencao-ink', dot: 'bg-matriz-atencao', ink: 'text-matriz-atencao-ink', caixa: 'bg-white/55' },
+  risco: { label: 'Risco', acao: 'Ação corretiva prioritária', cls: 'bg-matriz-risco text-matriz-risco-ink', dot: 'bg-matriz-risco', ink: 'text-matriz-risco-ink', caixa: 'bg-white/15' },
+  critico: { label: 'Crítico', acao: 'Ação imediata', cls: 'bg-matriz-critico text-matriz-critico-ink', dot: 'bg-matriz-critico', ink: 'text-matriz-critico-ink', caixa: 'bg-white/15' },
+}
+
+/** Ícone de cada nível do fator — segunda pista além da cor, para o nível
+   nunca depender só dela. */
+export const ICONE_NIVEL_MATRIZ: Record<Nr1NivelRisco, string> = {
+  baixo: 'ph:eye-bold',
+  atencao: 'ph:shield-warning-bold',
+  risco: 'ph:warning-bold',
+  critico: 'ph:siren-bold',
+}
+
 /** Recorte ocultado por k-anonimato — nunca uma cor de risco. */
 export const NIVEL_PROTEGIDO: NivelStyle = {
   label: 'Protegido',
@@ -98,13 +127,15 @@ export const LIMIAR_TENDENCIA = 0.2
 export const NR1_PROBABILIDADE_ROTULOS = ['Rara', 'Improvável', 'Possível', 'Provável', 'Quase certa']
 export const NR1_SEVERIDADE_ROTULOS = ['Leve', 'Menor', 'Moderada', 'Grave', 'Extrema']
 
-/** Cor da severidade (1–5) — a mesma progressão do nível de risco. */
+/** Severidade (1–5) sem cor própria: o nível do fator já tem a sua (a
+   matriz), e um segundo semáforo ao lado dele competiria com ela. A
+   intensidade vai no medidor de 5 traços de `Nr1SeveridadeTag`. */
 export const NR1_SEVERIDADE_CLS: Record<number, string> = {
-  1: 'bg-success/20 text-success-ink',
-  2: 'bg-success/20 text-success-ink',
-  3: 'bg-warning/25 text-warning-ink',
-  4: 'bg-danger/20 text-danger-ink',
-  5: 'bg-critico text-white',
+  1: 'bg-surface-2 text-ink-secondary',
+  2: 'bg-surface-2 text-ink-secondary',
+  3: 'bg-surface-2 text-ink-secondary',
+  4: 'bg-surface-2 text-ink-secondary',
+  5: 'bg-surface-2 text-ink-secondary',
 }
 
 /** Hash determinístico [0, 1) — mesma string sempre gera o mesmo número.

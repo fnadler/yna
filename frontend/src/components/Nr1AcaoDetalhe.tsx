@@ -11,7 +11,7 @@ import { Modal } from './Modal'
 import { Toast } from './Toast'
 import { AcaoForm } from './Nr1AcaoForm'
 import { useRh } from '../contexts/RhContext'
-import { NIVEL_RISCO, ACAO_STATUS, EFETIVIDADE, fmtData, nr1DiasEntre, nr1UrgenciaPrazo } from '../lib/nr1'
+import { NIVEL_RISCO, NIVEL_MATRIZ, ACAO_STATUS, EFETIVIDADE, fmtData, nr1DiasEntre, nr1UrgenciaPrazo } from '../lib/nr1'
 import { NR1_TODAY, NR1_DIMENSOES } from '../data/nr1Mock'
 import { useService } from '../hooks/useService'
 import { nr1AcaoService, nr1FatorService, nr1ResultadoService } from '../services/nr1'
@@ -534,7 +534,7 @@ function RiscoOrigem({ risco }: { risco: Nr1RiscoInventario }) {
   const fontes = useService(() => nr1FatorService.fontes(), [])
   const mapa = useService(() => nr1ResultadoService.mapaCalor(risco.campanhaId), [risco.campanhaId])
   const meta = NR1_DIMENSOES.find((d) => d.id === risco.dimensaoId)
-  const st = NIVEL_RISCO[risco.nivel]
+  const st = NIVEL_MATRIZ[risco.nivel]
   const nomes = risco.grupoExposto.split(',').map((x) => x.trim())
   const fontesIds = risco.fontesGeradorasIds ?? []
 

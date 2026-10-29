@@ -6,7 +6,7 @@ import { Skeleton } from './Skeleton'
 import { useService } from '../hooks/useService'
 import { useRh } from '../contexts/RhContext'
 import { nr1ResultadoService, nr1FatorService } from '../services/nr1'
-import { NIVEL_RISCO, NR1_PROBABILIDADE_ROTULOS, NR1_SEVERIDADE_ROTULOS, fmtData } from '../lib/nr1'
+import { NIVEL_MATRIZ, NR1_PROBABILIDADE_ROTULOS, NR1_SEVERIDADE_ROTULOS, fmtData } from '../lib/nr1'
 import { NR1_TODAY, NR1_RECORTE_OUTROS, nr1RiscoNoRecorte } from '../data/nr1Mock'
 import type { Nr1Campanha, Nr1Cid, Nr1FatorRisco, Nr1RiscoInventario } from '../types'
 
@@ -125,7 +125,7 @@ function ResumoPgr({ campanha, recorte, recorteNome, onClose }: {
         r.fator,
         `${r.severidade} - ${NR1_SEVERIDADE_ROTULOS[r.severidade - 1]}`,
         `${r.probabilidade} - ${NR1_PROBABILIDADE_ROTULOS[r.probabilidade - 1]}`,
-        `${NIVEL_RISCO[r.nivel].label} (${r.nivelNum})`,
+        `${NIVEL_MATRIZ[r.nivel].label} (${r.nivelNum})`,
         lesoes(r).map((c) => `${c.codigo} ${c.nome}`).join('; '),
       ])),
     ]
@@ -238,8 +238,8 @@ function ResumoPgr({ campanha, recorte, recorteNome, onClose }: {
                           <td className={`${celula} font-medium text-ink`}>{r.fator}</td>
                           <td className={`${celula} text-ink`}>{r.severidade} · {NR1_SEVERIDADE_ROTULOS[r.severidade - 1]}</td>
                           <td className={`${celula} text-ink`}>{r.probabilidade} · {NR1_PROBABILIDADE_ROTULOS[r.probabilidade - 1]}</td>
-                          <td className={`${celula} font-semibold ${NIVEL_RISCO[r.nivel].cls}`}>
-                            {NIVEL_RISCO[r.nivel].label} <span className="font-mono font-normal opacity-80">({r.nivelNum})</span>
+                          <td className={`${celula} font-semibold ${NIVEL_MATRIZ[r.nivel].cls}`}>
+                            {NIVEL_MATRIZ[r.nivel].label} <span className="font-mono font-normal opacity-80">({r.nivelNum})</span>
                           </td>
                           <td className={`${celula} text-ink-secondary`}>
                             {lesoes(r).map((c) => (

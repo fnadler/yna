@@ -11,9 +11,9 @@ import { SearchSelect } from './SearchSelect'
 import { Toast } from './Toast'
 import { AcaoForm, TODA_EMPRESA } from './Nr1AcaoForm'
 import { CabecalhoBloco, useOpcoesRecorte } from './Nr1Blocos'
-import { Nr1MatrizRiscos, Nr1SeveridadeTag } from './Nr1RiscosVisao'
+import { Nr1MatrizRiscos, Nr1NotaRisco, Nr1SeveridadeTag } from './Nr1RiscosVisao'
 import { Nr1ResumoPgrChamada, Nr1ResumoPgrModal } from './Nr1ResumoPgr'
-import { ACAO_STATUS, fmtData, nr1DiasEntre } from '../lib/nr1'
+import { ACAO_STATUS, NIVEL_MATRIZ, fmtData, nr1DiasEntre } from '../lib/nr1'
 import { useService } from '../hooks/useService'
 import { nr1ResultadoService, nr1AcaoService, nr1FatorService } from '../services/nr1'
 import { NR1_RECORTE_OUTROS, NR1_TODAY, nr1RiscoNoRecorte } from '../data/nr1Mock'
@@ -59,9 +59,10 @@ export function FatoresBloco({ campanhaId, recorte, onAbrir, semCabecalho = fals
   const doRecorte = todos.filter((r) => nr1RiscoNoRecorte(r, recorte))
   const semPlanoDe = (rs: Nr1RiscoInventario[]) => rs.filter((r) => acoesDe(r.id).length === 0)
   const semPlano = semPlanoDe(doRecorte).length
-  /* Os sem plano primeiro; depois do maior para o menor nível. */
+  /* Do maior para o menor nível. Ter ou não plano não muda a ordem nem o
+     destaque da linha: isso fica no filtro "Precisam de ação". */
   const lista = (soSemPlano ? semPlanoDe(doRecorte) : doRecorte)
-    .sort((x, y) => (acoesDe(x.id).length === 0 ? 0 : 1) - (acoesDe(y.id).length === 0 ? 0 : 1) || y.nivelNum - x.nivelNum)
+    .sort((x, y) => y.nivelNum - x.nivelNum)
   /* Na matriz, a probabilidade e o nível são os do departamento filtrado. */
   const naMatriz = (rec: string) => doRecorte.map((r) => nr1RiscoNoRecorte(r, rec)).filter((r): r is Nr1RiscoInventario => !!r)
   const abrirOriginal = (r: Nr1RiscoInventario) => onAbrir(todos.find((x) => x.id === r.id) ?? r)
@@ -149,7 +150,7 @@ export function FatoresBloco({ campanhaId, recorte, onAbrir, semCabecalho = fals
 
 /* Todas as colunas com largura definida (nenhuma `auto`): cabeçalho e linhas
    são grades separadas e só alinham se as trilhas forem idênticas. */
-const FATORES_GRID_COLS = 'grid-cols-[minmax(0,1fr)_150px_minmax(0,300px)_170px]'
+const FATORES_GRID_COLS = 'grid-cols-[minmax(0,1fr)_88px_150px_minmax(0,280px)_170px]'
 
 function ListaFatores({ riscos, acoesDe, onAbrir, onNovaAcao }: {
   riscos: Nr1RiscoInventario[]
@@ -161,7 +162,7 @@ function ListaFatores({ riscos, acoesDe, onAbrir, onNovaAcao }: {
   return (
     <div className="rounded-lg border border-border bg-surface">
       <div className={`hidden items-center gap-4 rounded-t-lg border-b border-border bg-surface-2 px-4 py-2.5 lg:grid ${FATORES_GRID_COLS}`}>
-        {['Fator de risco', 'Severidade', 'Departamentos afetados', 'Plano de ação'].map((c) => (
+        {['Fator de risco', 'Nível', 'Severidade', 'Departamentos afetados', 'Plano de ação'].map((c) => (
           <span key={c} className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted">{c}</span>
         ))}
       </div>
@@ -197,19 +198,23 @@ function ListaFatores({ riscos, acoesDe, onAbrir, onNovaAcao }: {
             </button>
           )
           return (
-            <li key={r.id} className={`relative px-4 py-3.5 last:rounded-b-lg ${n === 0 ? 'bg-warning/[0.07]' : ''}`}>
-              {/* Fator sem nenhuma ação: faixa lateral. */}
-              {n === 0 && <span className="absolute inset-y-0 left-0 w-1 bg-warning" aria-hidden />}
+            <li key={r.id} className="relative bg-surface py-3.5 pl-5 pr-4 last:rounded-b-lg">
+              {/* Borda esquerda na cor do nível do fator (a da matriz). */}
+              <span className={`absolute inset-y-0 left-0 w-1.5 [li:last-child>&]:rounded-bl-lg ${NIVEL_MATRIZ[r.nivel].dot}`} aria-hidden />
               {/* Desktop */}
               <div className={`hidden items-center gap-4 lg:grid ${FATORES_GRID_COLS}`}>
                 {nome}
+                <Nr1NotaRisco risco={r} compacta />
                 <Nr1SeveridadeTag severidade={r.severidade} />
                 <DepartamentosAfetados nomes={departamentosDoRisco(r)} />
                 {acoesBtn}
               </div>
               {/* Mobile */}
               <div className="flex flex-col gap-2.5 lg:hidden">
-                {nome}
+                <div className="flex items-start justify-between gap-3">
+                  {nome}
+                  <Nr1NotaRisco risco={r} compacta />
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Nr1SeveridadeTag severidade={r.severidade} />
                   <DepartamentosAfetados nomes={departamentosDoRisco(r)} />

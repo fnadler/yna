@@ -14,7 +14,7 @@ import { Nr1DepartamentosPopover } from './Nr1DepartamentosPopover'
 import { useService } from '../hooks/useService'
 import { nr1ResultadoService, nr1AcaoService, nr1FatorService } from '../services/nr1'
 import { NR1_DIMENSOES, nr1NivelPorMedia } from '../data/nr1Mock'
-import { NIVEL_RISCO, ACAO_STATUS, ACAO_RECOMENDADA, STATUS_RISCO, NR1_PROBABILIDADE_ROTULOS, NR1_SEVERIDADE_ROTULOS, NR1_SEVERIDADE_CLS } from '../lib/nr1'
+import { NIVEL_RISCO, NIVEL_MATRIZ, ICONE_NIVEL_MATRIZ, ACAO_STATUS, ACAO_RECOMENDADA, STATUS_RISCO, NR1_PROBABILIDADE_ROTULOS, NR1_SEVERIDADE_ROTULOS, NR1_SEVERIDADE_CLS } from '../lib/nr1'
 import type {
   Nr1Acao, Nr1DimensaoId, Nr1FatorSituacao, Nr1LinhaMapa, Nr1NivelRisco, Nr1RiscoInventario, Nr1Tendencia, Nr1AcaoSugerida,
 } from '../types'
@@ -241,7 +241,7 @@ function Analise({ escopo, onClose, onRiscosAlterados }: {
                 {linhasFatores.map(({ fator, av }) => {
                   const risco = riscoDe(fator.id)
                   const nAcoes = risco ? acoesDe(risco.id).length : 0
-                  const st = av ? NIVEL_RISCO[av.nivel] : null
+                  const st = av ? NIVEL_MATRIZ[av.nivel] : null
                   const situacao = risco ? SITUACAO['requer-plano'] : av ? SITUACAO[av.situacao] : null
                   return (
                     <li key={fator.id} className="rounded-lg border border-border bg-surface p-4">
@@ -899,22 +899,11 @@ function RiscoDetalhe({ inicial, onClose, onAlterado }: {
   )
 }
 
-/* Status + tendência + sugestão do risco — sempre uma leitura calculada a
-   partir da evolução do fator entre ciclos (ver nr1EvolucaoFator), nunca uma
-   conclusão. O card mostra a sugestão; quem decide o que fazer com ela é o
-   SST/RH. */
-const ICONE_NIVEL: Record<Nr1NivelRisco, string> = {
-  baixo: 'ph:eye-bold',
-  atencao: 'ph:shield-warning-bold',
-  risco: 'ph:warning-bold',
-  critico: 'ph:siren-bold',
-}
-
 /** Card do nível do risco. Em cima, o veredito na cor do nível: o que o
    nível exige (a informação que orienta o RH) e o nível em si. Embaixo, de
    onde ele vem: probabilidade × severidade, cada uma com a sua origem. */
 function NivelDoRisco({ risco }: { risco: Nr1RiscoInventario }) {
-  const st = NIVEL_RISCO[risco.nivel]
+  const st = NIVEL_MATRIZ[risco.nivel]
   const av = risco.avaliacao
   const origemP = !av
     ? 'Incluído pelo RH'
@@ -924,14 +913,14 @@ function NivelDoRisco({ risco }: { risco: Nr1RiscoInventario }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       <div className={`flex items-center gap-4 px-4 py-3.5 ${st.cls}`}>
-        <span className={`flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-lg ${risco.nivel === 'critico' ? 'bg-white/15' : 'bg-white/60 dark:bg-black/15'}`}>
+        <span className={`flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-lg ${st.caixa}`}>
           <span className="font-mono text-[22px] font-bold leading-none">{risco.nivelNum}</span>
           <span className="mt-1 text-[10px] font-semibold uppercase leading-none tracking-[0.06em]">{st.label}</span>
         </span>
         <div className="min-w-0">
           <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] opacity-80">Conduta exigida</p>
           <p className="mt-0.5 flex items-center gap-1.5 font-heading text-[17px] font-bold leading-tight">
-            <Icon icon={ICONE_NIVEL[risco.nivel]} width={18} className="shrink-0" aria-hidden />
+            <Icon icon={ICONE_NIVEL_MATRIZ[risco.nivel]} width={18} className="shrink-0" aria-hidden />
             {st.acao}
           </p>
         </div>
@@ -965,7 +954,7 @@ function GrupoExposto({ risco }: { risco: Nr1RiscoInventario }) {
       </div>
       <ul className="divide-y divide-border">
         {risco.grupos.map((g) => {
-          const st = NIVEL_RISCO[g.nivel]
+          const st = NIVEL_MATRIZ[g.nivel]
           return (
             <li key={g.departamentoId ?? 'empresa'} className="grid grid-cols-[minmax(0,1fr)_112px_80px] items-center gap-3 px-3.5 py-2.5">
               <div className="min-w-0">
