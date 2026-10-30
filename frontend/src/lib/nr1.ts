@@ -23,8 +23,8 @@ export interface NivelStyle {
 
 export const NIVEL_RISCO: Record<Nr1NivelRisco, NivelStyle> = {
   baixo: { label: 'Baixo', acao: 'Monitorar', cls: 'bg-success/20 text-success-ink', dot: 'bg-success' },
-  atencao: { label: 'Atenção', acao: 'Ação preventiva', cls: 'bg-warning/25 text-warning-ink', dot: 'bg-warning' },
-  risco: { label: 'Risco', acao: 'Ação corretiva prioritária', cls: 'bg-danger/20 text-danger-ink', dot: 'bg-danger' },
+  atencao: { label: 'Médio', acao: 'Ação preventiva', cls: 'bg-warning/25 text-warning-ink', dot: 'bg-warning' },
+  risco: { label: 'Alto', acao: 'Ação corretiva prioritária', cls: 'bg-danger/20 text-danger-ink', dot: 'bg-danger' },
   critico: { label: 'Crítico', acao: 'Ação imediata', cls: 'bg-critico text-white', dot: 'bg-critico' },
 }
 
@@ -35,6 +35,8 @@ export const NIVEL_RISCO: Record<Nr1NivelRisco, NivelStyle> = {
    azul-céu ao carmim), separadas de `NIVEL_RISCO`, que fica só para a nota
    do questionário (mapa de calor, radar, evolução). */
 export interface NivelMatrizStyle extends NivelStyle {
+  /** Ação recomendada por extenso (relatório de avaliação / PGR). */
+  recomendacao: string
   /** Texto por cima do preenchimento sólido (`dot`), ex.: o número da célula. */
   ink: string
   /** Caixa translúcida por cima do preenchimento (o número no detalhe). */
@@ -42,11 +44,11 @@ export interface NivelMatrizStyle extends NivelStyle {
 }
 
 export const NIVEL_MATRIZ: Record<Nr1NivelMatriz, NivelMatrizStyle> = {
-  irrelevante: { label: 'Irrelevante', acao: 'Sem ação necessária', cls: 'bg-matriz-irrelevante text-matriz-irrelevante-ink', dot: 'bg-matriz-irrelevante', ink: 'text-matriz-irrelevante-ink', caixa: 'bg-white/55' },
-  baixo: { label: 'Baixo', acao: 'Monitorar', cls: 'bg-matriz-baixo text-matriz-baixo-ink', dot: 'bg-matriz-baixo', ink: 'text-matriz-baixo-ink', caixa: 'bg-white/55' },
-  moderado: { label: 'Moderado', acao: 'Ação preventiva', cls: 'bg-matriz-moderado text-matriz-moderado-ink', dot: 'bg-matriz-moderado', ink: 'text-matriz-moderado-ink', caixa: 'bg-white/55' },
-  alto: { label: 'Alto', acao: 'Ação corretiva prioritária', cls: 'bg-matriz-alto text-matriz-alto-ink', dot: 'bg-matriz-alto', ink: 'text-matriz-alto-ink', caixa: 'bg-white/15' },
-  critico: { label: 'Crítico', acao: 'Ação imediata', cls: 'bg-matriz-critico text-matriz-critico-ink', dot: 'bg-matriz-critico', ink: 'text-matriz-critico-ink', caixa: 'bg-white/15' },
+  irrelevante: { label: 'Irrelevante', acao: 'Manter medidas existentes', recomendacao: 'Acompanhar e manter medidas preventivas existentes.', cls: 'bg-matriz-irrelevante text-matriz-irrelevante-ink', dot: 'bg-matriz-irrelevante', ink: 'text-matriz-irrelevante-ink', caixa: 'bg-white/55' },
+  baixo: { label: 'Baixo', acao: 'Monitorar', recomendacao: 'Monitorar e avaliar oportunidades de melhoria.', cls: 'bg-matriz-baixo text-matriz-baixo-ink', dot: 'bg-matriz-baixo', ink: 'text-matriz-baixo-ink', caixa: 'bg-white/55' },
+  moderado: { label: 'Moderado', acao: 'Monitoramento periódico', recomendacao: 'Requer monitoramento periódico e, quando necessário, plano de ação.', cls: 'bg-matriz-moderado text-matriz-moderado-ink', dot: 'bg-matriz-moderado', ink: 'text-matriz-moderado-ink', caixa: 'bg-white/55' },
+  alto: { label: 'Alto', acao: 'Plano de ação obrigatório', recomendacao: 'Plano de ação obrigatório, com definição de medidas preventivas, responsáveis e prazos.', cls: 'bg-matriz-alto text-matriz-alto-ink', dot: 'bg-matriz-alto', ink: 'text-matriz-alto-ink', caixa: 'bg-white/15' },
+  critico: { label: 'Crítico', acao: 'Ação imediata', recomendacao: 'Plano de ação obrigatório, com priorização de medidas imediatas de prevenção e controle, quando cabíveis.', cls: 'bg-matriz-critico text-matriz-critico-ink', dot: 'bg-matriz-critico', ink: 'text-matriz-critico-ink', caixa: 'bg-white/15' },
 }
 
 /** Os níveis da matriz, do menos ao mais grave (legenda, filtros). */
@@ -131,6 +133,26 @@ export const LIMIAR_TENDENCIA = 0.2
    matriz do Inventário, no catálogo de fatores e no detalhe do risco. */
 export const NR1_PROBABILIDADE_ROTULOS = ['Muito baixa', 'Baixa', 'Média', 'Provável', 'Muito provável']
 export const NR1_SEVERIDADE_ROTULOS = ['Insignificante', 'Leve', 'Relevante', 'Grave', 'Muito grave']
+
+/** Leitura de cada nível de probabilidade (1–5): a parcela de
+   trabalhadores expostos e o que ela significa — a escala do relatório de
+   avaliação (modelo YNA, base COPSOQ II). */
+export const NR1_PROBABILIDADE_ESCALA = [
+  { interpretacao: '0% a 15%', descricao: 'Exposição pouco frequente ou restrita a uma parcela muito pequena dos trabalhadores.' },
+  { interpretacao: 'Acima de 15% até 35%', descricao: 'Exposição limitada, identificada em uma parcela minoritária dos trabalhadores.' },
+  { interpretacao: 'Acima de 35% até 60%', descricao: 'Exposição significativa, identificada em uma parcela relevante dos trabalhadores.' },
+  { interpretacao: 'Acima de 60% até 80%', descricao: 'Exposição elevada, atingindo a maioria dos trabalhadores avaliados.' },
+  { interpretacao: 'Acima de 80% até 100%', descricao: 'Exposição generalizada, identificada na grande maioria dos trabalhadores.' },
+]
+
+/** O que cada nível de severidade (1–5) representa em agravo à saúde. */
+export const NR1_SEVERIDADE_DESCRICOES = [
+  'Efeitos transitórios, sem comprometimento relevante.',
+  'Alterações leves, reversíveis, com impacto limitado.',
+  'Agravos com tratamento ou incapacidade temporária possível.',
+  'Comprometimento funcional importante ou prolongado.',
+  'Incapacidade permanente, risco à vida ou morte, quando plausível.',
+]
 
 /** Severidade (1–5) sem cor própria: o nível do fator já tem a sua (a
    matriz), e um segundo semáforo ao lado dele competiria com ela. A

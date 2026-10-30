@@ -598,7 +598,7 @@ export function ResumoPgrBloco({ campanha, recorte, recorteNome }: { campanha: N
       <CabecalhoBloco
         titulo="Resumo para o PGR"
         icon="ph:file-text-bold"
-        subtitulo="O inventário de riscos psicossociais do ciclo, pronto para anexar ao Programa de Gerenciamento de Riscos."
+        subtitulo="O relatório de avaliação do ciclo, com o inventário de riscos psicossociais, pronto para anexar ao Programa de Gerenciamento de Riscos."
       />
       <Nr1ResumoPgrChamada total={total} onAbrir={() => setAberto(true)} />
       <Nr1ResumoPgrModal aberto={aberto} campanha={campanha} recorte={recorte} recorteNome={recorteNome} onClose={() => setAberto(false)} />

@@ -377,13 +377,13 @@ export const NR1_PONTUACAO: Nr1PontuacaoConfig = {
   kAnonimato: 4,
   faixas: [
     { min: 4.0, max: 5.0, nivel: 'baixo', label: 'Baixo', acao: 'Monitorar' },
-    { min: 3.0, max: 3.9, nivel: 'atencao', label: 'Atenção', acao: 'Ação preventiva' },
-    { min: 1.0, max: 2.9, nivel: 'risco', label: 'Risco', acao: 'Ação corretiva prioritária' },
+    { min: 3.0, max: 3.9, nivel: 'atencao', label: 'Médio', acao: 'Ação preventiva' },
+    { min: 1.0, max: 2.9, nivel: 'risco', label: 'Alto', acao: 'Ação corretiva prioritária' },
   ],
 }
 
 /** Traduz a média da dimensão (1–5) para o nível de risco. */
-/** Nível da nota média (1–5) — só três: Baixo, Atenção e Risco. O nível
+/** Nível da nota média (1–5) — só três: Baixo, Médio e Alto. O nível
    do fator de risco tem régua própria, de 5 níveis (P × S,
    `nr1NivelPorProduto`). */
 export function nr1NivelPorMedia(media: number): Nr1NivelRisco {
@@ -793,14 +793,16 @@ export const nr1MapaCalor = (campanhaId?: string): Nr1LinhaMapa[] => {
    Motor de cálculo dos fatores de risco
    Probabilidade = nota média das perguntas vinculadas ao fator (a mesma
    régua de 1 a 5 do mapa de calor, opção A); nível = P × S, com a
-   severidade fixa do fator. A partir de `NR1_GATILHO_PLANO` (nível
-   Moderado em diante) o fator "requer plano de ação"; no nível Baixo (4 a
-   6), "monitorar"; Irrelevante (1 a 3) fica "controlado".
+   severidade fixa do fator. A partir de `NR1_GATILHO_PLANO` (nível Alto
+   em diante) o fator "requer plano de ação", como manda a tabela de
+   categorias do relatório; Baixo e Moderado (4 a 10), "monitorar" (o
+   Moderado pede plano só "quando necessário"); Irrelevante (1 a 3) fica
+   "controlado".
    ------------------------------------------------------------------ */
 
 /** Nível (P × S) a partir do qual o fator requer plano de ação — o início
-   da faixa Moderado (`nr1NivelPorProduto`). */
-export const NR1_GATILHO_PLANO = 8
+   da faixa Alto (`nr1NivelPorProduto`). */
+export const NR1_GATILHO_PLANO = 12
 
 /** Nota média (1–5, 5 = desejável) → probabilidade (1–5). Cortes
    alinhados às faixas do mapa de calor — pendentes de validação de SST. */

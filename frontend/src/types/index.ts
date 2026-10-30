@@ -446,7 +446,7 @@ export type Nr1NivelRisco = 'baixo' | 'atencao' | 'risco' | 'critico'
 
 /** Nível do fator de risco na matriz probabilidade × severidade — régua
    própria, de 5 níveis, separada do nível da nota do questionário
-   (`Nr1NivelRisco`, que segue Baixo/Atenção/Risco no mapa de calor). */
+   (`Nr1NivelRisco`, que segue Baixo/Médio/Alto no mapa de calor). */
 export type Nr1NivelMatriz = 'irrelevante' | 'baixo' | 'moderado' | 'alto' | 'critico'
 
 /** Faixa de corte da média da dimensão → nível de risco (§7 do questionário). */

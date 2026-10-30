@@ -32,7 +32,7 @@ export function NR1RhResumoPgr() {
         <PageHeader
           className="mt-2 lg:mt-0"
           title="Resumo para o PGR"
-          subtitle="O inventário de riscos psicossociais de cada ciclo, por departamento, pronto para exportar ou imprimir e anexar ao PGR."
+          subtitle="O relatório de avaliação de riscos psicossociais de cada ciclo, com o inventário por departamento, pronto para imprimir e anexar ao PGR."
         />
 
         {campanhas.status === 'loading' && <div className="flex flex-col gap-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}</div>}
