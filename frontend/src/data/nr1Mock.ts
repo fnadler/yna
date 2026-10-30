@@ -1,6 +1,6 @@
 import type {
   Nr1QuestionarioModelo, Nr1QuestionarioVersao, Nr1Dimensao, Nr1Item, Nr1DimensaoId,
-  Nr1EscalaConfig, Nr1PontuacaoConfig, Nr1NivelRisco, Nr1Campanha, Nr1LinhaMapa,
+  Nr1EscalaConfig, Nr1PontuacaoConfig, Nr1NivelRisco, Nr1NivelMatriz, Nr1Campanha, Nr1LinhaMapa,
   Nr1RiscoInventario, Nr1Acao, Nr1Relato, Nr1Ciclo, Nr1ResponsavelTecnico,
   Nr1MinhaAvaliacao, Nr1Severidade, Nr1RiscoStatus,
   Nr1FatorRisco, Nr1FonteGeradora, Nr1EscalaId, Nr1Cid,
@@ -383,8 +383,9 @@ export const NR1_PONTUACAO: Nr1PontuacaoConfig = {
 }
 
 /** Traduz a média da dimensão (1–5) para o nível de risco. */
-/** Nível da nota média (1–5) — só três: Baixo, Atenção e Risco. "Crítico"
-   é exclusivo do nível do fator de risco (P × S, `nr1NivelPorProduto`). */
+/** Nível da nota média (1–5) — só três: Baixo, Atenção e Risco. O nível
+   do fator de risco tem régua própria, de 5 níveis (P × S,
+   `nr1NivelPorProduto`). */
 export function nr1NivelPorMedia(media: number): Nr1NivelRisco {
   if (media >= 4) return 'baixo'
   if (media >= 3) return 'atencao'
@@ -792,12 +793,14 @@ export const nr1MapaCalor = (campanhaId?: string): Nr1LinhaMapa[] => {
    Motor de cálculo dos fatores de risco
    Probabilidade = nota média das perguntas vinculadas ao fator (a mesma
    régua de 1 a 5 do mapa de calor, opção A); nível = P × S, com a
-   severidade fixa do fator. A partir de `NR1_GATILHO_PLANO` o fator
-   "requer plano de ação"; de 4 a 8, "monitorar".
+   severidade fixa do fator. A partir de `NR1_GATILHO_PLANO` (nível
+   Moderado em diante) o fator "requer plano de ação"; no nível Baixo (4 a
+   6), "monitorar"; Irrelevante (1 a 3) fica "controlado".
    ------------------------------------------------------------------ */
 
-/** Nível (P × S) a partir do qual o fator requer plano de ação. */
-export const NR1_GATILHO_PLANO = 9
+/** Nível (P × S) a partir do qual o fator requer plano de ação — o início
+   da faixa Moderado (`nr1NivelPorProduto`). */
+export const NR1_GATILHO_PLANO = 8
 
 /** Nota média (1–5, 5 = desejável) → probabilidade (1–5). Cortes
    alinhados às faixas do mapa de calor — pendentes de validação de SST. */
@@ -1134,11 +1137,12 @@ export const nr1RiscosTodos = (): Nr1RiscoInventario[] => nr1CampanhasEncerradas
 /** Classificação do risco pelo produto probabilidade × severidade (1–25),
    coerente com a lógica do GRO. Cálculo simples e transparente — pendente de
    revisão de SST. */
-export function nr1NivelPorProduto(n: number): Nr1NivelRisco {
-  if (n >= 15) return 'critico'
-  if (n >= 9) return 'risco'
-  if (n >= 4) return 'atencao'
-  return 'baixo'
+export function nr1NivelPorProduto(n: number): Nr1NivelMatriz {
+  if (n >= 20) return 'critico'
+  if (n >= 12) return 'alto'
+  if (n >= 8) return 'moderado'
+  if (n >= 4) return 'baixo'
+  return 'irrelevante'
 }
 
 /* ------------------------------------------------------------------

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from '@iconify/react'
-import { NIVEL_MATRIZ, NR1_PROBABILIDADE_ROTULOS, NR1_SEVERIDADE_ROTULOS, NR1_SEVERIDADE_CLS } from '../lib/nr1'
+import { NIVEL_MATRIZ, NR1_NIVEIS_MATRIZ, NR1_PROBABILIDADE_ROTULOS, NR1_SEVERIDADE_ROTULOS, NR1_SEVERIDADE_CLS } from '../lib/nr1'
 import { nr1NivelPorProduto } from '../data/nr1Mock'
-import type { Nr1Acao, Nr1NivelRisco, Nr1RiscoInventario } from '../types'
+import type { Nr1Acao, Nr1RiscoInventario } from '../types'
 
 /* Matriz probabilidade × severidade e lista dos fatores de risco
    identificados — as mesmas no Inventário de riscos e na aba "Resultado"
@@ -190,7 +190,7 @@ export function Nr1MatrizRiscos({ riscos, onAbrir, titulo, acao }: {
 
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3 text-[11.5px] text-ink-secondary">
         <span className="font-medium text-ink">Nível (P × S):</span>
-        {(['baixo', 'atencao', 'risco', 'critico'] as Nr1NivelRisco[]).map((n) => (
+        {NR1_NIVEIS_MATRIZ.map((n) => (
           <span key={n} className="inline-flex items-center gap-1.5">
             <span className={`h-3 w-3 rounded-[3px] ${NIVEL_MATRIZ[n].dot}`} aria-hidden />
             {NIVEL_MATRIZ[n].label}

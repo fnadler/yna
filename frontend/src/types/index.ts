@@ -364,7 +364,7 @@ export interface Nr1FatorRisco {
   dimensaoId: Nr1DimensaoId
   /** O que é e por que importa, em linguagem simples para o RH. */
   descricao: string
-  /** Impacto se o fator ocorrer (1 leve – 5 extrema). */
+  /** Impacto se o fator ocorrer (1 insignificante – 5 muito grave). */
   severidade: Nr1Severidade
   /** Até 3 lesões/agravos à saúde (`Nr1Cid`). */
   cidIds: string[]
@@ -389,7 +389,7 @@ export interface Nr1FatorAvaliado {
   probabilidade: number
   severidade: Nr1Severidade
   nivelNum: number
-  nivel: Nr1NivelRisco
+  nivel: Nr1NivelMatriz
   situacao: Nr1FatorSituacao
   /** As perguntas que sustentam o resultado, da pior para a melhor. */
   perguntas: { itemId: string; texto: string; media: number; nivel: Nr1NivelRisco }[]
@@ -443,6 +443,11 @@ export interface Nr1EscalaDef { nome: string; opcoes: Nr1EscalaOpcao[] }
 export type Nr1EscalaConfig = Record<Nr1EscalaId, Nr1EscalaDef>
 
 export type Nr1NivelRisco = 'baixo' | 'atencao' | 'risco' | 'critico'
+
+/** Nível do fator de risco na matriz probabilidade × severidade — régua
+   própria, de 5 níveis, separada do nível da nota do questionário
+   (`Nr1NivelRisco`, que segue Baixo/Atenção/Risco no mapa de calor). */
+export type Nr1NivelMatriz = 'irrelevante' | 'baixo' | 'moderado' | 'alto' | 'critico'
 
 /** Faixa de corte da média da dimensão → nível de risco (§7 do questionário). */
 export interface Nr1FaixaRisco {
@@ -578,7 +583,7 @@ export interface Nr1GrupoExposto {
   probabilidade: number
   /** probabilidade × severidade do fator. */
   nivelNum: number
-  nivel: Nr1NivelRisco
+  nivel: Nr1NivelMatriz
   /** Incluído pelo RH (o questionário não apontou o fator nesta área). */
   incluido?: boolean
 }
@@ -612,7 +617,7 @@ export interface Nr1RiscoInventario {
   severidade: Nr1Severidade
   /** probabilidade × severidade. */
   nivelNum: number
-  nivel: Nr1NivelRisco
+  nivel: Nr1NivelMatriz
   controles: string[]
   /** Campanha que originou o risco — elo da rastreabilidade (RF-F01). */
   campanhaId: string
@@ -767,7 +772,7 @@ export interface Nr1TrilhaEtapa {
   titulo: string
   detalhe: string
   em: string
-  nivel?: Nr1NivelRisco
+  nivel?: Nr1NivelMatriz
   status?: Nr1AcaoStatus
   campanhaId?: string
 }

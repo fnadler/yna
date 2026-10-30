@@ -14,19 +14,22 @@
   --danger-ink: #ab3a4e;
   --info-bg: #ede8f7;
 
-  /* Matriz de risco (nível P × S do fator) — escala de calor, do frio ao
-     alarme: azul-céu (baixo), amarelo-limão (atenção), laranja (risco) e
-     carmim (crítico). Tons escolhidos para não repetir o semáforo do
-     questionário (verde/âmbar/rosado: laranja ≠ âmbar, carmim ≠ rosado) nem
-     o roxo dos botões e o lilás das etiquetas. Validada para protanopia,
-     deuteranopia e tritanopia (ΔE OKLab ≥ 15 entre quaisquer dois níveis;
-     ≥ 18 em visão normal) e com o texto de cada nível em AA (4,5:1). */
-  --matriz-baixo: #9ed3e6;
+  /* Matriz de risco (nível P × S do fator) — escala de calor de 5 níveis,
+     do frio ao alarme: azul-céu (irrelevante), verde (baixo), amarelo
+     (moderado), laranja queimado (alto) e carmim (crítico). Tons escolhidos
+     para não repetir o semáforo do questionário (verde-água/âmbar/rosado)
+     nem o roxo dos botões e o lilás das etiquetas (ΔE OKLab ≥ 10). Validada
+     para protanopia, deuteranopia e tritanopia (ΔE ≥ 11 entre quaisquer
+     dois níveis; ≥ 17 em visão normal). O nível sempre aparece escrito ao
+     lado da cor. */
+  --matriz-irrelevante: #9ed3e6;
+  --matriz-irrelevante-ink: #1f1b2d;
+  --matriz-baixo: #98b958;
   --matriz-baixo-ink: #1f1b2d;
-  --matriz-atencao: #eed65e;
-  --matriz-atencao-ink: #1f1b2d;
-  --matriz-risco: #ee7a30;
-  --matriz-risco-ink: #ffffff;
+  --matriz-moderado: #f2e15f;
+  --matriz-moderado-ink: #1f1b2d;
+  --matriz-alto: #cf630d;
+  --matriz-alto-ink: #ffffff;
   --matriz-critico: #b0153f;
   --matriz-critico-ink: #ffffff;
 
@@ -61,15 +64,17 @@
   --danger-ink: #ef93a3;
   --info-bg: rgba(108, 111, 194, 0.15);
 
-  /* No escuro, a mesma escala; azul e carmim um pouco mais vivos para se
-     destacarem do fundo, sem chegar no rosado do semáforo. ΔE OKLab ≥ 15
-     nos três tipos de daltonismo. */
-  --matriz-baixo: #7cc3dc;
+  /* No escuro, a mesma escala; azul, laranja e carmim um pouco mais vivos
+     para se destacarem do fundo. ΔE OKLab ≥ 8 nos três tipos de
+     daltonismo e ≥ 16 em visão normal. */
+  --matriz-irrelevante: #7cc3dc;
+  --matriz-irrelevante-ink: #14122a;
+  --matriz-baixo: #98b958;
   --matriz-baixo-ink: #14122a;
-  --matriz-atencao: #eed65e;
-  --matriz-atencao-ink: #14122a;
-  --matriz-risco: #ee7a30;
-  --matriz-risco-ink: #ffffff;
+  --matriz-moderado: #f2e15f;
+  --matriz-moderado-ink: #14122a;
+  --matriz-alto: #db7016;
+  --matriz-alto-ink: #ffffff;
   --matriz-critico: #c21a48;
   --matriz-critico-ink: #ffffff;
 

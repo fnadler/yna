@@ -1,5 +1,5 @@
 import type {
-  Nr1NivelRisco, Nr1AcaoStatus, Nr1VersaoStatus, Nr1RelatoStatus, Nr1RelatoCategoria,
+  Nr1NivelRisco, Nr1NivelMatriz, Nr1AcaoStatus, Nr1VersaoStatus, Nr1RelatoStatus, Nr1RelatoCategoria,
   Nr1RiscoStatus, Nr1AcaoRecomendada, Nr1Efetividade,
 } from '../types'
 
@@ -30,10 +30,10 @@ export const NIVEL_RISCO: Record<Nr1NivelRisco, NivelStyle> = {
 
 /** Nível do fator de risco (P × S), na matriz e em tudo que mostra o nível
    de um fator: lista de fatores, detalhe do risco, análise do domínio,
-   detalhe da ação e Resumo para o PGR. Paleta própria (`matriz-*`: escala
-   de calor, do azul-céu ao carmim), separada de `NIVEL_RISCO`, que fica só para a nota do
-   questionário (mapa de calor, radar, evolução) — antes as duas escalas
-   usavam o mesmo semáforo e uma se lia como a outra. */
+   detalhe da ação e Resumo para o PGR. Régua própria de 5 níveis
+   (`Nr1NivelMatriz`) e paleta própria (`matriz-*`: escala de calor, do
+   azul-céu ao carmim), separadas de `NIVEL_RISCO`, que fica só para a nota
+   do questionário (mapa de calor, radar, evolução). */
 export interface NivelMatrizStyle extends NivelStyle {
   /** Texto por cima do preenchimento sólido (`dot`), ex.: o número da célula. */
   ink: string
@@ -41,19 +41,24 @@ export interface NivelMatrizStyle extends NivelStyle {
   caixa: string
 }
 
-export const NIVEL_MATRIZ: Record<Nr1NivelRisco, NivelMatrizStyle> = {
+export const NIVEL_MATRIZ: Record<Nr1NivelMatriz, NivelMatrizStyle> = {
+  irrelevante: { label: 'Irrelevante', acao: 'Sem ação necessária', cls: 'bg-matriz-irrelevante text-matriz-irrelevante-ink', dot: 'bg-matriz-irrelevante', ink: 'text-matriz-irrelevante-ink', caixa: 'bg-white/55' },
   baixo: { label: 'Baixo', acao: 'Monitorar', cls: 'bg-matriz-baixo text-matriz-baixo-ink', dot: 'bg-matriz-baixo', ink: 'text-matriz-baixo-ink', caixa: 'bg-white/55' },
-  atencao: { label: 'Atenção', acao: 'Ação preventiva', cls: 'bg-matriz-atencao text-matriz-atencao-ink', dot: 'bg-matriz-atencao', ink: 'text-matriz-atencao-ink', caixa: 'bg-white/55' },
-  risco: { label: 'Risco', acao: 'Ação corretiva prioritária', cls: 'bg-matriz-risco text-matriz-risco-ink', dot: 'bg-matriz-risco', ink: 'text-matriz-risco-ink', caixa: 'bg-white/15' },
+  moderado: { label: 'Moderado', acao: 'Ação preventiva', cls: 'bg-matriz-moderado text-matriz-moderado-ink', dot: 'bg-matriz-moderado', ink: 'text-matriz-moderado-ink', caixa: 'bg-white/55' },
+  alto: { label: 'Alto', acao: 'Ação corretiva prioritária', cls: 'bg-matriz-alto text-matriz-alto-ink', dot: 'bg-matriz-alto', ink: 'text-matriz-alto-ink', caixa: 'bg-white/15' },
   critico: { label: 'Crítico', acao: 'Ação imediata', cls: 'bg-matriz-critico text-matriz-critico-ink', dot: 'bg-matriz-critico', ink: 'text-matriz-critico-ink', caixa: 'bg-white/15' },
 }
 
+/** Os níveis da matriz, do menos ao mais grave (legenda, filtros). */
+export const NR1_NIVEIS_MATRIZ: Nr1NivelMatriz[] = ['irrelevante', 'baixo', 'moderado', 'alto', 'critico']
+
 /** Ícone de cada nível do fator — segunda pista além da cor, para o nível
    nunca depender só dela. */
-export const ICONE_NIVEL_MATRIZ: Record<Nr1NivelRisco, string> = {
+export const ICONE_NIVEL_MATRIZ: Record<Nr1NivelMatriz, string> = {
+  irrelevante: 'ph:check-circle-bold',
   baixo: 'ph:eye-bold',
-  atencao: 'ph:shield-warning-bold',
-  risco: 'ph:warning-bold',
+  moderado: 'ph:shield-warning-bold',
+  alto: 'ph:warning-bold',
   critico: 'ph:siren-bold',
 }
 
@@ -124,8 +129,8 @@ export const LIMIAR_TENDENCIA = 0.2
 
 /** Rótulos da escala de probabilidade e de severidade (1–5) — os mesmos na
    matriz do Inventário, no catálogo de fatores e no detalhe do risco. */
-export const NR1_PROBABILIDADE_ROTULOS = ['Rara', 'Improvável', 'Possível', 'Provável', 'Quase certa']
-export const NR1_SEVERIDADE_ROTULOS = ['Leve', 'Menor', 'Moderada', 'Grave', 'Extrema']
+export const NR1_PROBABILIDADE_ROTULOS = ['Muito baixa', 'Baixa', 'Média', 'Provável', 'Muito provável']
+export const NR1_SEVERIDADE_ROTULOS = ['Insignificante', 'Leve', 'Relevante', 'Grave', 'Muito grave']
 
 /** Severidade (1–5) sem cor própria: o nível do fator já tem a sua (a
    matriz), e um segundo semáforo ao lado dele competiria com ela. A

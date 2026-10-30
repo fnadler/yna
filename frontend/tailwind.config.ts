@@ -26,9 +26,10 @@ export default {
         critico: { DEFAULT: '#7E3FA6' },
         /* Matriz de risco — nível P × S do fator (ver `--matriz-*` em index.css). */
         matriz: {
+          irrelevante: { DEFAULT: 'var(--matriz-irrelevante)', ink: 'var(--matriz-irrelevante-ink)' },
           baixo: { DEFAULT: 'var(--matriz-baixo)', ink: 'var(--matriz-baixo-ink)' },
-          atencao: { DEFAULT: 'var(--matriz-atencao)', ink: 'var(--matriz-atencao-ink)' },
-          risco: { DEFAULT: 'var(--matriz-risco)', ink: 'var(--matriz-risco-ink)' },
+          moderado: { DEFAULT: 'var(--matriz-moderado)', ink: 'var(--matriz-moderado-ink)' },
+          alto: { DEFAULT: 'var(--matriz-alto)', ink: 'var(--matriz-alto-ink)' },
           critico: { DEFAULT: 'var(--matriz-critico)', ink: 'var(--matriz-critico-ink)' },
         },
         /* Primeira parada de `yna-gradient-dark` — esmaece fotos para o card

@@ -17,7 +17,7 @@ import {
   nr1RecortesDoCiclo, nr1MediasDoRecorte, NR1_RECORTE_OUTROS,
 } from '../data/nr1Mock'
 import { rhEmpresa, rhUsuarioAtual } from '../data/rhMock'
-import { nr1DistribuirPorItem, ACAO_STATUS, EFETIVIDADE, fmtData } from '../lib/nr1'
+import { nr1DistribuirPorItem, ACAO_STATUS, EFETIVIDADE, NIVEL_MATRIZ, fmtData } from '../lib/nr1'
 
 /* Camada de serviços do Módulo de Conformidade NR-1 — mockada, com latência
    simulada. As assinaturas espelham a futura API REST; trocar o corpo por
@@ -742,7 +742,7 @@ export const nr1ResultadoService = {
         {
           tipo: 'inventario' as const,
           titulo: 'Inventário de riscos psicossociais (PGR)',
-          detalhe: `Probabilidade ${risco.probabilidade} × severidade ${risco.severidade} = ${risco.nivelNum}. Classificado como ${risco.nivel}.`,
+          detalhe: `Probabilidade ${risco.probabilidade} × severidade ${risco.severidade} = ${risco.nivelNum}. Classificado como ${NIVEL_MATRIZ[risco.nivel].label}.`,
           em: campanha?.fim ?? NR1_TODAY,
           nivel: risco.nivel,
         },
