@@ -7,7 +7,7 @@ import { RiscoPorDimensaoGrid, MapaCalorTable } from './Nr1Resultado'
 import { Nr1AnaliseRiscoModal, type Nr1AnaliseEscopo } from './Nr1AnaliseRisco'
 import { useService } from '../hooks/useService'
 import { nr1CampanhaService, nr1ResultadoService } from '../services/nr1'
-import { NR1_DIMENSOES } from '../data/nr1Mock'
+import { NR1_DIMENSOES, NR1_PONTUACAO } from '../data/nr1Mock'
 import {
   NR1_SIM_MAX_DIMENSOES, NR1_SIM_MAX_DEPARTAMENTOS, lerSimulacaoDaUrl, nr1SimulacaoEhPadrao,
   nr1DimensoesParaSimulacao, nr1DepartamentosParaSimulacao, nr1MapaCalorSimulado, nr1MediaPorDimensaoSimulada,
@@ -189,7 +189,7 @@ export function Nr1PainelRiscoMapa({ titulo, subtitulo, somenteEncerrados = fals
           )}
           <p className="mt-2 text-[11px] text-ink-muted">
             Média da empresa de 1 a 5, onde 5 é a situação desejável, ponderada pelos respondentes.
-            Áreas com menos de 4 respondentes entram nesta nota, mas não aparecem separadas no mapa.{!simulando && campanhaId && ' Clique num card para ver o resultado do domínio e os fatores de risco apontados.'}
+            Áreas com menos de {NR1_PONTUACAO.kAnonimato} respondentes entram nesta nota, mas não aparecem separadas no mapa.{!simulando && campanhaId && ' Clique num card para ver o resultado do domínio e os fatores de risco apontados.'}
           </p>
 
           <div className="my-6 border-t border-border" />

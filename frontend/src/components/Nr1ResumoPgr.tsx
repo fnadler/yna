@@ -12,7 +12,7 @@ import {
   NR1_PROBABILIDADE_ESCALA, NR1_SEVERIDADE_DESCRICOES, fmtData, pct,
 } from '../lib/nr1'
 import { NR1_DIMENSOES, NR1_PONTUACAO, NR1_TODAY, NR1_RECORTE_OUTROS, nr1NivelPorProduto, nr1RiscoNoRecorte } from '../data/nr1Mock'
-import type { Nr1Campanha, Nr1Cid, Nr1DimensaoId, Nr1FatorRisco, Nr1LinhaMapa, Nr1RiscoInventario } from '../types'
+import type { Nr1Campanha, Nr1Cid, Nr1Dimensao, Nr1DimensaoId, Nr1FatorRisco, Nr1LinhaMapa, Nr1NivelRisco, Nr1RiscoInventario } from '../types'
 
 /* Resumo para o PGR — o relatório de avaliação de riscos psicossociais do
    ciclo, no modelo da YNA (base COPSOQ II): dados cadastrais e da
@@ -67,7 +67,7 @@ const FATORES_POR_DOMINIO: Record<Nr1DimensaoId, string[]> = {
 
 const OBJETIVOS = [
   'identificar fatores de risco psicossocial relacionados à organização e às condições de trabalho;',
-  'compreender os principais fatores que demandam atenção;',
+  'compreender os principais fatores de risco que demandam atenção;',
   'identificar fatores de proteção e recursos organizacionais;',
   'apoiar a classificação e priorização dos riscos;',
   'subsidiar a definição de medidas preventivas e corretivas;',
@@ -77,9 +77,9 @@ const OBJETIVOS = [
 
 const ANALISE = [
   'resultados gerais da organização;',
-  'resultados por domínio;',
-  'resultados por departamento, quando houver quantidade de respondentes suficiente para preservar a confidencialidade;',
-  'identificação dos fatores com maior necessidade de atenção;',
+  'resultados por domínio (principais eixos da análise);',
+  `resultados por departamento, quando houver quantidade de respondentes suficiente para preservar a confidencialidade (até ${NR1_PONTUACAO.kAnonimato - 1} participantes inclusive, as informações são agrupadas);`,
+  'fatores de risco;',
   'identificação de fatores positivos;',
   'priorização para intervenção.',
 ]
@@ -92,6 +92,21 @@ const CRITERIOS_REAVALIACAO = [
   'ocorrência de eventos ou evidências que indiquem necessidade de nova avaliação;',
   'critérios definidos no gerenciamento de riscos ocupacionais da organização.',
 ]
+
+/** Escala de classificação do COPSOQ II no relatório: a nota média do
+   sistema (1–5, 5 = situação desejável) vai para 0–100, como no
+   questionário (1 → 0, 3 → 50, 4 → 75, 5 → 100). As faixas são as mesmas
+   de `nr1NivelPorMedia` (3,0 e 4,0), só com os nomes do relatório. */
+const escala100 = (media: number) => Math.floor((media - 1) * 25 + 1e-9)
+
+const CLASSIFICACAO_COPSOQ: Record<Exclude<Nr1NivelRisco, 'critico'>, { label: string; faixa: string; descricao: string }> = {
+  risco: { label: 'Elevado', faixa: 'valor < 50', descricao: 'Valor inferior a 50: indica condições desfavoráveis, que exigem maior atenção e avaliação.' },
+  atencao: { label: 'Moderado', faixa: '50 ≤ valor < 75', descricao: 'Valor de 50 a menos de 75: indica condições intermediárias, que requerem acompanhamento e monitoramento.' },
+  baixo: { label: 'Satisfatório', faixa: 'valor ≥ 75', descricao: 'Valor igual ou superior a 75: indica condições favoráveis em relação ao fator avaliado.' },
+}
+const NIVEIS_COPSOQ = ['risco', 'atencao', 'baixo'] as const
+/** Rótulo da classificação no relatório (o crítico não ocorre na nota média). */
+const classificacao = (n: Nr1NivelRisco) => CLASSIFICACAO_COPSOQ[n === 'critico' ? 'risco' : n]
 
 /** Faixa de pontuação (P × S) de cada nível da matriz (`nr1NivelPorProduto`). */
 const FAIXA_MATRIZ: Record<(typeof NR1_NIVEIS_MATRIZ)[number], string> = {
@@ -143,10 +158,12 @@ function useDadosPgr(campanhaId: string, recorte: string) {
 function useResultadosCiclo(campanhaId: string) {
   const dominios = useService(() => nr1ResultadoService.mediaPorDimensao(campanhaId), [campanhaId])
   const mapa = useService(() => nr1ResultadoService.mapaCalorAgregado(campanhaId), [campanhaId])
+  const perguntas = useService(() => nr1ResultadoService.dimensoesDaCampanha(campanhaId), [campanhaId])
   return {
-    carregado: dominios.status === 'success' && mapa.status === 'success',
+    carregado: [dominios, mapa, perguntas].every((x) => x.status === 'success'),
     dominios: dominios.status === 'success' ? dominios.data : [],
     linhas: mapa.status === 'success' ? mapa.data.linhas : [],
+    perguntas: perguntas.status === 'success' ? perguntas.data : [],
   }
 }
 
@@ -298,15 +315,15 @@ function ResumoPgr({ campanha, recorte, recorteNome, onClose }: {
                 <Info rotulo="Período da avaliação">{fmtData(campanha.inicio)} a {fmtData(campanha.encerradaEm ?? campanha.fim)}</Info>
                 <Info rotulo="Ciclo">{ciclo}</Info>
                 <Info rotulo="Instrumento">{campanha.modeloNome} · versão {campanha.versao}</Info>
-                <Info rotulo="Recorte do inventário">{recorteNome}</Info>
+                <Info rotulo="Abrangência da avaliação">{recorteNome}</Info>
               </dl>
             </Secao>
 
             <Secao n="2" titulo="Objetivo do relatório">
               <Paragrafo>
                 Este relatório apresenta os resultados da avaliação dos fatores de riscos psicossociais relacionados ao trabalho
-                realizada pela YNA Care Hub. A metodologia foi desenvolvida com base no COPSOQ II (Copenhagen Psychosocial
-                Questionnaire).
+                realizada pela YNA Care Hub. A metodologia foi desenvolvida com base no questionário COPSOQ II – Copenhagen
+                Psychosocial Questionnaire.
               </Paragrafo>
               <Paragrafo>O objetivo é fornecer à organização informações estruturadas para:</Paragrafo>
               <Lista itens={OBJETIVOS} />
@@ -329,7 +346,7 @@ function ResumoPgr({ campanha, recorte, recorteNome, onClose }: {
 
             <Secao n="4" titulo="Metodologia">
               <Paragrafo>
-                A avaliação foi realizada por meio de metodologia estruturada pela YNA Care Hub, embasada no COPSOQ II. A
+                A avaliação foi realizada por meio de metodologia estruturada pela YNA Care Hub, embasada no questionário COPSOQ II. A
                 metodologia busca avaliar fatores relacionados à organização, às condições e às relações de trabalho que podem
                 atuar como fatores de risco ou de proteção psicossocial. Os resultados são apresentados de forma{' '}
                 <strong className="font-semibold">agregada</strong>, preservando a confidencialidade das respostas individuais.
@@ -365,37 +382,71 @@ function ResumoPgr({ campanha, recorte, recorteNome, onClose }: {
               {pronto && (
                 <>
                   <Subtitulo n="5.1" titulo="Visão geral" />
-                  <Paragrafo>Nota média de cada domínio, de 1 a 5 (5 é a situação desejável), e a classificação do risco.</Paragrafo>
+                  <Paragrafo>
+                    Resultado de cada domínio na escala de 0 a 100 do COPSOQ II (100 é a situação desejável) e a sua
+                    classificação, conforme as escalas da seção 5.2.
+                  </Paragrafo>
                   <Tabela cabecalhos={['Domínio', 'Resultado', 'Classificação']} larguras={['w-[55%]', 'w-[20%]', '']}>
                     {[...resultados.dominios].sort((a, b) => a.nome.localeCompare(b.nome)).map((d) => (
                       <tr key={d.dimensaoId}>
                         <td className={celula}>{d.nome}</td>
-                        <td className={`${celula} font-mono font-semibold`}>{d.media.toFixed(1)}</td>
-                        <td className={`${celula} font-semibold ${NIVEL_RISCO[d.nivel].cls}`}>{NIVEL_RISCO[d.nivel].label}</td>
+                        <td className={`${celula} font-mono font-semibold`}>{escala100(d.media)}</td>
+                        <td className={`${celula} font-semibold ${NIVEL_RISCO[d.nivel].cls}`}>{classificacao(d.nivel).label}</td>
                       </tr>
                     ))}
                   </Tabela>
 
                   <Subtitulo n="5.2" titulo="Mapa de domínio × departamento" />
                   <Paragrafo>
-                    Os resultados por área, quando houver quantidade de respondentes suficiente. Caso contrário, são apresentados
-                    de forma agregada, para manter o anonimato. A média das respostas é apresentada pelas classificações Baixo,
-                    Médio e Alto.
+                    Esta matriz apresenta os fatores de riscos psicossociais por departamento, com base na média das respostas ao
+                    questionário e suas respectivas classificações. Para garantir a confidencialidade e preservar o anonimato dos
+                    participantes, os resultados por departamento serão apresentados individualmente apenas quando houver, no
+                    mínimo, {NR1_PONTUACAO.kAnonimato} respondentes. Grupos com até {NR1_PONTUACAO.kAnonimato - 1} respondentes
+                    terão seus resultados agregados, evitando a identificação individual.
                   </Paragrafo>
+                  <h4 className="mt-2 text-[13px] font-semibold">Escalas de classificação do Questionário COPSOQ II</h4>
+                  <Paragrafo>
+                    O Questionário COPSOQ II utiliza uma escala de pontuação de 0 a 100 para avaliar os fatores psicossociais
+                    relacionados ao ambiente de trabalho. Na classificação apresentada, os resultados são distribuídos em três
+                    níveis:
+                  </Paragrafo>
+                  <ul className="flex flex-col gap-2 pl-5 text-[13px] leading-relaxed list-disc">
+                    {NIVEIS_COPSOQ.map((n) => (
+                      <li key={n}>
+                        <strong className="font-semibold">{CLASSIFICACAO_COPSOQ[n].label}</strong>
+                        <br />
+                        {CLASSIFICACAO_COPSOQ[n].descricao}
+                      </li>
+                    ))}
+                  </ul>
+                  <LegendaCopsoq />
                   <MapaDepartamentos linhas={resultados.linhas} />
+
+                  <h4 className="mt-2 text-[13px] font-semibold">Perguntas do questionário por domínio</h4>
+                  <PerguntasPorDominio dimensoes={resultados.perguntas} />
 
                   <Subtitulo n="5.3" titulo="Matriz 5 × 5" />
                   <Paragrafo>
-                    A matriz apresenta a severidade × a probabilidade de cada risco identificado na organização. O nível do risco é
-                    o produto das duas: a probabilidade vem da nota das perguntas do questionário vinculadas ao fator, e a
-                    severidade é definida pela YNA para cada fator.
+                    A Matriz 5 × 5 tem como objetivo avaliar e classificar os riscos psicossociais identificados na organização,
+                    considerando a combinação entre <strong className="font-semibold">probabilidade e severidade</strong>. Os
+                    resultados permitem identificar os níveis de risco, estabelecer prioridades e orientar a definição de medidas
+                    preventivas, ações de controle e monitoramento. O nível do risco é a relação entre a probabilidade, vinda do
+                    resultado do questionário COPSOQ II, e a severidade definida pela metodologia YNA.
                   </Paragrafo>
                   <h4 className="mt-2 text-[13px] font-semibold">Probabilidade</h4>
-                  <Tabela cabecalhos={['Nível', 'Classificação', 'Interpretação', 'Descrição da probabilidade']} larguras={['w-[8%]', 'w-[17%]', 'w-[22%]', '']}>
+                  <Tabela cabecalhos={['Nível', 'Classificação', 'Descrição da probabilidade']} larguras={['w-[8%]', 'w-[20%]', '']}>
                     {NR1_PROBABILIDADE_ESCALA.map((p, i) => (
-                      <Linha key={i} celulas={[String(i + 1), NR1_PROBABILIDADE_ROTULOS[i]!, p.interpretacao, p.descricao]} />
+                      <tr key={i}>
+                        <td className={celula}>{i + 1}</td>
+                        <td className={celula}>
+                          <div>{NR1_PROBABILIDADE_ROTULOS[i]}</div>
+                          <div className="text-[11px] text-ink-muted">{p.interpretacao}</div>
+                        </td>
+                        <td className={celula}>{p.descricao}</td>
+                      </tr>
                     ))}
                   </Tabela>
+                  <Nota>Obs.: Os níveis de classificação são considerados de acordo com as respostas do questionário COPSOQ II.</Nota>
                   <h4 className="mt-2 text-[13px] font-semibold">Severidade</h4>
                   <Tabela cabecalhos={['Nível', 'Classificação', 'Descrição da severidade']} larguras={['w-[8%]', 'w-[17%]', '']}>
                     {NR1_SEVERIDADE_DESCRICOES.map((d, i) => (
@@ -418,7 +469,7 @@ function ResumoPgr({ campanha, recorte, recorteNome, onClose }: {
                   <Subtitulo n="5.4" titulo="Fatores de risco identificados" />
                   <Paragrafo>
                     O inventário dos fatores de risco que requerem plano de ação, por departamento, com a severidade, a
-                    probabilidade, o nível do risco e as possíveis lesões e agravos à saúde (CID). Recorte: {recorteNome}.
+                    probabilidade, o nível do risco e as possíveis lesões e agravos à saúde (CID). Abrangência da avaliação: {recorteNome}.
                   </Paragrafo>
                   <Inventario grupos={grupos} lesoes={lesoes} vazio={lista.length === 0} recorte={recorte} />
                   <Nota>
@@ -558,8 +609,8 @@ function MapaDepartamentos({ linhas }: { linhas: Nr1LinhaMapa[] }) {
               ) : (
                 l.celulas.map((c) => (
                   <td key={c.dimensaoId} className={`${celula} text-center ${c.nivel ? NIVEL_RISCO[c.nivel].cls : 'text-ink-muted'}`}>
-                    <div className="font-mono font-semibold">{c.media !== null ? c.media.toFixed(1) : '—'}</div>
-                    {c.nivel && <div className="text-[10.5px]">{NIVEL_RISCO[c.nivel].label}</div>}
+                    <div className="font-mono font-semibold">{c.media !== null ? escala100(c.media) : '—'}</div>
+                    {c.nivel && <div className="text-[10.5px]">{classificacao(c.nivel).label}</div>}
                   </td>
                 ))
               )}
@@ -567,14 +618,52 @@ function MapaDepartamentos({ linhas }: { linhas: Nr1LinhaMapa[] }) {
           ))}
         </tbody>
       </table>
-      <p className="mt-2 flex flex-wrap gap-4 text-[11.5px] text-ink-secondary">
-        {(['baixo', 'atencao', 'risco'] as const).map((n) => (
-          <span key={n} className="inline-flex items-center gap-1.5">
-            <span className={`h-3 w-3 rounded-[3px] ${NIVEL_RISCO[n].dot}`} aria-hidden />
-            {NIVEL_RISCO[n].label}
-          </span>
+    </div>
+  )
+}
+
+/** 5.2 — legenda dos níveis da escala do COPSOQ II (0–100). */
+function LegendaCopsoq() {
+  return (
+    <div className="nr1-pgr-bloco w-full max-w-sm rounded-lg border border-border p-4">
+      <p className="mb-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-muted">Níveis de risco</p>
+      <ul className="flex flex-col gap-1.5 text-[12px]">
+        {NIVEIS_COPSOQ.map((n) => (
+          <li key={n} className="flex items-center justify-between gap-4">
+            <span className={`rounded-pill px-2.5 py-0.5 font-semibold ${NIVEL_RISCO[n].cls}`}>{CLASSIFICACAO_COPSOQ[n].label}</span>
+            <span className="font-mono text-ink-secondary">{CLASSIFICACAO_COPSOQ[n].faixa}</span>
+          </li>
         ))}
-      </p>
+      </ul>
+    </div>
+  )
+}
+
+/** 5.2 — as perguntas do questionário aplicado no ciclo, por domínio (a
+   versão do modelo do ciclo, na ordem dos domínios do relatório). */
+function PerguntasPorDominio({ dimensoes }: { dimensoes: Nr1Dimensao[] }) {
+  const ordem = NR1_DIMENSOES.map((d) => dimensoes.find((x) => x.id === d.id)).filter((d): d is Nr1Dimensao => !!d && d.itens.length > 0)
+  return (
+    <div className="overflow-x-auto print:overflow-visible">
+      <table className="w-full border-collapse">
+        <colgroup><col className="w-[24%]" /><col /></colgroup>
+        <thead>
+          <tr>
+            <th className={cabecalho}>Domínios</th>
+            <th className={cabecalho}>Perguntas Questionário COPSOQ II</th>
+          </tr>
+        </thead>
+        {ordem.map((d) => (
+          <tbody key={d.id} className="nr1-pgr-bloco">
+            {d.itens.map((it, i) => (
+              <tr key={it.id}>
+                {i === 0 && <td rowSpan={d.itens.length} className={`${celula} align-middle font-medium`}>{NR1_DIMENSOES.find((x) => x.id === d.id)?.nome ?? d.nome}</td>}
+                <td className={celula}>{it.texto}</td>
+              </tr>
+            ))}
+          </tbody>
+        ))}
+      </table>
     </div>
   )
 }

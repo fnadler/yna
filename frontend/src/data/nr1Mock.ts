@@ -372,9 +372,10 @@ export const NR1_ESCALAS: Nr1EscalaConfig = {
 }
 
 /** Cortes propostos no questionário v0.3 (§7) — pendentes de validação de SST.
-   k = 4 respondentes: nenhum recorte menor é exibido ao RH. */
+   k = 5 respondentes: nenhum recorte menor é exibido ao RH (até 4,
+   inclusive, as respostas são agrupadas). */
 export const NR1_PONTUACAO: Nr1PontuacaoConfig = {
-  kAnonimato: 4,
+  kAnonimato: 5,
   faixas: [
     { min: 4.0, max: 5.0, nivel: 'baixo', label: 'Baixo', acao: 'Monitorar' },
     { min: 3.0, max: 3.9, nivel: 'atencao', label: 'Médio', acao: 'Ação preventiva' },

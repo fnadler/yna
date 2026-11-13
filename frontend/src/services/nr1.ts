@@ -638,6 +638,15 @@ export const nr1ResultadoService = {
     return versao?.dimensoes.find((d) => d.id === dimensaoId)
   },
 
+  /** Os domínios da versão do modelo aplicada no ciclo, com as perguntas —
+     a tabela de domínios × perguntas do relatório de avaliação. */
+  dimensoesDaCampanha: async (campanhaId: string): Promise<Nr1Dimensao[]> => {
+    await delay(rand(200, 450))
+    const campanha = nr1Campanhas.find((c) => c.id === campanhaId)
+    const modelo = campanha && nr1Modelos.find((m) => m.id === campanha.modeloId)
+    return modelo?.versoes.find((v) => v.versao === campanha!.versao)?.dimensoes ?? []
+  },
+
   /** Pontuação de cada pergunta de uma dimensão — de toda a empresa (sem
      `departamentoId`) ou de uma área específica. Não existe resposta
      individual por pergunta mockada: os valores são distribuídos de forma
