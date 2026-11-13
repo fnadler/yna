@@ -8,7 +8,10 @@ import type {
   MngDepartamentoEmpresa,
   MngContatoEmpresa,
   MngUsuarioRh,
+  MngProfissional,
+  MngProfissionalDetalhe,
 } from '../types'
+import { proCadastroDemo } from './proMock'
 
 /* Dados mockados do Manager / Backoffice YNA (Fluxo 4). Isolados dos demais
    perfis. Para a API real, ver src/services/mng.ts. */
@@ -241,3 +244,39 @@ export const mngNotificacoes: MngNotificacao[] = [
   { id: 'mn-2', tipo: 'nr1', icon: 'ph:shield-warning-bold', titulo: 'Empresa sem inventário gerado', descricao: 'A campanha da Atlas encerrou e o inventário para o PGR ainda não foi gerado.', quando: 'há 4 horas', lida: false, to: '/mng/empresas/e-3' },
   { id: 'mn-3', tipo: 'nr1', icon: 'ph:file-text-bold', titulo: 'Nova versão publicada', descricao: 'O Modelo YNA base ganhou uma nova versão publicada.', quando: 'há 6 horas', lida: false, to: '/mng/nr1/modelos' },
 ]
+
+/* Tipos de profissional (§8.5) — definidos no módulo neutro compartilhado. */
+export { mngTiposProfissional } from './tiposProfissional'
+
+/* Profissionais (§8.5). */
+export const mngProfissionais: MngProfissional[] = [
+  { id: 'p-1', nome: 'Mariana Lopes', tipo: 'psicologo', tipoLabel: 'Psicólogo', conselho: 'CRP 06/128443', uf: 'SP', email: 'mariana@ex.com', status: 'ativo', initials: 'ML', palette: 'lavender', linhasTeoricas: ['TCC'], clientesRecorrentes: 18, sessoesRealizadas: 214, qualidadeGeral: 94, avaliacao: 4.9 },
+  { id: 'p-2', nome: 'André Fontes', tipo: 'psicologo', tipoLabel: 'Psicólogo', conselho: 'CRP 04/094112', uf: 'MG', email: 'andre@ex.com', status: 'ativo', initials: 'AF', palette: 'pink', linhasTeoricas: ['TCC', 'ACT'], clientesRecorrentes: 12, sessoesRealizadas: 156, qualidadeGeral: 88, avaliacao: 4.7 },
+  { id: 'p-5', nome: 'Sofia Prado', tipo: 'psicologo', tipoLabel: 'Psicólogo', conselho: 'CRP 06/143902', uf: 'SP', email: 'sofia@ex.com', status: 'ativo', initials: 'SP', palette: 'pink', linhasTeoricas: ['Integrativa'], clientesRecorrentes: 9, sessoesRealizadas: 98, qualidadeGeral: 90, avaliacao: 4.8 },
+  { id: 'p-3', nome: 'Beatriz Nunes', tipo: 'psicologo', tipoLabel: 'Psicólogo', conselho: 'CRP 05/201880', uf: 'RJ', email: 'beatriz@ex.com', status: 'para-analise', initials: 'BN', palette: 'yellow', linhasTeoricas: ['Psicanálise'], clientesRecorrentes: 0, sessoesRealizadas: 0, qualidadeGeral: 0, avaliacao: 0 },
+  { id: 'p-8', nome: 'Lucas Moreira', tipo: 'psicologo', tipoLabel: 'Psicólogo', conselho: 'CRP 07/090233', uf: 'RS', email: 'lucas@ex.com', status: 'para-analise', initials: 'LM', palette: 'lavender', linhasTeoricas: ['Gestalt'], clientesRecorrentes: 0, sessoesRealizadas: 0, qualidadeGeral: 0, avaliacao: 0 },
+  { id: 'p-4', nome: 'Carlos Vidal', tipo: 'psicologo', tipoLabel: 'Psicólogo', conselho: 'CRP 08/077231', uf: 'PR', email: 'carlos@ex.com', status: 'em-analise', initials: 'CV', palette: 'lavender', linhasTeoricas: ['Sistêmica'], clientesRecorrentes: 0, sessoesRealizadas: 0, qualidadeGeral: 0, avaliacao: 0 },
+  { id: 'p-7', nome: 'Tiago Mota', tipo: 'psicologo', tipoLabel: 'Psicólogo', conselho: 'CRP 04/061200', uf: 'MG', email: 'tiago@ex.com', status: 'reprovado', initials: 'TM', palette: 'yellow', linhasTeoricas: ['TCC'], clientesRecorrentes: 0, sessoesRealizadas: 0, qualidadeGeral: 0, avaliacao: 0 },
+  { id: 'p-6', nome: 'Rafael Dias', tipo: 'psicologo', tipoLabel: 'Psicólogo', conselho: 'CRP 09/051220', uf: 'PE', email: 'rafael@ex.com', status: 'inativo', initials: 'RD', palette: 'yellow', linhasTeoricas: ['TCC'], clientesRecorrentes: 0, sessoesRealizadas: 63, qualidadeGeral: 82, avaliacao: 4.5 },
+]
+
+const detalheBase = (p: MngProfissional): MngProfissionalDetalhe => ({
+  ...p, crpUf: p.uf,
+  bio: 'Psicóloga clínica com foco em ansiedade e processos de transição de carreira. Abordagem integrativa.',
+  formacao: ['Graduação em Psicologia — USP', 'Especialização em TCC — PUC'],
+  cnpj: '48.902.115/0001-20', banco: 'Nubank · Ag. 0001 · CC 88213-4',
+  // Cadastro completo (mesmos 5 steps do fluxo do profissional), personalizado com os dados do profissional.
+  cadastro: { ...proCadastroDemo, nomeCompleto: p.nome, email: p.email },
+  qualidade: [
+    { criterio: 'Assiduidade', score: 96 }, { criterio: 'Pontualidade', score: 88 },
+    { criterio: 'Volume de atendimentos', score: 92 }, { criterio: 'Disponibilidade aberta', score: 74 },
+  ],
+})
+export const mngProfissionalDetalhe = (id: string): MngProfissionalDetalhe | undefined => {
+  const p = mngProfissionais.find((x) => x.id === id)
+  return p ? detalheBase(p) : undefined
+}
+
+export const PROF_STATUS_LABEL: Record<MngProfissional['status'], string> = {
+  ativo: 'Ativo', 'para-analise': 'Para análise', 'em-analise': 'Em análise', reprovado: 'Reprovado', inativo: 'Inativo',
+}

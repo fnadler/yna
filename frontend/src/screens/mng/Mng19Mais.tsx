@@ -39,6 +39,7 @@ export function Mng19Mais() {
     ] },
     { titulo: 'Configuração', items: [
       { icon: 'ph:users-three-bold', label: 'Usuários', to: '/mng/gestores' },
+      { icon: 'ph:identification-card-bold', label: 'Tipos de profissional', to: '/mng/tipos-profissional' },
     ] },
   ]
 

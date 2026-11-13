@@ -797,3 +797,290 @@ export interface Nr1MinhaAvaliacao {
   scores: { dimensaoId: Nr1DimensaoId; nome: string; media: number }[]
 }
 
+/* ============================================================
+   PROFISSIONAIS (Manager · fase 2) — tipos de profissional, cadastro e
+   aprovação. Trazidos da main; o detalhe do profissional não inclui, por
+   ora, o histórico de sessões nem o financeiro.
+   ============================================================ */
+
+/** Profissional como o beneficiário o vê (card da triagem e perfil) — usado
+   na prévia "Ver perfil" do Manager. */
+export interface Professional {
+  id: string
+  name: string
+  crp: string
+  approach: string
+  approachLong: string
+  specialties: string[]
+  nextSlot: string
+  videoLength: string
+  whyThisMatch: string
+  initials: string
+  palette: 'lavender' | 'pink' | 'yellow'
+  bio: string
+  formation: string[]
+  yearsExp: number
+  sessionDuration: number
+}
+
+/* Cadastro do profissional — dados dos 5 steps do cadastro, revisados na
+   aprovação no Manager. */
+export interface ProFormacao { id: string; nivel: string; curso: string; instituicao: string; inicio: string; fim: string; emAndamento: boolean }
+export interface ProCursoCert { id: string; nome: string; instituicao: string; inicio: string; fim: string; emAndamento: boolean }
+export interface ProIdioma { id: string; idioma: string; nivel: string }
+export interface ProDispCadastro { dias: string[]; horaInicio: string; horaFim: string; plantao: boolean }
+
+export interface ProCadastro {
+  // Step 1 — Dados pessoais
+  nomeCompleto: string; cpf: string; email: string; telefone: string; instagram: string
+  // Step 2 — Dados da empresa (PJ)
+  cnpj: string; razaoSocial: string; contratoSocial?: string; banco: string; agencia: string; conta: string; pixChave: string
+  // Step 3 — Perfil profissional (campos definidos pelo tipo de profissional)
+  perfil: Record<string, string | string[]>
+  // Step 4 — Formação
+  formacoes: ProFormacao[]; cursos: ProCursoCert[]; idiomas: ProIdioma[]
+  // Step 5 — Disponibilidade
+  disponibilidade: ProDispCadastro
+}
+
+/** Campo customizável do cadastro do profissional (formulário flexível). */
+export type MngCampoTipo = 'text' | 'textarea' | 'select' | 'multiselect' | 'number' | 'date'
+export interface MngCampoCadastro {
+  id: string
+  label: string
+  tipo: MngCampoTipo
+  obrigatorio: boolean
+  /** Opções — para select/multiselect. */
+  opcoes?: string[]
+  /** Texto de ajuda/placeholder. */
+  ajuda?: string
+}
+
+/** Pergunta da triagem do beneficiário (para indicar o profissional). */
+export type MngTriagemTipo = 'aberta' | 'escala' | 'unica' | 'multipla'
+export interface MngTriagemPergunta {
+  id: string
+  pergunta: string
+  tipo: MngTriagemTipo
+  /** Opções — para escolha única/múltipla. */
+  opcoes?: string[]
+  obrigatoria: boolean
+}
+
+/** Tipo de profissional — define a triagem e os campos do cadastro (§8.5). */
+export interface MngTipoProfissional {
+  id: string
+  nome: string
+  conselho: string      // ex.: CRP, CRN, CREFITO
+  ativo: boolean
+  profissionais: number
+  /** Campos exigidos no cadastro deste tipo. */
+  campos: MngCampoCadastro[]
+  /** Perguntas da triagem dos beneficiários. */
+  triagem: MngTriagemPergunta[]
+}
+
+export type MngProfStatus = 'ativo' | 'para-analise' | 'em-analise' | 'reprovado' | 'inativo'
+export interface MngProfissional {
+  id: string
+  nome: string
+  tipo: string          // id do tipo (ex.: 'psicologo')
+  tipoLabel: string
+  conselho: string      // ex.: CRP 06/123456
+  uf: string            // estado do conselho (ex.: SP)
+  email: string
+  status: MngProfStatus
+  initials: string
+  palette: 'lavender' | 'pink' | 'yellow'
+  fotoUrl?: string
+  linhasTeoricas: string[]
+  clientesRecorrentes: number
+  sessoesRealizadas: number
+  qualidadeGeral: number   // índice geral 0–100
+  avaliacao: number        // 0–5
+}
+
+export interface MngProfissionalDetalhe extends MngProfissional {
+  crpUf: string
+  bio: string
+  formacao: string[]
+  cnpj: string
+  banco: string
+  /** Dados completos enviados no cadastro (usados na análise/aprovação),
+     nos mesmos 5 steps do fluxo do profissional. */
+  cadastro: ProCadastro
+  qualidade: { criterio: string; score: number }[]
+}
+
+/* Disponibilidade do profissional (onboarding · fase 2) — editada no cadastro
+   e confirmada na ativação da conta. */
+export type ProDiaDisponibilidade = { active: boolean; times: string[] }
+export interface ProBloqueio { id: string; inicio: string; fim?: string; motivo: string }
+export interface ProDisponibilidade {
+  atendimento: Record<string, ProDiaDisponibilidade>
+  plantao: Record<string, ProDiaDisponibilidade>
+  bloqueios: ProBloqueio[]
+}
+
+
+/* Área logada do profissional (fase 2: Perfil, Agenda, Configurações). */
+
+/** Objetivo terapêutico — item vivo, revisado/atualizado ao longo do tratamento. */
+export interface ObjetivoTerapeutico {
+  id: string
+  texto: string
+  status: 'em-andamento' | 'alcancado'
+}
+
+/** Plano terapêutico / acompanhamento do beneficiário (nível do paciente, distinto
+   da evolução por sessão). Avaliação de demanda + objetivos do trabalho (CFP 001/2009). */
+export interface PlanoTerapeutico {
+  demanda: string
+  objetivos: ObjetivoTerapeutico[]
+  /** Hipótese diagnóstica atual (códigos CID-10). */
+  hipoteseDiagnostica: string[]
+  abordagem: string
+  riscoAtual: 'sem-risco' | 'ideacao-suicida' | 'autolesao' | 'risco-terceiros'
+  atualizadoEm: string
+}
+
+/** Detalhe do beneficiário visível ao profissional (sigilo: apelido, sem nome real). */
+export interface ProBeneficiarioDetail {
+  id: string
+  apelido: string
+  initials: string
+  palette: 'lavender' | 'pink' | 'yellow'
+  desde: string
+  totalSessoes: number
+  /** Próxima sessão (data ISO + hora) no fuso base; convertida ao exibir. */
+  proximaSessao?: { date: string; time: string }
+  /** Sessão recorrente (dia da semana 0=Dom + hora) no fuso base; convertida ao exibir. */
+  sessaoRecorrente?: { weekday: number; time: string }
+  triagem: TriagemResposta[]
+  prontuarios: ProntuarioEntry[]
+  historicoSessoes: ProSessaoResumo[]
+  plano?: PlanoTerapeutico
+}
+
+export interface ProPJ {
+  cnpj: string
+  razaoSocial: string
+  banco: string
+  agencia: string
+  conta: string
+  /** Número da operação (quando aplicável, ex.: Caixa). */
+  operacao?: string
+  pixChave?: string
+  documentos: ProPJDocumento[]
+}
+
+export interface ProProfile {
+  id: string
+  name: string
+  initials: string
+  palette: 'lavender' | 'pink' | 'yellow'
+  crp: string
+  crpUf: string
+  email: string
+  phone?: string
+  linhasTeoricas: string[]
+  areasAtuacao: string[]
+  bio: string
+  comoTrabalha: string
+  formation: string[]
+  certificados: ProCertificado[]
+  fotoUrl?: string
+  videoUrl?: string
+  yearsExp: number
+  sessionDuration: number
+  /** Fuso horário do profissional (offset GMT), ex.: "America/Sao_Paulo". */
+  fusoHorario: string
+  pj?: ProPJ
+  cadastroStatus: ProCadastroStatus
+  integracaoConcluida: boolean
+}
+
+export interface ProfileStrength {
+  percent: number
+  items: ProfileStrengthItem[]
+}
+
+/** Prontuário pós-sessão (obrigatório — RF-PR-07).
+   `conteudo` é a evolução clínica (texto). Os demais campos são estruturados e
+   opcionais (preenchidos no novo registro estruturado da sala de sessão). */
+export interface ProntuarioEntry {
+  id: string
+  sessionId: string
+  beneficiarioApelido: string
+  date: string
+  conteudo: string
+  finalizado: boolean
+  comparecimento?: 'compareceu' | 'faltou' | 'cancelou' | 'remarcada'
+  temas?: string[]
+  risco?: 'sem-risco' | 'ideacao-suicida' | 'autolesao' | 'risco-terceiros'
+  cids?: string[]
+  humor?: string[]
+  tecnicas?: string[]
+  encaminhamentos?: string[]
+  tarefas?: string
+}
+
+/** Sessão na perspectiva do profissional. */
+export interface ProSession {
+  id: string
+  beneficiarioId: string
+  beneficiarioApelido: string
+  beneficiarioInitials: string
+  beneficiarioPalette: 'lavender' | 'pink' | 'yellow'
+  weekday: string
+  date: string
+  time: string
+  status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled'
+  roomLink: string
+  prontuarioPendente?: boolean
+  durationMin?: number
+  /** Segundos desde que o beneficiário abriu a sala (definido = já entrou e aguarda). */
+  salaAbertaSeg?: number
+}
+
+export interface TriagemResposta {
+  pergunta: string
+  resposta: string
+}
+
+/** Sessão passada (resumo) no histórico do beneficiário. */
+export interface ProSessaoResumo {
+  id: string
+  data: string   // ex.: "15/06/2026"
+  hora: string   // ex.: "09:00"
+  status: 'realizada' | 'cancelada' | 'falta'
+}
+
+/** Documento da PJ (contrato social, certidões negativas etc.). */
+export interface ProPJDocumento {
+  id: string
+  tipo: string
+  /** Nome do arquivo enviado (ausente enquanto pendente). */
+  nome?: string
+  status: 'pendente' | 'enviado'
+}
+
+export interface ProCertificado {
+  id: string
+  titulo: string
+  instituicao: string
+  ano: string
+  arquivo: string
+  validado: boolean
+}
+
+export type ProCadastroStatus = 'rascunho' | 'em-revisao' | 'aprovado' | 'requer-ajuste'
+
+/** Item que compõe o indicador "Perfil pronto para match". */
+export interface ProfileStrengthItem {
+  key: string
+  label: string
+  peso: number
+  done: boolean
+  href: string
+}

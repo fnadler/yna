@@ -5,9 +5,11 @@ import { useTheme } from '../contexts/ThemeContext'
 interface MobileTopBarProps {
   unread?: number
   onBellClick?: () => void
+  /** `false` esconde o sino (perfil sem central de notificações). */
+  showBell?: boolean
 }
 
-export function MobileTopBar({ unread = 0, onBellClick }: MobileTopBarProps) {
+export function MobileTopBar({ unread = 0, onBellClick, showBell = true }: MobileTopBarProps) {
   const { dark, toggle: toggleTheme } = useTheme()
 
   return (
@@ -22,7 +24,7 @@ export function MobileTopBar({ unread = 0, onBellClick }: MobileTopBarProps) {
         >
           <Icon icon={dark ? 'ph:sun-bold' : 'ph:moon-stars-bold'} width={20} aria-hidden />
         </button>
-        <button
+        {showBell && <button
           onClick={onBellClick}
           aria-label={`Notificações${unread > 0 ? `: ${unread} não lidas` : ''}`}
           className="relative flex h-11 w-11 items-center justify-center rounded-pill border border-border bg-surface text-ink-secondary transition-colors hover:bg-surface-hover"
@@ -36,7 +38,7 @@ export function MobileTopBar({ unread = 0, onBellClick }: MobileTopBarProps) {
               {unread}
             </span>
           )}
-        </button>
+        </button>}
       </div>
     </div>
   )

@@ -3,6 +3,21 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import { AppProvider } from './contexts/AppContext'
 import { AppLayout } from './components/AppLayout'
 import { FocusLayout } from './components/FocusLayout'
+import { ProProvider } from './contexts/ProContext'
+import { ProAppLayout } from './components/ProAppLayout'
+import { Pro09Perfil } from './screens/pro/Pro09Perfil'
+import { Pro13Agenda } from './screens/pro/Pro13Agenda'
+import { Pro25PerfilConta } from './screens/pro/Pro25PerfilConta'
+import { Pro00BemVindo } from './screens/pro/Pro00BemVindo'
+import { Pro00Apresentacao } from './screens/pro/Pro00Apresentacao'
+import { Pro01Convite } from './screens/pro/Pro01Convite'
+import { Pro02LinkInvalido } from './screens/pro/Pro02LinkInvalido'
+import { Pro03CadastroConta } from './screens/pro/Pro03CadastroConta'
+import { Pro03bContaCriada } from './screens/pro/Pro03bContaCriada'
+import { ProCad00Intro } from './screens/pro/ProCad00Intro'
+import { ProCad01Wizard } from './screens/pro/ProCad01Wizard'
+import { ProCad02Processo } from './screens/pro/ProCad02Processo'
+import { ProAtivacao } from './screens/pro/ProAtivacao'
 import { RhProvider } from './contexts/RhContext'
 import { RhAppLayout } from './components/RhAppLayout'
 import { MngProvider } from './contexts/MngContext'
@@ -11,6 +26,9 @@ import { Mng00Login } from './screens/mng/Mng00Login'
 import { Mng10Home } from './screens/mng/Mng10Home'
 import { Mng11Empresas } from './screens/mng/Mng11Empresas'
 import { Mng11EmpresaDetalhe } from './screens/mng/Mng11EmpresaDetalhe'
+import { Mng12Profissionais } from './screens/mng/Mng12Profissionais'
+import { Mng12ProfissionalDetalhe } from './screens/mng/Mng12ProfissionalDetalhe'
+import { Mng20TiposProfissional } from './screens/mng/Mng20TiposProfissional'
 import { Mng22Notificacoes } from './screens/mng/Mng22Notificacoes'
 import { Mng17Suporte } from './screens/mng/Mng17Suporte'
 import { Mng18Gestores } from './screens/mng/Mng18Gestores'
@@ -56,6 +74,15 @@ import { ColRetomarAvaliacao } from './screens/ColRetomarAvaliacao'
 import { ColConviteConta } from './screens/ColConviteConta'
 import { ColContaCriada } from './screens/ColContaCriada'
 import { ColConhecerYna } from './screens/ColConhecerYna'
+
+/* Raiz do fluxo do Profissional: provê o ProContext (isolado dos demais perfis). */
+function ProRoot() {
+  return (
+    <ProProvider>
+      <Outlet />
+    </ProProvider>
+  )
+}
 
 /* Raiz do fluxo do RH/Empresa: provê o RhContext (isolado dos demais perfis). */
 function RhRoot() {
@@ -163,6 +190,49 @@ export function App() {
             </Route>
 
             {/* ====================================================
+                FLUXO 3 — PROFISSIONAL (namespace /pro)
+                Na fase 2: a jornada de entrada (convite → apresentação →
+                conta → cadastro → análise → ativação) e a área logada com
+                Perfil (tela inicial), Agenda e Configurações.
+                ==================================================== */}
+            <Route element={<ProRoot />}>
+              {/* Apresentação (boas-vindas + slides) — full-bleed */}
+              <Route path="/pro/bem-vindo" element={<Pro00BemVindo />} />
+              <Route path="/pro/apresentacao/:passo" element={<Pro00Apresentacao />} />
+
+              {/* Transição "Conta criada" — full-screen */}
+              <Route path="/pro/conta-criada" element={<Pro03bContaCriada />} />
+
+              {/* Cadastro do profissional (intro → etapas) — layout de foco */}
+              <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" exitTo="/pro/home" />}>
+                <Route path="/pro/cadastro/intro" element={<ProCad00Intro />} />
+                <Route path="/pro/cadastro/etapas" element={<ProCad01Wizard />} />
+              </Route>
+              {/* Cadastro enviado / em análise e ativação após aprovação — full-screen */}
+              <Route path="/pro/cadastro/processo" element={<ProCad02Processo />} />
+              <Route path="/pro/ativacao" element={<ProAtivacao />} />
+
+              {/* Entrada (convite) e criação da conta — layout de foco */}
+              <Route element={<FocusLayout bgClass="bg-yna-gradient-soft" exitTo="/pro/convite/demo" />}>
+                <Route path="/pro/convite/invalido" element={<Pro02LinkInvalido />} />
+                <Route path="/pro/convite/:token" element={<Pro01Convite />} />
+                <Route path="/pro/cadastro" element={<Pro03CadastroConta />} />
+              </Route>
+
+              {/* Área logada do profissional — sidebar/bottom-nav próprios */}
+              <Route element={<ProAppLayout />}>
+                <Route path="/pro/perfil" element={<Pro09Perfil />} />
+                <Route path="/pro/agenda" element={<Pro13Agenda />} />
+                <Route path="/pro/conta" element={<Pro25PerfilConta />} />
+              </Route>
+
+              {/* A tela inicial da área logada é o Perfil: /pro/home (destino
+                  do fim da ativação e do "Já tenho conta") cai nele. */}
+              <Route path="/pro/home" element={<Navigate to="/pro/perfil" replace />} />
+              <Route path="/pro" element={<Navigate to="/pro/perfil" replace />} />
+            </Route>
+
+            {/* ====================================================
                 FLUXO 1 — RH / EMPRESA B2B (jornada separada, namespace /rh)
                 RhContext isolado; reusa o design system dos demais perfis.
                 Não se conecta aos dados individuais do colaborador —
@@ -231,6 +301,9 @@ export function App() {
                 <Route path="/mng/home" element={<Mng10Home />} />
                 <Route path="/mng/empresas" element={<Mng11Empresas />} />
                 <Route path="/mng/empresas/:id" element={<Mng11EmpresaDetalhe />} />
+                <Route path="/mng/profissionais" element={<Mng12Profissionais />} />
+                <Route path="/mng/profissionais/:id" element={<Mng12ProfissionalDetalhe />} />
+                <Route path="/mng/tipos-profissional" element={<Mng20TiposProfissional />} />
 
                 {/* Modelos de avaliação psicossocial (NR-1). Toda a
                     configuração e customização do instrumento vive aqui. */}

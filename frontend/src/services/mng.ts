@@ -1,10 +1,12 @@
 import type {
   MngGestor, MngEmpresa, MngContatoMaster, MngTicket, MngCockpit,
   MngDepartamentoEmpresa, MngContatoEmpresa, MngUsuarioRh,
+  MngTipoProfissional, MngProfissional, MngProfissionalDetalhe,
 } from '../types'
 import {
   mngGestores, mngEmpresas, mngTickets, mngCockpit, MNG_TODAY,
   mngDepartamentosEmpresa, mngContatosEmpresa, mngUsuariosRh,
+  mngTiposProfissional, mngProfissionais, mngProfissionalDetalhe,
 } from '../data/mngMock'
 
 /* Camada de serviços do Manager / Backoffice YNA — mockada, com latência
@@ -149,6 +151,28 @@ export const mngUsuarioRhService = {
   list: async (empresaId: string): Promise<MngUsuarioRh[]> => {
     await delay(rand(200, 400))
     return mngUsuariosRh.filter((u) => u.empresaId === empresaId)
+  },
+}
+
+export const mngProfissionalService = {
+  tipos: async (): Promise<MngTipoProfissional[]> => { await delay(rand(250, 500)); return mngTiposProfissional },
+  list: async (): Promise<MngProfissional[]> => { await delay(rand(300, 650)); return mngProfissionais },
+  get: async (id: string): Promise<MngProfissionalDetalhe | undefined> => { await delay(rand(300, 600)); return mngProfissionalDetalhe(id) },
+  /** Aprovar / devolver para análise / reprovar cadastro (RF-YN-03.5). */
+  decidir: async (id: string, decisao: 'aprovar' | 'ajuste' | 'rejeitar'): Promise<{ ok: boolean }> => {
+    await delay(rand(300, 600))
+    const p = mngProfissionais.find((x) => x.id === id)
+    if (p) p.status = decisao === 'aprovar' ? 'ativo' : decisao === 'ajuste' ? 'para-analise' : 'reprovado'
+    return { ok: true }
+  },
+  /** Upsert de tipo de profissional — triagem + campos do cadastro (RF-YN-03.1). */
+  salvarTipo: async (t: MngTipoProfissional): Promise<MngTipoProfissional> => {
+    await delay(rand(300, 600))
+    const saved: MngTipoProfissional = { ...t, id: t.id || `tipo-${mngTiposProfissional.length + 1}` }
+    const i = mngTiposProfissional.findIndex((x) => x.id === saved.id)
+    if (i >= 0) mngTiposProfissional[i] = saved
+    else mngTiposProfissional.push(saved)
+    return saved
   },
 }
 
