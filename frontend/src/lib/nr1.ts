@@ -134,24 +134,24 @@ export const LIMIAR_TENDENCIA = 0.2
 export const NR1_PROBABILIDADE_ROTULOS = ['Muito baixa', 'Baixa', 'Média', 'Provável', 'Muito provável']
 export const NR1_SEVERIDADE_ROTULOS = ['Insignificante', 'Leve', 'Relevante', 'Grave', 'Muito grave']
 
-/** Leitura de cada nível de probabilidade (1–5): a parcela de
-   trabalhadores expostos e o que ela significa — a escala do relatório de
-   avaliação (modelo YNA, base COPSOQ II). */
+/** Leitura de cada nível de probabilidade (1–5): a faixa percentual do
+   resultado no questionário COPSOQ II e o que ela significa — a escala do
+   relatório de avaliação (modelo YNA). */
 export const NR1_PROBABILIDADE_ESCALA = [
-  { interpretacao: '0% a 15%', descricao: 'Exposição pouco frequente ou restrita a uma parcela muito pequena dos trabalhadores.' },
-  { interpretacao: 'Acima de 15% até 35%', descricao: 'Exposição limitada, identificada em uma parcela minoritária dos trabalhadores.' },
-  { interpretacao: 'Acima de 35% até 60%', descricao: 'Exposição significativa, identificada em uma parcela relevante dos trabalhadores.' },
-  { interpretacao: 'Acima de 60% até 80%', descricao: 'Exposição elevada, atingindo a maioria dos trabalhadores avaliados.' },
-  { interpretacao: 'Acima de 80% até 100%', descricao: 'Exposição generalizada, identificada na grande maioria dos trabalhadores.' },
+  { interpretacao: '80% até 100%', descricao: 'Exposição pouco frequente ou restrita a uma parcela muito pequena dos trabalhadores.' },
+  { interpretacao: '60% até 80%', descricao: 'Exposição limitada, identificada em uma parcela minoritária dos trabalhadores.' },
+  { interpretacao: '35% até 60%', descricao: 'Exposição significativa, identificada em uma parcela relevante dos trabalhadores.' },
+  { interpretacao: '15% até 35%', descricao: 'Exposição elevada, atingindo a maioria dos trabalhadores avaliados.' },
+  { interpretacao: '0% a 15%', descricao: 'Exposição generalizada, identificada na grande maioria dos trabalhadores.' },
 ]
 
 /** O que cada nível de severidade (1–5) representa em agravo à saúde. */
 export const NR1_SEVERIDADE_DESCRICOES = [
-  'Efeitos transitórios, sem comprometimento relevante.',
-  'Alterações leves, reversíveis, com impacto limitado.',
-  'Agravos com tratamento ou incapacidade temporária possível.',
-  'Comprometimento funcional importante ou prolongado.',
-  'Incapacidade permanente, risco à vida ou morte, quando plausível.',
+  'Efeitos transitórios sem comprometimento relevante.',
+  'Alterações leves, reversíveis, impacto limitado.',
+  'Agravo que pode exigir tratamento e afastamento temporário.',
+  'Comprometimento funcional importante ou prolongado, com possibilidade de afastamento significativo.',
+  'Impactos severos à saúde, com possibilidade de comprometimento prolongado ou permanente do bem-estar e da capacidade funcional.',
 ]
 
 /** Severidade (1–5) sem cor própria: o nível do fator já tem a sua (a

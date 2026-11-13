@@ -13,7 +13,7 @@ import { PrazoBadge } from './PrazoBadge'
 import { Nr1DepartamentosPopover } from './Nr1DepartamentosPopover'
 import { useService } from '../hooks/useService'
 import { nr1ResultadoService, nr1AcaoService, nr1FatorService } from '../services/nr1'
-import { NR1_DIMENSOES, nr1NivelPorMedia } from '../data/nr1Mock'
+import { NR1_DIMENSOES, NR1_PONTUACAO, nr1NivelPorMedia } from '../data/nr1Mock'
 import { NIVEL_RISCO, NIVEL_MATRIZ, ICONE_NIVEL_MATRIZ, ACAO_STATUS, ACAO_RECOMENDADA, STATUS_RISCO, NR1_PROBABILIDADE_ROTULOS, NR1_SEVERIDADE_ROTULOS, NR1_SEVERIDADE_CLS } from '../lib/nr1'
 import type {
   Nr1Acao, Nr1DimensaoId, Nr1FatorSituacao, Nr1LinhaMapa, Nr1NivelRisco, Nr1RiscoInventario, Nr1Tendencia, Nr1AcaoSugerida,
@@ -230,7 +230,7 @@ function Analise({ escopo, onClose, onRiscosAlterados }: {
             {!carregado && <Skeleton className="h-40 w-full rounded-lg" />}
             {carregado && depSel?.protegido && (
               <p className="rounded-lg bg-surface px-4 py-6 text-center text-[12.5px] text-ink-secondary">
-                {depSel.nome} tem menos de 4 respondentes: o resultado entra só na visão da empresa.
+                {depSel.nome} tem menos de {NR1_PONTUACAO.kAnonimato} respondentes: o resultado entra só na visão da empresa.
               </p>
             )}
             {carregado && !depSel?.protegido && linhasFatores.length === 0 && (
@@ -427,7 +427,7 @@ function NotaGrande({ media }: { media: number }) {
 function NotaPill({ media, nivel }: { media: number | null; nivel: Nr1NivelRisco | null }) {
   if (media === null || nivel === null) {
     return (
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-pill bg-surface-2 px-2 py-1 text-[11px] text-ink-muted" title="Menos de 4 respondentes — oculto por anonimato">
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-pill bg-surface-2 px-2 py-1 text-[11px] text-ink-muted" title={`Menos de ${NR1_PONTUACAO.kAnonimato} respondentes — oculto por anonimato`}>
         <Icon icon="ph:lock-simple-bold" width={11} aria-hidden />
         Protegido
       </span>

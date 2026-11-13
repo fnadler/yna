@@ -25,7 +25,7 @@ import { pct } from '../../lib/nr1'
 import { useService } from '../../hooks/useService'
 import { nr1CampanhaService, nr1ModeloService, nr1ResultadoService } from '../../services/nr1'
 import { rhColaboradorService, rhDepartamentoService } from '../../services/rh'
-import { NR1_DIMENSOES, NR1_RECORTE_OUTROS } from '../../data/nr1Mock'
+import { NR1_DIMENSOES, NR1_RECORTE_OUTROS, NR1_PONTUACAO } from '../../data/nr1Mock'
 import type { Nr1Acao, Nr1Campanha, Nr1DimensaoId, Nr1RiscoInventario, RhColaboradorStatus } from '../../types'
 
 /** Link único do ciclo — identifica empresa e ciclo pelo próprio protocolo
@@ -1124,9 +1124,9 @@ function DepartamentosBloco({ campanhaId, recorte, onAbrirCelula }: {
             <p className="mt-2 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-ink-muted">
               <Icon icon="ph:stack-bold" width={12} className="mt-0.5 shrink-0" aria-hidden />
               <span>
-                <strong className="font-semibold text-ink-secondary">Outros departamentos</strong> reúne as áreas com menos de 4 respondentes:{' '}
+                <strong className="font-semibold text-ink-secondary">Outros departamentos</strong> reúne as áreas com menos de {NR1_PONTUACAO.kAnonimato} respondentes:{' '}
                 {mapa.data.agregados.join(', ')}.
-                {outros?.protegido && ' Mesmo somadas, ainda ficam abaixo de 4 respondentes — o resultado fica oculto, mas entra na nota da empresa.'}
+                {outros?.protegido && ` Mesmo somadas, ainda ficam abaixo de ${NR1_PONTUACAO.kAnonimato} respondentes — o resultado fica oculto, mas entra na nota da empresa.`}
               </span>
             </p>
           )}
